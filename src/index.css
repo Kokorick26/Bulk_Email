@@ -1,0 +1,145 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        --background: 0 0% 0%;
+        --foreground: 0 0% 100%;
+        --card: 0 0% 4%;
+        --card-foreground: 0 0% 100%;
+        --popover: 0 0% 4%;
+        --popover-foreground: 0 0% 100%;
+        --primary: 0 0% 100%;
+        --primary-foreground: 0 0% 0%;
+        --secondary: 0 0% 10%;
+        --secondary-foreground: 0 0% 100%;
+        --muted: 0 0% 8%;
+        --muted-foreground: 0 0% 55%;
+        --accent: 0 0% 12%;
+        --accent-foreground: 0 0% 100%;
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 0 0% 100%;
+        --border: 0 0% 12%;
+        --input: 0 0% 12%;
+        --ring: 0 0% 100%;
+        --radius: 0.75rem;
+    }
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+
+    body {
+        @apply bg-black text-white antialiased;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+}
+
+/* Import Inter font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* Glass effect - minimal */
+.glass {
+    @apply bg-white/[0.02] backdrop-blur-xl border border-white/[0.05];
+}
+
+.glass-elevated {
+    @apply bg-white/[0.04] backdrop-blur-xl border border-white/[0.08];
+}
+
+/* Subtle hover */
+.hover-lift {
+    @apply transition-all duration-300;
+}
+
+.hover-lift:hover {
+    transform: translateY(-2px);
+}
+
+/* Glow effect */
+.glow {
+    box-shadow: 0 0 60px -15px rgba(255, 255, 255, 0.1);
+}
+
+/* Dot grid background */
+.dot-grid {
+    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 24px 24px;
+}
+
+/* Noise texture overlay */
+.noise::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)'/%3E%3C/svg%3E");
+    opacity: 0.02;
+    pointer-events: none;
+}
+
+/* Focus ring */
+.focus-ring:focus {
+    @apply outline-none ring-1 ring-white/20;
+}
+
+/* Button styles */
+.btn-primary {
+    @apply bg-white text-black font-medium px-4 py-2.5 rounded-lg transition-all hover:bg-white/90 active:scale-[0.98];
+}
+
+.btn-secondary {
+    @apply bg-white/[0.05] text-white font-medium px-4 py-2.5 rounded-lg border border-white/[0.08] transition-all hover:bg-white/[0.08] active:scale-[0.98];
+}
+
+/* Input styles */
+.input {
+    @apply w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-lg text-white placeholder:text-white/30 focus:outline-none focus:border-white/20 transition-colors;
+}
+
+/* Card hover */
+.card-hover {
+    @apply transition-all duration-200 hover:bg-white/[0.02] hover:border-white/[0.1];
+}
+
+/* Status indicators */
+.status-dot {
+    @apply w-2 h-2 rounded-full;
+}
+
+.status-success {
+    @apply bg-emerald-400;
+}
+
+.status-error {
+    @apply bg-red-400;
+}
+
+.status-pending {
+    @apply bg-amber-400;
+}
+
+.status-active {
+    @apply bg-white animate-pulse;
+}

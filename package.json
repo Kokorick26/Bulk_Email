@@ -1,0 +1,62 @@
+{
+    "name": "bulk-email-manager",
+    "version": "1.0.0",
+    "description": "A powerful bulk email management system with SMTP support, campaign tracking, and template management",
+    "type": "module",
+    "scripts": {
+        "dev": "concurrently \"npm run server\" \"npm run client\"",
+        "server": "node server/index.js",
+        "client": "vite",
+        "build": "vite build",
+        "preview": "vite preview",
+        "setup-db": "node server/setup-tables.js"
+    },
+    "dependencies": {
+        "@radix-ui/react-dialog": "^1.1.15",
+        "@radix-ui/react-label": "^2.1.8",
+        "@radix-ui/react-progress": "^1.1.8",
+        "@radix-ui/react-select": "^2.2.6",
+        "@radix-ui/react-slot": "^1.2.4",
+        "@radix-ui/react-switch": "^1.2.6",
+        "@radix-ui/react-tabs": "^1.1.13",
+        "@radix-ui/react-tooltip": "^1.2.8",
+        "aws-sdk": "^2.1692.0",
+        "bcryptjs": "^2.4.3",
+        "class-variance-authority": "^0.7.1",
+        "clsx": "^2.1.1",
+        "concurrently": "^9.1.2",
+        "cors": "^2.8.5",
+        "dotenv": "^16.4.7",
+        "express": "^4.21.2",
+        "framer-motion": "^12.23.26",
+        "jsonwebtoken": "^9.0.2",
+        "lucide-react": "^0.469.0",
+        "nodemailer": "^6.9.14",
+        "react": "^18.3.1",
+        "react-dom": "^18.3.1",
+        "recharts": "^3.6.0",
+        "sonner": "^1.7.1",
+        "tailwind-merge": "^3.4.0",
+        "uuid": "^11.0.3"
+    },
+    "devDependencies": {
+        "@types/react": "^18.3.18",
+        "@types/react-dom": "^18.3.5",
+        "@vitejs/plugin-react": "^4.3.4",
+        "autoprefixer": "^10.4.20",
+        "postcss": "^8.4.49",
+        "tailwindcss": "^3.4.17",
+        "typescript": "~5.6.2",
+        "vite": "^6.0.5"
+    },
+    "keywords": [
+        "bulk-email",
+        "smtp",
+        "email-marketing",
+        "nodemailer",
+        "react",
+        "dynamodb"
+    ],
+    "author": "Kokorick",
+    "license": "MIT"
+}
