@@ -87,11 +87,8 @@ export default function BulkEmailManager({ currentPage, setCurrentPage }: Props)
     const [useHtmlMode, setUseHtmlMode] = useState(false);
 
     useEffect(() => { fetchData(); }, []);
-    useEffect(() => {
-        if (currentPage !== 'history') return;
-        const interval = setInterval(() => fetchData(), 5000);
-        return () => clearInterval(interval);
-    }, [currentPage]);
+    // Auto-polling disabled to reduce DynamoDB usage
+    // Data refreshes when user clicks "Refresh" button or navigates to page
 
     const fetchData = async () => {
         setLoading(true);
