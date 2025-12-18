@@ -22,12 +22,47 @@ router.get('/smtp-accounts', auth, async (req, res) => {
             ...acc,
             password: acc.password ? '********' : ''
         })).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        res.json(accounts);
+
+        // Add env SMTP as system default if configured
+        const envFromEmail = process.env.SMTP_FROM || process.env.SMTP_USER;
+        const envFromName = process.env.SMTP_FROM_NAME || 'Bhawesh Bhaskar';
+        const envSmtp = process.env.SMTP_HOST && process.env.SMTP_USER ? {
+            id: 'env-default',
+            name: 'Bhawesh Bhaskar (System Default)',
+            host: process.env.SMTP_HOST,
+            port: Number(process.env.SMTP_PORT) || 587,
+            username: process.env.SMTP_USER,
+            password: '********',
+            fromEmail: envFromEmail,
+            email: `"${envFromName}" <${envFromEmail}>`,
+            fromName: envFromName,
+            isDefault: accounts.length === 0 || !accounts.some(a => a.isDefault),
+            isSystem: true,
+            createdAt: new Date().toISOString()
+        } : null;
+
+        // Put env SMTP first if it exists
+        const allAccounts = envSmtp ? [envSmtp, ...accounts] : accounts;
+
+        res.json(allAccounts);
     } catch (err) {
         console.error('Error fetching SMTP accounts:', err);
-        // If table doesn't exist, return empty array
+        // If table doesn't exist, return env config only
         if (err.code === 'ResourceNotFoundException') {
-            return res.json([]);
+            const envSmtp = process.env.SMTP_HOST && process.env.SMTP_USER ? [{
+                id: 'env-default',
+                name: 'System Default (ENV)',
+                host: process.env.SMTP_HOST,
+                port: Number(process.env.SMTP_PORT) || 587,
+                username: process.env.SMTP_USER,
+                password: '********',
+                fromEmail: process.env.SMTP_FROM || process.env.SMTP_USER,
+                fromName: process.env.SMTP_FROM_NAME || 'Bhawesh Bhaskar',
+                isDefault: true,
+                isSystem: true,
+                createdAt: new Date().toISOString()
+            }] : [];
+            return res.json(envSmtp);
         }
         res.status(500).json({ error: 'Could not load SMTP accounts' });
     }
@@ -229,7 +264,10 @@ async function getTransporter(smtpAccountId = null) {
         }
     }
 
-    if (!config) {
+    // Only search for a DB default if we didn't explicitly ask for the system default
+    const isSystemRequest = smtpAccountId === 'system-default' || smtpAccountId === 'env-default';
+
+    if (!config && !isSystemRequest) {
         // Try to get default account from database
         try {
             const all = await dynamoDB.scan({ TableName: SMTP_ACCOUNTS_TABLE }).promise();
@@ -272,7 +310,7 @@ async function getTransporter(smtpAccountId = null) {
                 pass: smtpPass,
             },
             fromEmail: process.env.SMTP_FROM || smtpUser,
-            fromName: 'Kokorick AI',
+            fromName: 'Bhawesh Bhaskar',
         };
     }
 
@@ -292,28 +330,29 @@ async function getTransporter(smtpAccountId = null) {
 
 router.post('/quick-send', auth, async (req, res) => {
     try {
-        const {
-            smtpAccountId,
-            recipients, // comma or newline separated emails
-            subject,
-            htmlContent,
-            textContent,
-            sendOneByOne
-        } = req.body;
+        const { subject, htmlContent, textContent, recipients, smtpAccountId, sendOneByOne: reqSendOneByOne, delaySeconds } = req.body;
 
-        if (!recipients || !subject || !htmlContent) {
-            return res.status(400).json({ error: 'Recipients, subject, and content are required' });
+        if (!recipients) {
+            return res.status(400).json({ error: 'Recipients are required' });
         }
 
-        // Parse recipients - support comma, semicolon, or newline separation
-        const emailList = recipients
-            .split(/[,;\n]/)
-            .map(e => e.trim().toLowerCase())
-            .filter(e => e && e.includes('@'));
+        // Parse recipients into a standard list of objects or strings
+        let recipientList = [];
+        if (Array.isArray(recipients)) {
+            recipientList = recipients.map(r => {
+                if (typeof r === 'string') return { email: r.trim() };
+                return r; // Assume object
+            });
+        } else if (typeof recipients === 'string') {
+            recipientList = recipients.split(/[,\n]/).map(e => ({ email: e.trim() })).filter(e => e.email);
+        }
 
-        if (emailList.length === 0) {
+        if (recipientList.length === 0) {
             return res.status(400).json({ error: 'No valid email addresses found' });
         }
+
+        // Force sequential send if there's a delay, otherwise respect user pref
+        const sendOneByOne = delaySeconds > 0 ? true : (reqSendOneByOne || false);
 
         // Create a quick campaign record
         const campaignId = uuidv4();
@@ -322,38 +361,41 @@ router.post('/quick-send', auth, async (req, res) => {
             name: `Quick Send - ${new Date().toLocaleString()}`,
             subject,
             htmlContent,
-            textContent: textContent || '',
+            textContent: textContent || '', // Spintax will produce this dynamically later if needed, but we store base
             recipientType: 'custom',
-            recipients: emailList.map(e => ({ email: e })),
-            totalRecipients: emailList.length,
+            recipients: recipientList, // Store full objects
+            totalRecipients: recipientList.length,
             sentCount: 0,
             failedCount: 0,
             status: 'sending',
             smtpAccountId: smtpAccountId || null,
-            sendOneByOne: sendOneByOne || false,
+            sendOneByOne: sendOneByOne,
             createdAt: new Date().toISOString(),
             startedAt: new Date().toISOString(),
         };
 
-        // Try to save campaign, but don't fail if table doesn't exist
+        // Try to save campaign
         try {
             await dynamoDB.put({ TableName: CAMPAIGNS_TABLE, Item: campaign }).promise();
         } catch (dbErr) {
-            console.log('Could not save campaign to DB (table may not exist), continuing with send...');
+            console.log('Could not save campaign to DB, continuing with send...', dbErr);
         }
 
         // Send response immediately
         res.json({
             message: 'Sending started',
             campaignId,
-            totalRecipients: emailList.length
+            totalRecipients: recipientList.length
         });
 
         // Process in background
         if (sendOneByOne) {
-            processEmailsOneByOne(campaignId, campaign, emailList, smtpAccountId);
+            // Pass the objects!
+            processEmailsOneByOne(campaignId, campaign, recipientList, smtpAccountId, delaySeconds);
         } else {
-            processEmailsPooled(campaignId, campaign, emailList, smtpAccountId);
+            // Pooled support fallback (strings only for now in that function)
+            const emailStrings = recipientList.map(r => r.email);
+            processEmailsPooled(campaignId, campaign, emailStrings, smtpAccountId);
         }
 
     } catch (err) {
@@ -362,12 +404,274 @@ router.post('/quick-send', auth, async (req, res) => {
     }
 });
 
-// Send emails one by one (creates new connection for each)
-async function processEmailsOneByOne(campaignId, campaign, emailList, smtpAccountId) {
+// Enhanced content variation engine to avoid email provider tracking
+function processSpintax(text) {
+    if (!text) return text;
+    return text.replace(/{([^{}]+)}/g, (match, content) => {
+        if (content.includes('|')) {
+            const choices = content.split('|');
+            return choices[Math.floor(Math.random() * choices.length)];
+        }
+        return match;
+    });
+}
+
+// Sanitize content - remove em dashes and other problematic characters
+function sanitizeContent(content) {
+    if (!content) return content;
+    return content
+        .replace(/—/g, '-')  // em dash to hyphen
+        .replace(/–/g, '-')  // en dash to hyphen
+        .replace(/"/g, '"')  // smart quotes
+        .replace(/"/g, '"')
+        .replace(/'/g, "'")
+        .replace(/'/g, "'");
+}
+
+// Advanced variable replacement with context awareness
+function replaceVariables(text, data) {
+    if (!text) return '';
+    let result = text;
+    // Basic defaults
+    const safeData = { name: '', company: '', ...data };
+
+    Object.keys(safeData).forEach(key => {
+        const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'gi');
+        result = result.replace(regex, safeData[key] || '');
+    });
+    
+    // Always sanitize to remove em dashes
+    return sanitizeContent(result);
+}
+
+// Generate unique content variations to avoid spam filters
+function generateContentVariation(baseText, recipientIndex, totalRecipients, campaignId) {
+    if (!baseText) return baseText;
+    
+    let result = baseText;
+    
+    // 1. Micro-variations based on position
+    const variationSeed = campaignId + recipientIndex + totalRecipients;
+    const random = seededRandom(variationSeed);
+    
+    // 2. Introduce subtle punctuation variations
+    if (random() > 0.7) {
+        // Occasionally add commas where appropriate
+        result = result.replace(/(\w+)\s+(\w+)/g, (match, word1, word2) => {
+            if (random() > 0.5 && !/[,.!?]$/.test(word1)) {
+                return `${word1}, ${word2}`;
+            }
+            return match;
+        });
+    }
+    
+    // 3. Add subtle whitespace variations
+    if (random() > 0.8) {
+        // Occasionally add extra spaces around certain punctuation
+        result = result.replace(/([.,!?])(\w)/g, (match, punct, word) => {
+            if (random() > 0.5) {
+                return `${punct}  ${word}`;
+            }
+            return match;
+        });
+    }
+    
+    // 4. Word choice variations for common phrases - more extensive
+    const variations = {
+        'thank you': ['thanks', 'thank you', 'appreciate it', 'grateful'],
+        'hello': ['hi', 'hello', 'hey', 'hey there'],
+        'best regards': ['best', 'regards', 'cheers', 'warm regards', 'talk soon'],
+        'looking forward': ['looking forward', 'excited about', 'eager for', 'keen on'],
+        'please': ['please', 'kindly', 'if you could'],
+        'let me know': ['let me know', 'feel free to share', 'drop me a line', 'reach out'],
+        'would love to': ['would love to', 'would be great to', 'excited to', 'keen to'],
+        'quick': ['quick', 'brief', 'short'],
+        'chat': ['chat', 'call', 'conversation', 'discussion'],
+        'connect': ['connect', 'catch up', 'sync', 'touch base'],
+        'opportunity': ['opportunity', 'chance', 'possibility'],
+        'interested': ['interested', 'curious', 'intrigued'],
+        'great': ['great', 'excellent', 'fantastic', 'wonderful'],
+        'help': ['help', 'assist', 'support'],
+        'reach out': ['reach out', 'get in touch', 'contact me', 'drop a message']
+    };
+    
+    Object.entries(variations).forEach(([original, alternatives]) => {
+        if (result.toLowerCase().includes(original)) {
+            const chosen = alternatives[Math.floor(random() * alternatives.length)];
+            result = result.replace(new RegExp(original, 'gi'), chosen);
+        }
+    });
+    
+    // 5. Randomize sentence structure slightly
+    if (random() > 0.6) {
+        result = varySentenceStructure(result, random);
+    }
+    
+    return result;
+}
+
+// Seeded random number generator for consistent variations
+function seededRandom(seed) {
+    let hash = seed;
+    return function() {
+        hash = ((hash * 9301 + 49297) % 233280) / 233280;
+        return hash;
+    };
+}
+
+// Vary sentence structure while maintaining meaning
+function varySentenceStructure(text, randomFn) {
+    let result = text;
+    
+    // Split into sentences and randomly reorder some clauses
+    const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+    
+    return sentences.map(sentence => {
+        // Move adverbs around
+        if (randomFn() > 0.7) {
+            sentence = sentence.replace(/\b(quickly|easily|efficiently|effectually|certainly|definitely)\b/g, (match) => {
+                if (randomFn() > 0.5) {
+                    return match;
+                }
+                return ''; // Sometimes remove the adverb
+            });
+        }
+        
+        return sentence;
+    }).join(' ');
+}
+
+// Personalize content with advanced anti-tracking features
+function personalizeEmailContent(campaign, recipient, recipientIndex, totalRecipients, campaignId) {
+    let subject = campaign.subject;
+    let htmlContent = campaign.htmlContent;
+    let textContent = campaign.textContent;
+    
+    // 1. Process Spintax for base variation
+    subject = processSpintax(subject);
+    htmlContent = processSpintax(htmlContent);
+    textContent = processSpintax(textContent);
+    
+    // 2. Replace personalization variables
+    subject = replaceVariables(subject, recipient);
+    htmlContent = replaceVariables(htmlContent, recipient);
+    textContent = replaceVariables(textContent, recipient);
+    
+    // 3. Add unique content variations for anti-tracking
+    htmlContent = generateContentVariation(htmlContent, recipientIndex, totalRecipients, campaignId);
+    textContent = generateContentVariation(textContent, recipientIndex, totalRecipients, campaignId);
+    
+    // 4. Add unique identifiers for tracking (without revealing to user)
+    const uniqueId = `${campaignId}-${recipientIndex}-${Date.now()}`;
+    const trackingPixel = `<img src="${process.env.API_BASE || 'http://localhost:3001'}/api/tracking/${uniqueId}" width="1" height="1" style="display:none;" alt="">`;
+    htmlContent = htmlContent.replace('</body>', `${trackingPixel}</body>`);
+    
+    // 5. Generate unique message ID
+    const domain = process.env.SMTP_FROM?.split('@')[1] || 'kokorick.uk';
+    const messageId = `<${Date.now()}.${Math.random().toString(36).substr(2, 9)}@${domain}>`;
+    
+    return {
+        subject,
+        htmlContent,
+        textContent,
+        messageId,
+        uniqueId
+    };
+}
+
+// AI rewrite function to create unique variations of email content
+async function aiRewriteEmail(subject, body, recipientData, index) {
+    const apiKey = process.env.MISTRAL_API_KEY;
+    
+    // If no API key, return original with basic personalization
+    if (!apiKey) {
+        return { subject, body };
+    }
+    
+    try {
+        const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: 'mistral-large-latest',
+                messages: [
+                    {
+                        role: 'system',
+                        content: `You are an email rewriter. Rewrite the given email to say the SAME thing but with DIFFERENT wording. 
+                        
+RULES:
+- Keep the exact same meaning and intent
+- Change sentence structure, word choices, and phrasing
+- Keep it natural and human-sounding
+- NEVER use em dashes (—) or en dashes (–), only use hyphens (-) or colons (:)
+- Keep the same tone (professional/casual)
+- Output format: First line is subject, then blank line, then body
+- Do NOT add "Subject:" prefix
+- Keep similar length`
+                    },
+                    {
+                        role: 'user',
+                        content: `Rewrite this email with different wording (variation #${index + 1}):
+
+Subject: ${subject}
+
+Body:
+${body}
+
+Remember: Same meaning, different words. NO em dashes.`
+                    }
+                ],
+                temperature: 0.9,
+                max_tokens: 600
+            })
+        });
+
+        if (!response.ok) {
+            console.log(`[AI Rewrite] API error, using original for recipient ${index}`);
+            return { subject, body };
+        }
+
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content || '';
+        
+        // Parse the response
+        const lines = content.trim().split('\n');
+        const newSubject = lines[0]?.replace(/^Subject:\s*/i, '').trim() || subject;
+        const newBody = lines.slice(1).join('\n').trim() || body;
+        
+        console.log(`[AI Rewrite] Generated unique version for recipient ${index + 1}`);
+        return { 
+            subject: sanitizeContent(newSubject), 
+            body: sanitizeContent(newBody) 
+        };
+        
+    } catch (error) {
+        console.error(`[AI Rewrite] Error for recipient ${index}:`, error.message);
+        return { subject, body };
+    }
+}
+
+// Send emails one by one with DELAY and FULL PERSONALIZATION
+async function processEmailsOneByOne(campaignId, campaign, recipientList, smtpAccountId, delaySeconds = 0) {
     let sentCount = 0;
     let failedCount = 0;
 
-    for (const email of emailList) {
+    console.log(`[Batch] Starting sequential send for ${recipientList.length} recipients with ${delaySeconds}s delay...`);
+
+    for (let i = 0; i < recipientList.length; i++) {
+        const recipient = recipientList[i];
+        const email = typeof recipient === 'string' ? recipient : recipient.email;
+        const data = typeof recipient === 'object' ? recipient : { email };
+
+        // 1. Respect Delay (if not first email)
+        if (i > 0 && delaySeconds > 0) {
+            console.log(`[Batch] Waiting ${delaySeconds}s before next email...`);
+            await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
+        }
+
         try {
             const { transporter, fromEmail, fromName } = await getTransporter(smtpAccountId);
 
@@ -375,25 +679,44 @@ async function processEmailsOneByOne(campaignId, campaign, emailList, smtpAccoun
             const domain = fromEmail.split('@')[1] || 'kokorick.uk';
             const messageId = `<${Date.now()}.${Math.random().toString(36).substr(2, 9)}@${domain}>`;
 
+            // 2. Personalize Content (Spintax + Variables)
+            let subject = processSpintax(campaign.subject);
+            subject = replaceVariables(subject, data);
+
+            let html = processSpintax(campaign.htmlContent);
+            html = replaceVariables(html, data);
+            
+            // 3. AI Rewrite - Generate unique version for each recipient
+            const plainText = html
+                .replace(/<br\s*\/?>/gi, '\n')
+                .replace(/<\/p>/gi, '\n\n')
+                .replace(/<\/div>/gi, '\n')
+                .replace(/<\/li>/gi, '\n')
+                .replace(/<[^>]*>/g, '')
+                .trim();
+            
+            const rewritten = await aiRewriteEmail(subject, plainText, data, i);
+            subject = sanitizeContent(rewritten.subject);
+            
+            // Convert rewritten body back to HTML
+            html = `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6;color:#202124">${sanitizeContent(rewritten.body).replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</div>`;
+
+            let text = sanitizeContent(rewritten.body);
+
             const info = await transporter.sendMail({
                 from: `"${fromName}" <${fromEmail}>`,
                 to: email,
                 replyTo: fromEmail,
-                subject: campaign.subject,
-                text: campaign.textContent || campaign.htmlContent.replace(/<[^>]*>/g, ''),
-                html: campaign.htmlContent,
+                subject: subject,
+                text: text,
+                html: html,
                 messageId,
-                headers: {
-                    'X-Mailer': 'Kokorick Bulk Email',
-                    'X-Priority': '3',
-                    'Precedence': 'bulk',
-                    'List-Unsubscribe': `<mailto:${fromEmail}?subject=Unsubscribe>`,
-                },
+                headers: {},
             });
 
             transporter.close();
 
-            // Log success (ignore DB errors)
+            // Log success
             try {
                 await dynamoDB.put({
                     TableName: EMAIL_LOGS_TABLE,
@@ -406,20 +729,19 @@ async function processEmailsOneByOne(campaignId, campaign, emailList, smtpAccoun
                         sentAt: new Date().toISOString(),
                     }
                 }).promise();
-            } catch (dbErr) {
-                // Ignore DB errors, email was still sent
-            }
+            } catch (dbErr) { /* Ignore */ }
 
             sentCount++;
-            console.log(`[One-by-One] Sent to ${email}`);
+            console.log(`[Batch] Sent to ${email} (${i + 1}/${recipientList.length})`);
 
-            // Small delay between emails to avoid rate limiting
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // Update Progress in DB every 5 emails
+            if (sentCount % 5 === 0) {
+                await updateCampaignProgress(campaignId, sentCount, failedCount);
+            }
 
         } catch (err) {
-            console.error(`[One-by-One] Failed to send to ${email}:`, err.message);
-
-            // Log failure (ignore DB errors)
+            console.error(`[Batch] Failed to send to ${email}:`, err.message);
+            // Log failure
             try {
                 await dynamoDB.put({
                     TableName: EMAIL_LOGS_TABLE,
@@ -458,33 +780,54 @@ async function processEmailsOneByOne(campaignId, campaign, emailList, smtpAccoun
 }
 
 // Send emails using connection pool (faster for bulk)
-async function processEmailsPooled(campaignId, campaign, emailList, smtpAccountId) {
+async function processEmailsPooled(campaignId, campaign, recipientList, smtpAccountId) {
     let sentCount = 0;
     let failedCount = 0;
+
+    // Normalize input to array of objects just in case
+    const recipients = recipientList.map(r => typeof r === 'string' ? { email: r } : r);
 
     try {
         const { transporter, fromEmail, fromName } = await getTransporter(smtpAccountId);
 
-        for (const email of emailList) {
+        for (const recipient of recipients) {
+            const email = recipient.email;
+
             try {
                 // Generate unique message ID
                 const domain = fromEmail.split('@')[1] || 'kokorick.uk';
                 const messageId = `<${Date.now()}.${Math.random().toString(36).substr(2, 9)}@${domain}>`;
 
+                // Personalize (Spintax + Variables)
+                let subject = processSpintax(campaign.subject);
+                subject = replaceVariables(subject, recipient);
+
+                let html = processSpintax(campaign.htmlContent);
+                html = replaceVariables(html, recipient);
+
+                let text = campaign.textContent;
+                if (text) {
+                    text = processSpintax(text);
+                    text = replaceVariables(text, recipient);
+                } else {
+                    text = html
+                        .replace(/<br\s*\/?>/gi, '\n')
+                        .replace(/<\/p>/gi, '\n\n')
+                        .replace(/<\/div>/gi, '\n')
+                        .replace(/<\/li>/gi, '\n')
+                        .replace(/<[^>]*>/g, '')
+                        .trim();
+                }
+
                 const info = await transporter.sendMail({
                     from: `"${fromName}" <${fromEmail}>`,
                     to: email,
                     replyTo: fromEmail,
-                    subject: campaign.subject,
-                    text: campaign.textContent || campaign.htmlContent.replace(/<[^>]*>/g, ''),
-                    html: campaign.htmlContent,
+                    subject: subject,
+                    text: text,
+                    html: html,
                     messageId,
-                    headers: {
-                        'X-Mailer': 'Kokorick Bulk Email',
-                        'X-Priority': '3',
-                        'Precedence': 'bulk',
-                        'List-Unsubscribe': `<mailto:${fromEmail}?subject=Unsubscribe>`,
-                    },
+                    headers: {},
                 });
 
                 // Log success (ignore DB errors)
@@ -500,17 +843,14 @@ async function processEmailsPooled(campaignId, campaign, emailList, smtpAccountI
                             sentAt: new Date().toISOString(),
                         }
                     }).promise();
-                } catch (dbErr) {
-                    // Ignore
-                }
+                } catch (dbErr) { /* Ignore */ }
 
                 sentCount++;
                 console.log(`[Pooled] Sent to ${email}`);
 
             } catch (err) {
                 console.error(`[Pooled] Failed to send to ${email}:`, err.message);
-
-                // Log failure (ignore DB errors)
+                // Log failure
                 try {
                     await dynamoDB.put({
                         TableName: EMAIL_LOGS_TABLE,
@@ -523,20 +863,16 @@ async function processEmailsPooled(campaignId, campaign, emailList, smtpAccountI
                             sentAt: new Date().toISOString(),
                         }
                     }).promise();
-                } catch (dbErr) {
-                    // Ignore
-                }
+                } catch (e) { }
 
                 failedCount++;
             }
 
-            // Update progress every 10 emails (ignore DB errors)
+            // Update progress every 10 emails
             if ((sentCount + failedCount) % 10 === 0) {
                 try {
                     await updateCampaignProgress(campaignId, sentCount, failedCount);
-                } catch (dbErr) {
-                    // Ignore
-                }
+                } catch (e) { }
             }
         }
 

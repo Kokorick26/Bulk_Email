@@ -1,29 +1,96 @@
+/* Import Inter and Outfit fonts */
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
     :root {
-        --background: 0 0% 0%;
-        --foreground: 0 0% 100%;
-        --card: 0 0% 4%;
-        --card-foreground: 0 0% 100%;
-        --popover: 0 0% 4%;
-        --popover-foreground: 0 0% 100%;
-        --primary: 0 0% 100%;
-        --primary-foreground: 0 0% 0%;
-        --secondary: 0 0% 10%;
-        --secondary-foreground: 0 0% 100%;
-        --muted: 0 0% 8%;
-        --muted-foreground: 0 0% 55%;
-        --accent: 0 0% 12%;
-        --accent-foreground: 0 0% 100%;
-        --destructive: 0 62.8% 30.6%;
+        /* Gmail-inspired Light Theme */
+        --background: 0 0% 100%;
+        --foreground: 220 9% 20%;
+
+        --card: 0 0% 100%;
+        --card-foreground: 220 9% 20%;
+
+        --popover: 0 0% 100%;
+        --popover-foreground: 220 9% 20%;
+
+        /* Gmail Red/Primary */
+        --primary: 213 90% 52%;
+        --primary-foreground: 0 0% 100%;
+
+        --secondary: 220 14% 96%;
+        --secondary-foreground: 220 9% 20%;
+
+        --muted: 220 14% 96%;
+        --muted-foreground: 220 9% 46%;
+
+        --accent: 220 14% 96%;
+        --accent-foreground: 220 9% 20%;
+
+        --destructive: 0 84% 60%;
         --destructive-foreground: 0 0% 100%;
-        --border: 0 0% 12%;
-        --input: 0 0% 12%;
-        --ring: 0 0% 100%;
-        --radius: 0.75rem;
+
+        --border: 220 14% 90%;
+        --input: 220 14% 90%;
+        --ring: 213 90% 52%;
+
+        --radius: 0.5rem;
+
+        /* Gmail specific colors */
+        --gmail-red: #d93025;
+        --gmail-blue: #1a73e8;
+        --gmail-hover: #f1f3f4;
+        --gmail-border: #dadce0;
+        --gmail-text: #202124;
+        --gmail-text-secondary: #5f6368;
+        --gmail-sidebar-hover: #e8eaed;
+        --gmail-sidebar-active: #d3e3fd;
+        --gmail-compose-bg: #c2e7ff;
+    }
+
+    /* Dark Mode Variables */
+    .dark {
+        --background: 220 9% 8%;
+        --foreground: 0 0% 93%;
+
+        --card: 220 9% 12%;
+        --card-foreground: 0 0% 93%;
+
+        --popover: 220 9% 12%;
+        --popover-foreground: 0 0% 93%;
+
+        --primary: 213 90% 65%;
+        --primary-foreground: 220 9% 8%;
+
+        --secondary: 220 9% 18%;
+        --secondary-foreground: 0 0% 93%;
+
+        --muted: 220 9% 18%;
+        --muted-foreground: 220 9% 60%;
+
+        --accent: 220 9% 18%;
+        --accent-foreground: 0 0% 93%;
+
+        --destructive: 0 72% 51%;
+        --destructive-foreground: 0 0% 100%;
+
+        --border: 220 9% 20%;
+        --input: 220 9% 20%;
+        --ring: 213 90% 65%;
+
+        /* Gmail dark specific colors */
+        --gmail-red: #ea4335;
+        --gmail-blue: #8ab4f8;
+        --gmail-hover: #3c4043;
+        --gmail-border: #3c4043;
+        --gmail-text: #e8eaed;
+        --gmail-text-secondary: #9aa0a6;
+        --gmail-sidebar-hover: #3c4043;
+        --gmail-sidebar-active: #394457;
+        --gmail-compose-bg: #394457;
     }
 }
 
@@ -33,18 +100,95 @@
     }
 
     body {
-        @apply bg-black text-white antialiased;
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        @apply bg-background text-foreground antialiased;
+        font-family: 'Google Sans', 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    .dark body {
+        @apply bg-[#202124] text-[#e8eaed];
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        font-family: 'Google Sans', 'Roboto', sans-serif;
     }
 }
 
-/* Import Inter font */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+/* Gmail-style Utilities */
+@layer utilities {
+    .gmail-shadow {
+        box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
+    }
 
-/* Custom scrollbar */
+    .gmail-shadow-hover {
+        box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15);
+    }
+
+    .gmail-card {
+        @apply bg-white border border-[#dadce0] rounded-lg;
+    }
+
+    .dark .gmail-card {
+        @apply bg-[#303134] border-[#3c4043];
+    }
+
+    .gmail-btn {
+        @apply px-6 py-2 rounded-full font-medium transition-all duration-200;
+    }
+
+    .gmail-btn-primary {
+        @apply bg-[#1a73e8] text-white hover:bg-[#1557b0] hover:shadow-md;
+    }
+
+    .dark .gmail-btn-primary {
+        @apply bg-[#8ab4f8] text-[#202124] hover:bg-[#aecbfa];
+    }
+
+    .gmail-btn-secondary {
+        @apply bg-white text-[#1a73e8] border border-[#dadce0] hover:bg-[#f8f9fa] hover:border-[#1a73e8];
+    }
+
+    .dark .gmail-btn-secondary {
+        @apply bg-[#303134] text-[#8ab4f8] border-[#3c4043] hover:bg-[#3c4043] hover:border-[#8ab4f8];
+    }
+
+    .gmail-input {
+        @apply bg-[#f1f3f4] border-0 rounded-lg px-4 py-3 text-[#202124] placeholder:text-[#5f6368] focus:outline-none focus:ring-2 focus:ring-[#1a73e8] focus:bg-white transition-all;
+    }
+
+    .dark .gmail-input {
+        @apply bg-[#3c4043] text-[#e8eaed] placeholder:text-[#9aa0a6] focus:ring-[#8ab4f8] focus:bg-[#303134];
+    }
+
+    .gmail-sidebar-item {
+        @apply flex items-center gap-4 px-6 py-2 rounded-r-full text-sm font-medium transition-all duration-100;
+    }
+
+    .gmail-sidebar-item-active {
+        @apply bg-[#d3e3fd] text-[#001d35];
+    }
+
+    .dark .gmail-sidebar-item-active {
+        @apply bg-[#394457] text-[#c2e7ff];
+    }
+
+    .gmail-sidebar-item-hover {
+        @apply hover:bg-[#e8eaed];
+    }
+
+    .dark .gmail-sidebar-item-hover {
+        @apply hover:bg-[#3c4043];
+    }
+}
+
+/* Custom Scrollbar - Gmail style */
 ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -52,94 +196,137 @@
 }
 
 ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 3px;
+    background: #dadce0;
+    border-radius: 99px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: #bdc1c6;
 }
 
-/* Glass effect - minimal */
-.glass {
-    @apply bg-white/[0.02] backdrop-blur-xl border border-white/[0.05];
+/* Gmail Compose Button */
+.gmail-compose-btn {
+    @apply flex items-center gap-3 px-6 py-3.5 rounded-2xl font-medium transition-all duration-200;
+    background-color: #c2e7ff;
+    color: #001d35;
+    box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
 }
 
-.glass-elevated {
-    @apply bg-white/[0.04] backdrop-blur-xl border border-white/[0.08];
+.gmail-compose-btn:hover {
+    background-color: #a8d8f8;
+    box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15);
 }
 
-/* Subtle hover */
-.hover-lift {
-    @apply transition-all duration-300;
+/* Gmail Email Row */
+.gmail-email-row {
+    @apply flex items-center px-4 py-2 border-b border-[#f1f3f4] cursor-pointer transition-all duration-100;
 }
 
-.hover-lift:hover {
-    transform: translateY(-2px);
+.gmail-email-row:hover {
+    @apply bg-[#f1f3f4];
+    box-shadow: inset 1px 0 0 #dadce0, inset -1px 0 0 #dadce0, 0 1px 2px 0 rgba(60, 64, 67, 0.3);
 }
 
-/* Glow effect */
-.glow {
-    box-shadow: 0 0 60px -15px rgba(255, 255, 255, 0.1);
+.gmail-email-row-unread {
+    @apply bg-[#f2f6fc];
 }
 
-/* Dot grid background */
+/* Gmail Search Bar */
+.gmail-search {
+    @apply flex items-center gap-2 px-4 py-3 rounded-lg transition-all duration-200;
+    background-color: #eaf1fb;
+    max-width: 720px;
+}
+
+.gmail-search:focus-within {
+    @apply bg-white;
+    box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
+}
+
+/* Gmail Tab */
+.gmail-tab {
+    @apply flex items-center gap-2 px-5 py-3 border-b-2 border-transparent text-sm font-medium text-[#5f6368] transition-all cursor-pointer;
+}
+
+.gmail-tab:hover {
+    @apply bg-[#f1f3f4];
+}
+
+.gmail-tab-active {
+    @apply text-[#d93025] border-[#d93025];
+}
+
+/* Gmail Avatar */
+.gmail-avatar {
+    @apply w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium text-white;
+}
+
+/* Gmail Checkbox */
+.gmail-checkbox {
+    @apply w-5 h-5 border-2 border-[#5f6368] rounded cursor-pointer hover:bg-[#f1f3f4];
+}
+
+/* Animations */
+@keyframes gmail-slide-in {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.gmail-animate-in {
+    animation: gmail-slide-in 0.2s ease-out forwards;
+}
+
+/* Login Form Input */
+.input {
+    width: 100%;
+    padding: 0.875rem 1rem;
+    background-color: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.5rem;
+    color: white;
+    font-size: 0.9375rem;
+    transition: all 0.2s;
+}
+
+.input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.input:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.3);
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+/* Dot Grid Pattern for Login */
 .dot-grid {
-    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
     background-size: 24px 24px;
 }
 
-/* Noise texture overlay */
-.noise::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)'/%3E%3C/svg%3E");
-    opacity: 0.02;
-    pointer-events: none;
+/* AI Chat Bubble */
+.ai-bubble {
+    @apply p-4 rounded-2xl text-sm leading-relaxed max-w-[90%];
+    background-color: #f1f3f4;
+    color: #202124;
 }
 
-/* Focus ring */
-.focus-ring:focus {
-    @apply outline-none ring-1 ring-white/20;
+.ai-bubble-user {
+    @apply bg-[#1a73e8] text-white ml-auto;
 }
 
-/* Button styles */
-.btn-primary {
-    @apply bg-white text-black font-medium px-4 py-2.5 rounded-lg transition-all hover:bg-white/90 active:scale-[0.98];
+/* Progress Bar */
+.gmail-progress {
+    @apply h-1 w-full bg-[#e8eaed] rounded-full overflow-hidden;
 }
 
-.btn-secondary {
-    @apply bg-white/[0.05] text-white font-medium px-4 py-2.5 rounded-lg border border-white/[0.08] transition-all hover:bg-white/[0.08] active:scale-[0.98];
-}
-
-/* Input styles */
-.input {
-    @apply w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-lg text-white placeholder:text-white/30 focus:outline-none focus:border-white/20 transition-colors;
-}
-
-/* Card hover */
-.card-hover {
-    @apply transition-all duration-200 hover:bg-white/[0.02] hover:border-white/[0.1];
-}
-
-/* Status indicators */
-.status-dot {
-    @apply w-2 h-2 rounded-full;
-}
-
-.status-success {
-    @apply bg-emerald-400;
-}
-
-.status-error {
-    @apply bg-red-400;
-}
-
-.status-pending {
-    @apply bg-amber-400;
-}
-
-.status-active {
-    @apply bg-white animate-pulse;
+.gmail-progress-bar {
+    @apply h-full bg-[#1a73e8] transition-all duration-300;
 }
