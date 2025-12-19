@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Mail, Edit3, Trash2, TestTube, Loader2, Server, X, Save } from 'lucide-react';
+import { Plus, Mail, Edit3, Trash2, TestTube, Loader2, Server, X, Save, Inbox, Settings2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/Button';
@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/Dialog';
 import { EmptyState } from '../dashboard/EmptyState';
+import ImapConfigDialog from './ImapConfigDialog';
 
 const API_BASE = '/api/bulk-email';
 
@@ -23,6 +24,9 @@ interface SmtpAccount {
     fromName: string;
     isDefault: boolean;
     createdAt: string;
+    imapConfigured?: boolean;
+    imapHost?: string;
+    imapPort?: number;
 }
 
 interface SmtpAccountsProps {
@@ -49,6 +53,8 @@ export function SmtpAccounts({ accounts, onRefresh, className }: SmtpAccountsPro
     const [saving, setSaving] = useState(false);
     const [testingId, setTestingId] = useState<string | null>(null);
     const [testEmail, setTestEmail] = useState('');
+    const [showImapConfig, setShowImapConfig] = useState(false);
+    const [accountToConfigImap, setAccountToConfigImap] = useState<SmtpAccount | null>(null);
 
     const handleOpenForm = (account?: SmtpAccount) => {
         if (account) {
@@ -252,6 +258,34 @@ export function SmtpAccounts({ accounts, onRefresh, className }: SmtpAccountsPro
                                             Test
                                         </Button>
                                     </div>
+
+                                    {/* IMAP Configuration Status */}
+                                    <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                                        <div className="flex items-center gap-2">
+                                            <Inbox className={cn(
+                                                "w-4 h-4",
+                                                account.imapConfigured ? "text-green-400" : "text-white/30"
+                                            )} />
+                                            <span className={cn(
+                                                "text-sm",
+                                                account.imapConfigured ? "text-green-400" : "text-white/40"
+                                            )}>
+                                                {account.imapConfigured ? 'Inbox Enabled' : 'Inbox Not Configured'}
+                                            </span>
+                                        </div>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                                setAccountToConfigImap(account);
+                                                setShowImapConfig(true);
+                                            }}
+                                            className="text-white/60 hover:text-white"
+                                        >
+                                            <Settings2 className="w-4 h-4 mr-1" />
+                                            {account.imapConfigured ? 'Edit IMAP' : 'Configure IMAP'}
+                                        </Button>
+                                    </div>
                                 </CardContent>
                             </Card>
                         </motion.div>
@@ -261,82 +295,154 @@ export function SmtpAccounts({ accounts, onRefresh, className }: SmtpAccountsPro
 
             {/* Account Form Dialog */}
             <Dialog open={showForm} onOpenChange={setShowForm}>
-                <DialogContent className="max-w-lg">
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>
-                            {editingAccount ? 'Edit SMTP Account' : 'New SMTP Account'}
+                            {editingAccount ? 'Edit Email Account' : 'New Email Account'}
                         </DialogTitle>
                     </DialogHeader>
 
-                    <div className="space-y-4 py-4">
-                        <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-6 py-4">
+                        {/* SMTP Configuration Section */}
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-2 text-white font-medium">
+                                <Server className="w-5 h-5" />
+                                <span>SMTP Configuration (Sending)</span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-sm text-white/60 mb-1.5 block">Account Name *</label>
+                                    <Input
+                                        value={form.name}
+                                        onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))}
+                                        placeholder="My Email Account"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-sm text-white/60 mb-1.5 block">From Name</label>
+                                    <Input
+                                        value={form.fromName}
+                                        onChange={(e) => setForm(p => ({ ...p, fromName: e.target.value }))}
+                                        placeholder="John Doe"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-4 gap-4">
+                                <div className="col-span-3">
+                                    <label className="text-sm text-white/60 mb-1.5 block">SMTP Host *</label>
+                                    <Input
+                                        value={form.host}
+                                        onChange={(e) => setForm(p => ({ ...p, host: e.target.value }))}
+                                        placeholder="smtp.gmail.com"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-sm text-white/60 mb-1.5 block">Port</label>
+                                    <Input
+                                        value={form.port}
+                                        onChange={(e) => setForm(p => ({ ...p, port: e.target.value }))}
+                                        placeholder="587"
+                                    />
+                                </div>
+                            </div>
+
                             <div>
-                                <label className="text-sm text-white/40 mb-1.5 block">Account Name</label>
+                                <label className="text-sm text-white/60 mb-1.5 block">From Email *</label>
                                 <Input
-                                    value={form.name}
-                                    onChange={(e) => setForm(p => ({ ...p, name: e.target.value }))}
-                                    placeholder="My SMTP"
+                                    type="email"
+                                    value={form.fromEmail}
+                                    onChange={(e) => setForm(p => ({ ...p, fromEmail: e.target.value }))}
+                                    placeholder="you@example.com"
                                 />
                             </div>
-                            <div>
-                                <label className="text-sm text-white/40 mb-1.5 block">From Name</label>
-                                <Input
-                                    value={form.fromName}
-                                    onChange={(e) => setForm(p => ({ ...p, fromName: e.target.value }))}
-                                    placeholder="John Doe"
-                                />
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-sm text-white/60 mb-1.5 block">Username *</label>
+                                    <Input
+                                        value={form.username}
+                                        onChange={(e) => setForm(p => ({ ...p, username: e.target.value }))}
+                                        placeholder="your-email@gmail.com"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-sm text-white/60 mb-1.5 block">Password *</label>
+                                    <Input
+                                        type="password"
+                                        value={form.password}
+                                        onChange={(e) => setForm(p => ({ ...p, password: e.target.value }))}
+                                        placeholder="••••••••"
+                                    />
+                                </div>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-3 gap-4">
-                            <div className="col-span-2">
-                                <label className="text-sm text-white/40 mb-1.5 block">SMTP Host</label>
-                                <Input
-                                    value={form.host}
-                                    onChange={(e) => setForm(p => ({ ...p, host: e.target.value }))}
-                                    placeholder="smtp.example.com"
-                                />
+                        {/* Divider */}
+                        <div className="border-t border-white/10 pt-6">
+                            <div className="flex items-center gap-2 text-white font-medium mb-4">
+                                <Inbox className="w-5 h-5" />
+                                <span>IMAP Configuration (Receiving)</span>
+                                <Badge variant="secondary" className="text-xs">Optional</Badge>
                             </div>
-                            <div>
-                                <label className="text-sm text-white/40 mb-1.5 block">Port</label>
-                                <Input
-                                    value={form.port}
-                                    onChange={(e) => setForm(p => ({ ...p, port: e.target.value }))}
-                                    placeholder="587"
-                                />
+                            <p className="text-sm text-white/40 mb-4">
+                                Configure IMAP to receive emails and view your inbox within BulkMail.
+                            </p>
+
+                            <div className="grid grid-cols-4 gap-4 mb-4">
+                                <div className="col-span-3">
+                                    <label className="text-sm text-white/60 mb-1.5 block">IMAP Host</label>
+                                    <Input
+                                        value={(form as any).imapHost || ''}
+                                        onChange={(e) => setForm(p => ({ ...p, imapHost: e.target.value } as any))}
+                                        placeholder="imap.gmail.com"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-sm text-white/60 mb-1.5 block">Port</label>
+                                    <Input
+                                        value={(form as any).imapPort || '993'}
+                                        onChange={(e) => setForm(p => ({ ...p, imapPort: e.target.value } as any))}
+                                        placeholder="993"
+                                    />
+                                </div>
                             </div>
+
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label className="text-sm text-white/60 mb-1.5 block">IMAP Username</label>
+                                    <Input
+                                        value={(form as any).imapUser || ''}
+                                        onChange={(e) => setForm(p => ({ ...p, imapUser: e.target.value } as any))}
+                                        placeholder="Same as SMTP username"
+                                    />
+                                    <p className="text-xs text-white/30 mt-1">Leave blank to use SMTP username</p>
+                                </div>
+                                <div>
+                                    <label className="text-sm text-white/60 mb-1.5 block">IMAP Password</label>
+                                    <Input
+                                        type="password"
+                                        value={(form as any).imapPassword || ''}
+                                        onChange={(e) => setForm(p => ({ ...p, imapPassword: e.target.value } as any))}
+                                        placeholder="Same as SMTP password"
+                                    />
+                                    <p className="text-xs text-white/30 mt-1">Leave blank to use SMTP password</p>
+                                </div>
+                            </div>
+
+                            <label className="flex items-center gap-3 p-3 rounded-xl bg-white/5 cursor-pointer hover:bg-white/10 transition-colors">
+                                <input
+                                    type="checkbox"
+                                    checked={(form as any).imapTls !== false}
+                                    onChange={(e) => setForm(p => ({ ...p, imapTls: e.target.checked } as any))}
+                                    className="w-4 h-4 rounded accent-white"
+                                />
+                                <span className="text-white text-sm">Use TLS/SSL for IMAP connection</span>
+                            </label>
                         </div>
 
-                        <div>
-                            <label className="text-sm text-white/40 mb-1.5 block">From Email</label>
-                            <Input
-                                type="email"
-                                value={form.fromEmail}
-                                onChange={(e) => setForm(p => ({ ...p, fromEmail: e.target.value }))}
-                                placeholder="hello@example.com"
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="text-sm text-white/40 mb-1.5 block">Username</label>
-                                <Input
-                                    value={form.username}
-                                    onChange={(e) => setForm(p => ({ ...p, username: e.target.value }))}
-                                    placeholder="username"
-                                />
-                            </div>
-                            <div>
-                                <label className="text-sm text-white/40 mb-1.5 block">Password</label>
-                                <Input
-                                    type="password"
-                                    value={form.password}
-                                    onChange={(e) => setForm(p => ({ ...p, password: e.target.value }))}
-                                    placeholder="••••••••"
-                                />
-                            </div>
-                        </div>
-
+                        {/* Default Account */}
                         <label className="flex items-center gap-3 p-3 rounded-xl bg-white/5 cursor-pointer hover:bg-white/10 transition-colors">
                             <input
                                 type="checkbox"
@@ -344,7 +450,7 @@ export function SmtpAccounts({ accounts, onRefresh, className }: SmtpAccountsPro
                                 onChange={(e) => setForm(p => ({ ...p, isDefault: e.target.checked }))}
                                 className="w-4 h-4 rounded accent-white"
                             />
-                            <span className="text-white text-sm">Set as default account</span>
+                            <span className="text-white text-sm">Set as default account for sending</span>
                         </label>
                     </div>
 
@@ -358,11 +464,22 @@ export function SmtpAccounts({ accounts, onRefresh, className }: SmtpAccountsPro
                             ) : (
                                 <Save className="w-4 h-4" />
                             )}
-                            {editingAccount ? 'Update' : 'Create'}
+                            {editingAccount ? 'Update Account' : 'Create Account'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* IMAP Configuration Dialog */}
+            <ImapConfigDialog
+                open={showImapConfig}
+                onOpenChange={setShowImapConfig}
+                account={accountToConfigImap}
+                onSuccess={() => {
+                    setShowImapConfig(false);
+                    onRefresh();
+                }}
+            />
         </div>
     );
 }

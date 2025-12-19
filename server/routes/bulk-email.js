@@ -71,7 +71,7 @@ router.get('/smtp-accounts', auth, async (req, res) => {
 // Create SMTP account
 router.post('/smtp-accounts', auth, async (req, res) => {
     try {
-        const { name, host, port, username, password, fromEmail, fromName, isDefault } = req.body;
+        const { name, host, port, username, password, fromEmail, fromName, isDefault, imapHost, imapPort, imapUser, imapPassword, imapTls } = req.body;
 
         if (!name || !host || !port || !username || !password || !fromEmail) {
             return res.status(400).json({ error: 'All fields are required' });
@@ -102,6 +102,13 @@ router.post('/smtp-accounts', auth, async (req, res) => {
             fromEmail,
             fromName: fromName || name,
             isDefault: isDefault || false,
+            // IMAP configuration
+            imapConfigured: !!imapHost,
+            imapHost: imapHost || null,
+            imapPort: imapPort ? Number(imapPort) : 993,
+            imapUser: imapUser || null,
+            imapPassword: imapPassword || null,
+            imapTls: imapTls !== false,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         };
@@ -155,6 +162,12 @@ router.put('/smtp-accounts/:id', auth, async (req, res) => {
             password: (updates.password && updates.password !== '********')
                 ? updates.password
                 : existing.Item.password,
+            // Keep existing IMAP password if not provided or if placeholder
+            imapPassword: (updates.imapPassword && updates.imapPassword !== '********')
+                ? updates.imapPassword
+                : existing.Item.imapPassword,
+            // Set imapConfigured based on whether imapHost is set
+            imapConfigured: !!(updates.imapHost || existing.Item.imapHost),
             id: existing.Item.id,
             updatedAt: new Date().toISOString(),
         };
@@ -439,7 +452,7 @@ function replaceVariables(text, data) {
         const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'gi');
         result = result.replace(regex, safeData[key] || '');
     });
-    
+
     // Always sanitize to remove em dashes
     return sanitizeContent(result);
 }
@@ -447,13 +460,13 @@ function replaceVariables(text, data) {
 // Generate unique content variations to avoid spam filters
 function generateContentVariation(baseText, recipientIndex, totalRecipients, campaignId) {
     if (!baseText) return baseText;
-    
+
     let result = baseText;
-    
+
     // 1. Micro-variations based on position
     const variationSeed = campaignId + recipientIndex + totalRecipients;
     const random = seededRandom(variationSeed);
-    
+
     // 2. Introduce subtle punctuation variations
     if (random() > 0.7) {
         // Occasionally add commas where appropriate
@@ -464,7 +477,7 @@ function generateContentVariation(baseText, recipientIndex, totalRecipients, cam
             return match;
         });
     }
-    
+
     // 3. Add subtle whitespace variations
     if (random() > 0.8) {
         // Occasionally add extra spaces around certain punctuation
@@ -475,7 +488,7 @@ function generateContentVariation(baseText, recipientIndex, totalRecipients, cam
             return match;
         });
     }
-    
+
     // 4. Word choice variations for common phrases - more extensive
     const variations = {
         'thank you': ['thanks', 'thank you', 'appreciate it', 'grateful'],
@@ -494,26 +507,26 @@ function generateContentVariation(baseText, recipientIndex, totalRecipients, cam
         'help': ['help', 'assist', 'support'],
         'reach out': ['reach out', 'get in touch', 'contact me', 'drop a message']
     };
-    
+
     Object.entries(variations).forEach(([original, alternatives]) => {
         if (result.toLowerCase().includes(original)) {
             const chosen = alternatives[Math.floor(random() * alternatives.length)];
             result = result.replace(new RegExp(original, 'gi'), chosen);
         }
     });
-    
+
     // 5. Randomize sentence structure slightly
     if (random() > 0.6) {
         result = varySentenceStructure(result, random);
     }
-    
+
     return result;
 }
 
 // Seeded random number generator for consistent variations
 function seededRandom(seed) {
     let hash = seed;
-    return function() {
+    return function () {
         hash = ((hash * 9301 + 49297) % 233280) / 233280;
         return hash;
     };
@@ -522,10 +535,10 @@ function seededRandom(seed) {
 // Vary sentence structure while maintaining meaning
 function varySentenceStructure(text, randomFn) {
     let result = text;
-    
+
     // Split into sentences and randomly reorder some clauses
     const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
-    
+
     return sentences.map(sentence => {
         // Move adverbs around
         if (randomFn() > 0.7) {
@@ -536,7 +549,7 @@ function varySentenceStructure(text, randomFn) {
                 return ''; // Sometimes remove the adverb
             });
         }
-        
+
         return sentence;
     }).join(' ');
 }
@@ -546,30 +559,30 @@ function personalizeEmailContent(campaign, recipient, recipientIndex, totalRecip
     let subject = campaign.subject;
     let htmlContent = campaign.htmlContent;
     let textContent = campaign.textContent;
-    
+
     // 1. Process Spintax for base variation
     subject = processSpintax(subject);
     htmlContent = processSpintax(htmlContent);
     textContent = processSpintax(textContent);
-    
+
     // 2. Replace personalization variables
     subject = replaceVariables(subject, recipient);
     htmlContent = replaceVariables(htmlContent, recipient);
     textContent = replaceVariables(textContent, recipient);
-    
+
     // 3. Add unique content variations for anti-tracking
     htmlContent = generateContentVariation(htmlContent, recipientIndex, totalRecipients, campaignId);
     textContent = generateContentVariation(textContent, recipientIndex, totalRecipients, campaignId);
-    
+
     // 4. Add unique identifiers for tracking (without revealing to user)
     const uniqueId = `${campaignId}-${recipientIndex}-${Date.now()}`;
     const trackingPixel = `<img src="${process.env.API_BASE || 'http://localhost:3001'}/api/tracking/${uniqueId}" width="1" height="1" style="display:none;" alt="">`;
     htmlContent = htmlContent.replace('</body>', `${trackingPixel}</body>`);
-    
+
     // 5. Generate unique message ID
     const domain = process.env.SMTP_FROM?.split('@')[1] || 'kokorick.uk';
     const messageId = `<${Date.now()}.${Math.random().toString(36).substr(2, 9)}@${domain}>`;
-    
+
     return {
         subject,
         htmlContent,
@@ -582,12 +595,12 @@ function personalizeEmailContent(campaign, recipient, recipientIndex, totalRecip
 // AI rewrite function to create unique variations of email content
 async function aiRewriteEmail(subject, body, recipientData, index) {
     const apiKey = process.env.MISTRAL_API_KEY;
-    
+
     // If no API key, return original with basic personalization
     if (!apiKey) {
         return { subject, body };
     }
-    
+
     try {
         const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
             method: 'POST',
@@ -636,18 +649,18 @@ Remember: Same meaning, different words. NO em dashes.`
 
         const data = await response.json();
         const content = data.choices?.[0]?.message?.content || '';
-        
+
         // Parse the response
         const lines = content.trim().split('\n');
         const newSubject = lines[0]?.replace(/^Subject:\s*/i, '').trim() || subject;
         const newBody = lines.slice(1).join('\n').trim() || body;
-        
+
         console.log(`[AI Rewrite] Generated unique version for recipient ${index + 1}`);
-        return { 
-            subject: sanitizeContent(newSubject), 
-            body: sanitizeContent(newBody) 
+        return {
+            subject: sanitizeContent(newSubject),
+            body: sanitizeContent(newBody)
         };
-        
+
     } catch (error) {
         console.error(`[AI Rewrite] Error for recipient ${index}:`, error.message);
         return { subject, body };
@@ -685,7 +698,7 @@ async function processEmailsOneByOne(campaignId, campaign, recipientList, smtpAc
 
             let html = processSpintax(campaign.htmlContent);
             html = replaceVariables(html, data);
-            
+
             // 3. AI Rewrite - Generate unique version for each recipient
             const plainText = html
                 .replace(/<br\s*\/?>/gi, '\n')
@@ -694,10 +707,10 @@ async function processEmailsOneByOne(campaignId, campaign, recipientList, smtpAc
                 .replace(/<\/li>/gi, '\n')
                 .replace(/<[^>]*>/g, '')
                 .trim();
-            
+
             const rewritten = await aiRewriteEmail(subject, plainText, data, i);
             subject = sanitizeContent(rewritten.subject);
-            
+
             // Convert rewritten body back to HTML
             html = `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6;color:#202124">${sanitizeContent(rewritten.body).replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</div>`;
 

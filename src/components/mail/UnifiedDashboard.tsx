@@ -20,6 +20,8 @@ import { SettingsPage } from '../settings/SettingsPage';
 import { AISidebar } from '../ai/AISidebar';
 import { useTheme } from '../../lib/ThemeContext';
 import { useDashboardContext } from '../../layouts/DashboardShell';
+import InboxView from './InboxView';
+import SentView from './SentView';
 
 const API_BASE = '/api/bulk-email';
 
@@ -35,6 +37,7 @@ interface SmtpAccount {
     fromName: string;
     isDefault: boolean;
     createdAt: string;
+    imapConfigured?: boolean;
 }
 
 interface Campaign {
@@ -84,7 +87,7 @@ export default function UnifiedDashboard() {
         currentSubject: '',
         currentBody: '',
     });
-    
+
     // Store AI-generated personalized emails for each recipient
     const [personalizedEmails, setPersonalizedEmails] = useState<Array<{
         email: string;
@@ -92,7 +95,7 @@ export default function UnifiedDashboard() {
         subject: string;
         body: string;
     }>>([]);
-    
+
     // Message to send to AI (for text selection feature)
     const [pendingAIMessage, setPendingAIMessage] = useState<{
         message: string;
@@ -210,20 +213,36 @@ export default function UnifiedDashboard() {
             return <SettingsPage />;
         }
 
-        // Inbox sections - show empty state with message
-        if (isInboxSection) {
+        // Inbox sections - use new InboxView and SentView components
+        if (activeItem === 'inbox') {
+            return (
+                <InboxView
+                    smtpAccounts={smtpAccounts}
+                    onRefreshAccounts={fetchData}
+                />
+            );
+        }
+
+        if (activeItem === 'sent') {
+            return (
+                <SentView smtpAccounts={smtpAccounts} />
+            );
+        }
+
+        // Other inbox sections (drafts, archive, spam, trash) - show empty state for now
+        if (['drafts', 'archive', 'spam', 'trash'].includes(activeItem)) {
             return (
                 <div className="flex-1 flex items-center justify-center">
                     <EmptyState
                         icon={<Mail className="w-16 h-16" />}
                         title="Coming Soon"
-                        description="The inbox feature is under development. Use Campaign Builder to send emails."
+                        description={`The ${activeItem} feature is under development.`}
                         action={
                             <button
-                                onClick={() => setActiveItem('campaign-builder')}
+                                onClick={() => setActiveItem('inbox')}
                                 className="mt-4 px-6 py-2.5 bg-[#1a73e8] text-white rounded-lg font-medium hover:bg-[#1557b0] transition-colors"
                             >
-                                Go to Campaign Builder
+                                Go to Inbox
                             </button>
                         }
                     />
@@ -235,7 +254,7 @@ export default function UnifiedDashboard() {
         if (activeItem === 'overview') {
             return (
                 <ScrollArea className="flex-1">
-                    <div className="max-w-5xl mx-auto px-8 py-6">
+                    <div className="px-8 py-6">
                         <div className="flex items-center justify-between mb-6">
                             <div>
                                 <h1 className="text-2xl font-normal text-[#202124] dark:text-[#e8eaed]">Dashboard</h1>
@@ -421,7 +440,7 @@ export default function UnifiedDashboard() {
         if (activeItem === 'compose') {
             return (
                 <ScrollArea className="flex-1">
-                    <div className="max-w-4xl mx-auto px-8 py-6">
+                    <div className="px-8 py-6">
                         <ComposePanel
                             smtpAccounts={smtpAccounts}
                             onSuccess={() => {
@@ -438,7 +457,7 @@ export default function UnifiedDashboard() {
         if (activeItem === 'campaign-builder') {
             return (
                 <ScrollArea className="flex-1">
-                    <div className="max-w-[1200px] mx-auto px-6 py-4">
+                    <div className="px-6 py-4">
                         <CampaignBuilder
                             smtpAccounts={smtpAccounts}
                             onSuccess={fetchData}
@@ -459,7 +478,7 @@ export default function UnifiedDashboard() {
         if (activeItem === 'templates') {
             return (
                 <ScrollArea className="flex-1">
-                    <div className="max-w-6xl mx-auto px-8 py-6">
+                    <div className="px-8 py-6">
                         <TemplateManager />
                     </div>
                 </ScrollArea>
@@ -470,7 +489,7 @@ export default function UnifiedDashboard() {
         if (activeItem === 'history') {
             return (
                 <ScrollArea className="flex-1">
-                    <div className="max-w-6xl mx-auto px-8 py-6">
+                    <div className="px-8 py-6">
                         <CampaignHistory
                             campaigns={campaigns}
                             loading={loading}
@@ -486,7 +505,7 @@ export default function UnifiedDashboard() {
         if (activeItem === 'accounts') {
             return (
                 <ScrollArea className="flex-1">
-                    <div className="max-w-6xl mx-auto px-8 py-6">
+                    <div className="px-8 py-6">
                         <SmtpAccounts
                             accounts={smtpAccounts}
                             onRefresh={fetchData}

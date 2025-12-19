@@ -50,6 +50,22 @@ const tables = [
         AttributeDefinitions: [{ AttributeName: 'id', AttributeType: 'S' }],
         BillingMode: 'PAY_PER_REQUEST',
     },
+    {
+        TableName: 'InboxMessages',
+        KeySchema: [{ AttributeName: 'id', KeyType: 'HASH' }],
+        AttributeDefinitions: [
+            { AttributeName: 'id', AttributeType: 'S' },
+            { AttributeName: 'accountId', AttributeType: 'S' },
+        ],
+        BillingMode: 'PAY_PER_REQUEST',
+        GlobalSecondaryIndexes: [
+            {
+                IndexName: 'AccountIdIndex',
+                KeySchema: [{ AttributeName: 'accountId', KeyType: 'HASH' }],
+                Projection: { ProjectionType: 'ALL' },
+            },
+        ],
+    },
 ];
 
 async function createTable(tableConfig) {

@@ -1,34 +1,40 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
-    Sun, Moon, Monitor, Bell, BellOff, Shield, Key, Mail,
-    User, Globe, Clock, Trash2, Download, Upload, Save,
-    ChevronRight, Check, AlertCircle, Loader2, Eye, EyeOff,
-    RefreshCw, LogOut
+    Sun, Moon, Bell, Shield, Mail, Inbox,
+    User, Download, Upload, Save, Server,
+    Check, Loader2, LogOut, Trash2, Plus,
+    Settings2, CheckCircle, XCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../../lib/utils';
 import { useTheme } from '../../lib/ThemeContext';
 import { ScrollArea } from '../ui/ScrollArea';
+import { Button } from '../ui/Button';
+import { Input } from '../ui/Input';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/Card';
+import { Badge } from '../ui/Badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/Tabs';
+import ImapConfigDialog from '../mail/ImapConfigDialog';
 
-interface SettingsSection {
+interface SmtpAccount {
     id: string;
-    label: string;
-    icon: any;
+    name: string;
+    host: string;
+    port: number;
+    username: string;
+    fromEmail: string;
+    imapConfigured?: boolean;
+    imapHost?: string;
+    imapPort?: number;
 }
-
-const sections: SettingsSection[] = [
-    { id: 'appearance', label: 'Appearance', icon: Sun },
-    { id: 'account', label: 'Account', icon: User },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'email', label: 'Email Settings', icon: Mail },
-    { id: 'security', label: 'Security', icon: Shield },
-    { id: 'data', label: 'Data & Storage', icon: Download },
-];
 
 export function SettingsPage() {
     const { theme, setTheme } = useTheme();
-    const [activeSection, setActiveSection] = useState('appearance');
     const [saving, setSaving] = useState(false);
+    const [smtpAccounts, setSmtpAccounts] = useState<SmtpAccount[]>([]);
+    const [loadingAccounts, setLoadingAccounts] = useState(false);
+    const [showImapConfig, setShowImapConfig] = useState(false);
+    const [selectedAccount, setSelectedAccount] = useState<SmtpAccount | null>(null);
 
     // Settings state
     const [settings, setSettings] = useState({
@@ -45,7 +51,6 @@ export function SettingsPage() {
 
         // Email Settings
         defaultThrottling: 4,
-        defaultSender: 'system-default',
         trackOpens: true,
         trackClicks: true,
         autoRetry: true,
@@ -67,12 +72,29 @@ export function SettingsPage() {
 
     const handleSave = async () => {
         setSaving(true);
-        // Simulate save
         await new Promise(resolve => setTimeout(resolve, 1000));
         localStorage.setItem('bulkmail-settings', JSON.stringify(settings));
         toast.success('Settings saved successfully');
         setSaving(false);
     };
+
+    const fetchSmtpAccounts = useCallback(async () => {
+        setLoadingAccounts(true);
+        try {
+            const token = localStorage.getItem('bulkEmailToken');
+            const res = await fetch('/api/bulk-email/smtp-accounts', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setSmtpAccounts(data);
+            }
+        } catch (err) {
+            console.error('Failed to fetch SMTP accounts:', err);
+        } finally {
+            setLoadingAccounts(false);
+        }
+    }, []);
 
     useEffect(() => {
         const saved = localStorage.getItem('bulkmail-settings');
@@ -81,14 +103,27 @@ export function SettingsPage() {
                 setSettings(prev => ({ ...prev, ...JSON.parse(saved) }));
             } catch { }
         }
-    }, []);
+        fetchSmtpAccounts();
+    }, [fetchSmtpAccounts]);
 
+    const handleConfigureImap = (account: SmtpAccount) => {
+        setSelectedAccount(account);
+        setShowImapConfig(true);
+    };
+
+    const handleImapSuccess = () => {
+        setShowImapConfig(false);
+        fetchSmtpAccounts();
+        toast.success('IMAP configured successfully!');
+    };
+
+    // Toggle Switch Component
     const ToggleSwitch = ({ enabled, onToggle, disabled }: { enabled: boolean; onToggle: () => void; disabled?: boolean }) => (
         <button
             onClick={onToggle}
             disabled={disabled}
             className={cn(
-                'relative w-11 h-6 rounded-full transition-colors duration-200',
+                'relative w-12 h-7 rounded-full transition-all duration-300 ease-out',
                 enabled
                     ? 'bg-[#1a73e8] dark:bg-[#8ab4f8]'
                     : 'bg-[#dadce0] dark:bg-[#5f6368]',
@@ -97,436 +132,562 @@ export function SettingsPage() {
         >
             <span
                 className={cn(
-                    'absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200',
+                    'absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300 ease-out',
                     enabled && 'translate-x-5'
                 )}
             />
         </button>
     );
 
+    // Setting Row Component
     const SettingRow = ({
         label,
         description,
-        children
+        children,
     }: {
         label: string;
         description?: string;
         children: React.ReactNode;
     }) => (
-        <div className="flex items-center justify-between py-4 border-b border-[#f1f3f4] dark:border-[#3c4043] last:border-0">
-            <div className="flex-1 mr-4">
-                <div className="text-sm font-medium text-[#202124] dark:text-[#e8eaed]">{label}</div>
+        <div className="flex items-center justify-between py-5 border-b border-border last:border-0">
+            <div className="flex-1 mr-6">
+                <div className="text-sm font-medium text-foreground">{label}</div>
                 {description && (
-                    <div className="text-xs text-[#5f6368] dark:text-[#9aa0a6] mt-0.5">{description}</div>
+                    <div className="text-sm text-muted-foreground mt-1">{description}</div>
                 )}
             </div>
             {children}
         </div>
     );
 
-    const renderContent = () => {
-        switch (activeSection) {
-            case 'appearance':
-                return (
-                    <div className="space-y-6">
-                        <div>
-                            <h3 className="text-base font-medium text-[#202124] dark:text-[#e8eaed] mb-4">Theme</h3>
-                            <div className="grid grid-cols-3 gap-3">
-                                {[
-                                    { value: 'light', label: 'Light', icon: Sun },
-                                    { value: 'dark', label: 'Dark', icon: Moon },
-                                ].map((option) => (
-                                    <button
-                                        key={option.value}
-                                        onClick={() => setTheme(option.value as 'light' | 'dark')}
-                                        className={cn(
-                                            'flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all',
-                                            theme === option.value
-                                                ? 'border-[#1a73e8] bg-[#e8f0fe] dark:bg-[#1a73e8]/20'
-                                                : 'border-[#dadce0] dark:border-[#5f6368] hover:border-[#1a73e8] dark:hover:border-[#8ab4f8]'
-                                        )}
-                                    >
-                                        <option.icon className={cn(
-                                            'w-6 h-6',
-                                            theme === option.value
-                                                ? 'text-[#1a73e8] dark:text-[#8ab4f8]'
-                                                : 'text-[#5f6368]'
-                                        )} />
-                                        <span className={cn(
-                                            'text-sm font-medium',
-                                            theme === option.value
-                                                ? 'text-[#1a73e8] dark:text-[#8ab4f8]'
-                                                : 'text-[#5f6368]'
-                                        )}>
-                                            {option.label}
-                                        </span>
-                                        {theme === option.value && (
-                                            <Check className="w-4 h-4 text-[#1a73e8] dark:text-[#8ab4f8]" />
-                                        )}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="border-t border-[#f1f3f4] dark:border-[#3c4043] pt-6">
-                            <h3 className="text-base font-medium text-[#202124] dark:text-[#e8eaed] mb-2">Display Options</h3>
-
-                            <SettingRow label="Compact mode" description="Reduce spacing for a denser layout">
-                                <ToggleSwitch
-                                    enabled={settings.compactMode}
-                                    onToggle={() => updateSetting('compactMode', !settings.compactMode)}
-                                />
-                            </SettingRow>
-
-                            <SettingRow label="Show avatars" description="Display profile pictures in email list">
-                                <ToggleSwitch
-                                    enabled={settings.showAvatars}
-                                    onToggle={() => updateSetting('showAvatars', !settings.showAvatars)}
-                                />
-                            </SettingRow>
-
-                            <SettingRow label="Enable animations" description="Smooth transitions and effects">
-                                <ToggleSwitch
-                                    enabled={settings.animationsEnabled}
-                                    onToggle={() => updateSetting('animationsEnabled', !settings.animationsEnabled)}
-                                />
-                            </SettingRow>
-                        </div>
-                    </div>
-                );
-
-            case 'account':
-                return (
-                    <div className="space-y-6">
-                        <div>
-                            <h3 className="text-base font-medium text-[#202124] dark:text-[#e8eaed] mb-4">Profile</h3>
-
-                            <div className="flex items-center gap-4 mb-6">
-                                <div className="w-16 h-16 rounded-full bg-[#1a73e8] flex items-center justify-center text-white text-2xl font-medium">
-                                    {settings.displayName[0]?.toUpperCase() || 'U'}
-                                </div>
-                                <div>
-                                    <button className="text-sm text-[#1a73e8] dark:text-[#8ab4f8] hover:underline">
-                                        Change photo
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm text-[#5f6368] dark:text-[#9aa0a6] mb-1.5">Display name</label>
-                                    <input
-                                        type="text"
-                                        value={settings.displayName}
-                                        onChange={(e) => updateSetting('displayName', e.target.value)}
-                                        className="w-full px-3 py-2 border border-[#dadce0] dark:border-[#5f6368] rounded-lg text-[#202124] dark:text-[#e8eaed] bg-white dark:bg-[#202124] focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8] outline-none transition-all"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm text-[#5f6368] dark:text-[#9aa0a6] mb-1.5">Email address</label>
-                                    <input
-                                        type="email"
-                                        value={settings.email}
-                                        onChange={(e) => updateSetting('email', e.target.value)}
-                                        className="w-full px-3 py-2 border border-[#dadce0] dark:border-[#5f6368] rounded-lg text-[#202124] dark:text-[#e8eaed] bg-white dark:bg-[#202124] focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8] outline-none transition-all"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="border-t border-[#f1f3f4] dark:border-[#3c4043] pt-6">
-                            <h3 className="text-base font-medium text-[#202124] dark:text-[#e8eaed] mb-4">Preferences</h3>
-
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm text-[#5f6368] dark:text-[#9aa0a6] mb-1.5">Timezone</label>
-                                    <select
-                                        value={settings.timezone}
-                                        onChange={(e) => updateSetting('timezone', e.target.value)}
-                                        className="w-full px-3 py-2 border border-[#dadce0] dark:border-[#5f6368] rounded-lg text-[#202124] dark:text-[#e8eaed] bg-white dark:bg-[#202124] focus:border-[#1a73e8] outline-none"
-                                    >
-                                        <option value="UTC">UTC</option>
-                                        <option value="America/New_York">Eastern Time</option>
-                                        <option value="America/Los_Angeles">Pacific Time</option>
-                                        <option value="Europe/London">London</option>
-                                        <option value="Asia/Kolkata">India Standard Time</option>
-                                        <option value="Asia/Tokyo">Japan Standard Time</option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm text-[#5f6368] dark:text-[#9aa0a6] mb-1.5">Language</label>
-                                    <select
-                                        value={settings.language}
-                                        onChange={(e) => updateSetting('language', e.target.value)}
-                                        className="w-full px-3 py-2 border border-[#dadce0] dark:border-[#5f6368] rounded-lg text-[#202124] dark:text-[#e8eaed] bg-white dark:bg-[#202124] focus:border-[#1a73e8] outline-none"
-                                    >
-                                        <option value="en">English</option>
-                                        <option value="es">Español</option>
-                                        <option value="fr">Français</option>
-                                        <option value="de">Deutsch</option>
-                                        <option value="ja">日本語</option>
-                                        <option value="hi">हिन्दी</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                );
-
-            case 'notifications':
-                return (
-                    <div className="space-y-6">
-                        <div>
-                            <h3 className="text-base font-medium text-[#202124] dark:text-[#e8eaed] mb-2">Email Notifications</h3>
-
-                            <SettingRow label="Email notifications" description="Receive important updates via email">
-                                <ToggleSwitch
-                                    enabled={settings.emailNotifications}
-                                    onToggle={() => updateSetting('emailNotifications', !settings.emailNotifications)}
-                                />
-                            </SettingRow>
-
-                            <SettingRow label="Campaign complete" description="Notify when a campaign finishes sending">
-                                <ToggleSwitch
-                                    enabled={settings.campaignComplete}
-                                    onToggle={() => updateSetting('campaignComplete', !settings.campaignComplete)}
-                                    disabled={!settings.emailNotifications}
-                                />
-                            </SettingRow>
-
-                            <SettingRow label="Failure alerts" description="Notify when emails fail to send">
-                                <ToggleSwitch
-                                    enabled={settings.failureAlerts}
-                                    onToggle={() => updateSetting('failureAlerts', !settings.failureAlerts)}
-                                    disabled={!settings.emailNotifications}
-                                />
-                            </SettingRow>
-
-                            <SettingRow label="Weekly digest" description="Summary of campaign performance each week">
-                                <ToggleSwitch
-                                    enabled={settings.weeklyDigest}
-                                    onToggle={() => updateSetting('weeklyDigest', !settings.weeklyDigest)}
-                                    disabled={!settings.emailNotifications}
-                                />
-                            </SettingRow>
-                        </div>
-                    </div>
-                );
-
-            case 'email':
-                return (
-                    <div className="space-y-6">
-                        <div>
-                            <h3 className="text-base font-medium text-[#202124] dark:text-[#e8eaed] mb-4">Sending Defaults</h3>
-
-                            <div className="space-y-4 mb-6">
-                                <div>
-                                    <label className="block text-sm text-[#5f6368] dark:text-[#9aa0a6] mb-1.5">
-                                        Default delay between emails (minutes)
-                                    </label>
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        max="60"
-                                        value={settings.defaultThrottling}
-                                        onChange={(e) => updateSetting('defaultThrottling', parseInt(e.target.value) || 4)}
-                                        className="w-32 px-3 py-2 border border-[#dadce0] dark:border-[#5f6368] rounded-lg text-[#202124] dark:text-[#e8eaed] bg-white dark:bg-[#202124] focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8] outline-none"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="border-t border-[#f1f3f4] dark:border-[#3c4043] pt-6">
-                            <h3 className="text-base font-medium text-[#202124] dark:text-[#e8eaed] mb-2">Tracking</h3>
-
-                            <SettingRow label="Track email opens" description="Monitor when recipients open emails">
-                                <ToggleSwitch
-                                    enabled={settings.trackOpens}
-                                    onToggle={() => updateSetting('trackOpens', !settings.trackOpens)}
-                                />
-                            </SettingRow>
-
-                            <SettingRow label="Track link clicks" description="Monitor when recipients click links">
-                                <ToggleSwitch
-                                    enabled={settings.trackClicks}
-                                    onToggle={() => updateSetting('trackClicks', !settings.trackClicks)}
-                                />
-                            </SettingRow>
-
-                            <SettingRow label="Auto-retry failed emails" description="Automatically retry sending failed emails">
-                                <ToggleSwitch
-                                    enabled={settings.autoRetry}
-                                    onToggle={() => updateSetting('autoRetry', !settings.autoRetry)}
-                                />
-                            </SettingRow>
-                        </div>
-                    </div>
-                );
-
-            case 'security':
-                return (
-                    <div className="space-y-6">
-                        <div>
-                            <h3 className="text-base font-medium text-[#202124] dark:text-[#e8eaed] mb-4">Password</h3>
-                            <button className="px-4 py-2 border border-[#dadce0] dark:border-[#5f6368] rounded-lg text-sm font-medium text-[#1a73e8] dark:text-[#8ab4f8] hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] transition-colors">
-                                Change password
-                            </button>
-                        </div>
-
-                        <div className="border-t border-[#f1f3f4] dark:border-[#3c4043] pt-6">
-                            <h3 className="text-base font-medium text-[#202124] dark:text-[#e8eaed] mb-2">Two-Factor Authentication</h3>
-
-                            <SettingRow
-                                label="Enable 2FA"
-                                description="Add an extra layer of security to your account"
-                            >
-                                <ToggleSwitch
-                                    enabled={settings.twoFactorEnabled}
-                                    onToggle={() => {
-                                        if (!settings.twoFactorEnabled) {
-                                            toast.info('2FA setup would open here');
-                                        }
-                                        updateSetting('twoFactorEnabled', !settings.twoFactorEnabled);
-                                    }}
-                                />
-                            </SettingRow>
-                        </div>
-
-                        <div className="border-t border-[#f1f3f4] dark:border-[#3c4043] pt-6">
-                            <h3 className="text-base font-medium text-[#202124] dark:text-[#e8eaed] mb-4">Session</h3>
-
-                            <div className="mb-4">
-                                <label className="block text-sm text-[#5f6368] dark:text-[#9aa0a6] mb-1.5">
-                                    Session timeout (minutes)
-                                </label>
-                                <select
-                                    value={settings.sessionTimeout}
-                                    onChange={(e) => updateSetting('sessionTimeout', parseInt(e.target.value))}
-                                    className="w-40 px-3 py-2 border border-[#dadce0] dark:border-[#5f6368] rounded-lg text-[#202124] dark:text-[#e8eaed] bg-white dark:bg-[#202124] focus:border-[#1a73e8] outline-none"
-                                >
-                                    <option value={15}>15 minutes</option>
-                                    <option value={30}>30 minutes</option>
-                                    <option value={60}>1 hour</option>
-                                    <option value={120}>2 hours</option>
-                                    <option value={480}>8 hours</option>
-                                </select>
-                            </div>
-
-                            <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#d93025] hover:bg-[#fce8e6] dark:hover:bg-[#d93025]/20 rounded-lg transition-colors">
-                                <LogOut className="w-4 h-4" />
-                                Sign out of all devices
-                            </button>
-                        </div>
-                    </div>
-                );
-
-            case 'data':
-                return (
-                    <div className="space-y-6">
-                        <div>
-                            <h3 className="text-base font-medium text-[#202124] dark:text-[#e8eaed] mb-4">Export Data</h3>
-                            <p className="text-sm text-[#5f6368] dark:text-[#9aa0a6] mb-4">
-                                Download a copy of your campaign history and settings.
-                            </p>
-                            <button className="flex items-center gap-2 px-4 py-2 border border-[#dadce0] dark:border-[#5f6368] rounded-lg text-sm font-medium text-[#202124] dark:text-[#e8eaed] hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] transition-colors">
-                                <Download className="w-4 h-4" />
-                                Export all data
-                            </button>
-                        </div>
-
-                        <div className="border-t border-[#f1f3f4] dark:border-[#3c4043] pt-6">
-                            <h3 className="text-base font-medium text-[#202124] dark:text-[#e8eaed] mb-4">Import Data</h3>
-                            <p className="text-sm text-[#5f6368] dark:text-[#9aa0a6] mb-4">
-                                Import settings and templates from a backup file.
-                            </p>
-                            <button className="flex items-center gap-2 px-4 py-2 border border-[#dadce0] dark:border-[#5f6368] rounded-lg text-sm font-medium text-[#202124] dark:text-[#e8eaed] hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043] transition-colors">
-                                <Upload className="w-4 h-4" />
-                                Import data
-                            </button>
-                        </div>
-
-                        <div className="border-t border-[#f1f3f4] dark:border-[#3c4043] pt-6">
-                            <h3 className="text-base font-medium text-[#d93025] mb-4">Danger Zone</h3>
-                            <p className="text-sm text-[#5f6368] dark:text-[#9aa0a6] mb-4">
-                                Permanently delete all your data. This action cannot be undone.
-                            </p>
-                            <button
-                                onClick={() => toast.error('This would delete all data')}
-                                className="flex items-center gap-2 px-4 py-2 bg-[#d93025] text-white rounded-lg text-sm font-medium hover:bg-[#b3261e] transition-colors"
-                            >
-                                <Trash2 className="w-4 h-4" />
-                                Delete all data
-                            </button>
-                        </div>
-                    </div>
-                );
-
-            default:
-                return null;
-        }
-    };
-
     return (
-        <div className="h-full flex">
-            {/* Settings Sidebar */}
-            <div className="w-64 border-r border-[#dadce0] dark:border-[#3c4043] bg-white dark:bg-[#202124] shrink-0">
-                <div className="p-4 border-b border-[#f1f3f4] dark:border-[#3c4043]">
-                    <h2 className="text-lg font-medium text-[#202124] dark:text-[#e8eaed]">Settings</h2>
+        <div className="h-full w-full flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-8 py-6 border-b border-border">
+                <div>
+                    <h1 className="text-2xl font-bold text-foreground">Settings</h1>
+                    <p className="text-muted-foreground mt-1">Manage your account preferences and configurations</p>
                 </div>
-                <nav className="p-2">
-                    {sections.map((section) => (
-                        <button
-                            key={section.id}
-                            onClick={() => setActiveSection(section.id)}
-                            className={cn(
-                                'w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all',
-                                activeSection === section.id
-                                    ? 'bg-[#e8f0fe] dark:bg-[#1a73e8]/20 text-[#1a73e8] dark:text-[#8ab4f8]'
-                                    : 'text-[#5f6368] dark:text-[#9aa0a6] hover:bg-[#f1f3f4] dark:hover:bg-[#3c4043]'
-                            )}
-                        >
-                            <section.icon className="w-5 h-5" />
-                            {section.label}
-                        </button>
-                    ))}
-                </nav>
+                <Button onClick={handleSave} disabled={saving} className="gap-2">
+                    {saving ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                        <Save className="w-4 h-4" />
+                    )}
+                    {saving ? 'Saving...' : 'Save changes'}
+                </Button>
             </div>
 
-            {/* Settings Content */}
-            <div className="flex-1 flex flex-col bg-[#f6f8fc] dark:bg-[#171717]">
-                <div className="flex items-center justify-between px-8 py-4 bg-white dark:bg-[#202124] border-b border-[#dadce0] dark:border-[#3c4043]">
-                    <h2 className="text-lg font-medium text-[#202124] dark:text-[#e8eaed]">
-                        {sections.find(s => s.id === activeSection)?.label}
-                    </h2>
-                    <button
-                        onClick={handleSave}
-                        disabled={saving}
-                        className={cn(
-                            'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
-                            saving
-                                ? 'bg-[#f1f3f4] text-[#9aa0a6] cursor-not-allowed'
-                                : 'bg-[#1a73e8] text-white hover:bg-[#1557b0]'
-                        )}
-                    >
-                        {saving ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                            <Save className="w-4 h-4" />
-                        )}
-                        {saving ? 'Saving...' : 'Save changes'}
-                    </button>
-                </div>
+            {/* Content with Tabs */}
+            <ScrollArea className="flex-1">
+                <div className="p-8">
+                    <Tabs defaultValue="appearance" className="w-full">
+                        <TabsList className="mb-8 bg-muted/50 p-1 h-auto flex-wrap">
+                            <TabsTrigger value="appearance" className="gap-2 py-2.5 px-4">
+                                <Sun className="w-4 h-4" />
+                                Appearance
+                            </TabsTrigger>
+                            <TabsTrigger value="account" className="gap-2 py-2.5 px-4">
+                                <User className="w-4 h-4" />
+                                Account
+                            </TabsTrigger>
+                            <TabsTrigger value="email" className="gap-2 py-2.5 px-4">
+                                <Mail className="w-4 h-4" />
+                                Email Accounts
+                            </TabsTrigger>
+                            <TabsTrigger value="notifications" className="gap-2 py-2.5 px-4">
+                                <Bell className="w-4 h-4" />
+                                Notifications
+                            </TabsTrigger>
+                            <TabsTrigger value="security" className="gap-2 py-2.5 px-4">
+                                <Shield className="w-4 h-4" />
+                                Security
+                            </TabsTrigger>
+                            <TabsTrigger value="data" className="gap-2 py-2.5 px-4">
+                                <Download className="w-4 h-4" />
+                                Data
+                            </TabsTrigger>
+                        </TabsList>
 
-                <ScrollArea className="flex-1">
-                    <div className="max-w-2xl mx-auto px-8 py-6">
-                        <div className="bg-white dark:bg-[#202124] rounded-lg border border-[#dadce0] dark:border-[#3c4043] p-6">
-                            {renderContent()}
-                        </div>
-                    </div>
-                </ScrollArea>
-            </div>
+                        {/* Appearance Tab */}
+                        <TabsContent value="appearance" className="space-y-8 mt-0">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                {/* Theme Selection */}
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Theme</CardTitle>
+                                        <CardDescription>Choose your preferred appearance</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            {[
+                                                { value: 'light', label: 'Light Mode', icon: Sun, desc: 'Bright and clean' },
+                                                { value: 'dark', label: 'Dark Mode', icon: Moon, desc: 'Easy on the eyes' },
+                                            ].map((option) => (
+                                                <button
+                                                    key={option.value}
+                                                    onClick={() => setTheme(option.value as 'light' | 'dark')}
+                                                    className={cn(
+                                                        'flex flex-col items-center gap-3 p-6 rounded-xl border-2 transition-all duration-200',
+                                                        theme === option.value
+                                                            ? 'border-primary bg-primary/5'
+                                                            : 'border-border hover:border-primary/50'
+                                                    )}
+                                                >
+                                                    <div className={cn(
+                                                        "w-14 h-14 rounded-full flex items-center justify-center",
+                                                        theme === option.value ? 'bg-primary/10' : 'bg-muted'
+                                                    )}>
+                                                        <option.icon className={cn(
+                                                            'w-7 h-7',
+                                                            theme === option.value ? 'text-primary' : 'text-muted-foreground'
+                                                        )} />
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <span className={cn(
+                                                            'text-sm font-semibold block',
+                                                            theme === option.value ? 'text-primary' : 'text-foreground'
+                                                        )}>
+                                                            {option.label}
+                                                        </span>
+                                                        <span className="text-xs text-muted-foreground">{option.desc}</span>
+                                                    </div>
+                                                    {theme === option.value && (
+                                                        <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+                                                            <Check className="w-4 h-4 text-white" />
+                                                        </div>
+                                                    )}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Display Options */}
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Display Options</CardTitle>
+                                        <CardDescription>Customize your interface</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="pt-0">
+                                        <SettingRow label="Compact mode" description="Reduce spacing for a denser layout">
+                                            <ToggleSwitch
+                                                enabled={settings.compactMode}
+                                                onToggle={() => updateSetting('compactMode', !settings.compactMode)}
+                                            />
+                                        </SettingRow>
+                                        <SettingRow label="Show avatars" description="Display profile pictures">
+                                            <ToggleSwitch
+                                                enabled={settings.showAvatars}
+                                                onToggle={() => updateSetting('showAvatars', !settings.showAvatars)}
+                                            />
+                                        </SettingRow>
+                                        <SettingRow label="Enable animations" description="Smooth transitions">
+                                            <ToggleSwitch
+                                                enabled={settings.animationsEnabled}
+                                                onToggle={() => updateSetting('animationsEnabled', !settings.animationsEnabled)}
+                                            />
+                                        </SettingRow>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        </TabsContent>
+
+                        {/* Account Tab */}
+                        <TabsContent value="account" className="space-y-8 mt-0">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Profile</CardTitle>
+                                        <CardDescription>Manage your personal information</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="flex items-center gap-6 mb-8 pb-6 border-b border-border">
+                                            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
+                                                {settings.displayName[0]?.toUpperCase() || 'U'}
+                                            </div>
+                                            <div className="space-y-2">
+                                                <h3 className="text-lg font-semibold text-foreground">{settings.displayName}</h3>
+                                                <p className="text-sm text-muted-foreground">{settings.email}</p>
+                                                <Button variant="outline" size="sm">Change photo</Button>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-foreground mb-2">Display name</label>
+                                                <Input
+                                                    type="text"
+                                                    value={settings.displayName}
+                                                    onChange={(e) => updateSetting('displayName', e.target.value)}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-foreground mb-2">Email address</label>
+                                                <Input
+                                                    type="email"
+                                                    value={settings.email}
+                                                    onChange={(e) => updateSetting('email', e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Preferences</CardTitle>
+                                        <CardDescription>Regional and language settings</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-foreground mb-2">Timezone</label>
+                                                <select
+                                                    value={settings.timezone}
+                                                    onChange={(e) => updateSetting('timezone', e.target.value)}
+                                                    className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:border-primary outline-none transition-all"
+                                                >
+                                                    <option value="UTC">UTC</option>
+                                                    <option value="America/New_York">Eastern Time</option>
+                                                    <option value="America/Los_Angeles">Pacific Time</option>
+                                                    <option value="Europe/London">London</option>
+                                                    <option value="Asia/Kolkata">India Standard Time</option>
+                                                    <option value="Asia/Tokyo">Japan Standard Time</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-foreground mb-2">Language</label>
+                                                <select
+                                                    value={settings.language}
+                                                    onChange={(e) => updateSetting('language', e.target.value)}
+                                                    className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:border-primary outline-none transition-all"
+                                                >
+                                                    <option value="en">English</option>
+                                                    <option value="es">Español</option>
+                                                    <option value="fr">Français</option>
+                                                    <option value="de">Deutsch</option>
+                                                    <option value="ja">日本語</option>
+                                                    <option value="hi">हिन्दी</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        </TabsContent>
+
+                        {/* Email Accounts Tab */}
+                        <TabsContent value="email" className="space-y-8 mt-0">
+                            {/* IMAP Configuration Section */}
+                            <Card>
+                                <CardHeader>
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <CardTitle className="flex items-center gap-2">
+                                                <Inbox className="w-5 h-5" />
+                                                Email Accounts - IMAP Configuration
+                                            </CardTitle>
+                                            <CardDescription>Configure IMAP to receive emails in your inbox</CardDescription>
+                                        </div>
+                                    </div>
+                                </CardHeader>
+                                <CardContent>
+                                    {loadingAccounts ? (
+                                        <div className="flex items-center justify-center py-12">
+                                            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                                        </div>
+                                    ) : smtpAccounts.length === 0 ? (
+                                        <div className="text-center py-12 border border-dashed border-border rounded-xl">
+                                            <Server className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                                            <p className="text-muted-foreground mb-2">No email accounts found</p>
+                                            <p className="text-sm text-muted-foreground">Add SMTP accounts first in the SMTP Accounts section</p>
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                                            {smtpAccounts.map((account) => (
+                                                <div
+                                                    key={account.id}
+                                                    className="p-5 rounded-xl border border-border bg-muted/30 hover:bg-muted/50 transition-colors"
+                                                >
+                                                    <div className="flex items-start gap-4 mb-4">
+                                                        <div className={cn(
+                                                            "w-12 h-12 rounded-xl flex items-center justify-center shrink-0",
+                                                            account.imapConfigured ? "bg-green-500/10" : "bg-muted"
+                                                        )}>
+                                                            <Mail className={cn(
+                                                                "w-6 h-6",
+                                                                account.imapConfigured ? "text-green-500" : "text-muted-foreground"
+                                                            )} />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <h4 className="font-semibold text-foreground truncate">{account.name}</h4>
+                                                            <p className="text-sm text-muted-foreground truncate">{account.fromEmail}</p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-2 mb-4">
+                                                        {account.imapConfigured ? (
+                                                            <Badge variant="default" className="bg-green-500/20 text-green-500 border-green-500/30">
+                                                                <CheckCircle className="w-3 h-3 mr-1" />
+                                                                IMAP Active
+                                                            </Badge>
+                                                        ) : (
+                                                            <Badge variant="secondary">
+                                                                <XCircle className="w-3 h-3 mr-1" />
+                                                                IMAP Not Configured
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+
+                                                    {account.imapConfigured && account.imapHost && (
+                                                        <p className="text-xs text-muted-foreground mb-4 font-mono">
+                                                            {account.imapHost}:{account.imapPort}
+                                                        </p>
+                                                    )}
+
+                                                    <Button
+                                                        variant={account.imapConfigured ? "outline" : "default"}
+                                                        size="sm"
+                                                        className="w-full"
+                                                        onClick={() => handleConfigureImap(account)}
+                                                    >
+                                                        <Settings2 className="w-4 h-4 mr-2" />
+                                                        {account.imapConfigured ? 'Edit IMAP' : 'Configure IMAP'}
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                            {/* Sending Defaults */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Sending Defaults</CardTitle>
+                                        <CardDescription>Configure default email sending behavior</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="mb-6">
+                                            <label className="block text-sm font-medium text-foreground mb-2">
+                                                Default delay between emails
+                                            </label>
+                                            <div className="flex items-center gap-3">
+                                                <Input
+                                                    type="number"
+                                                    min="1"
+                                                    max="60"
+                                                    value={settings.defaultThrottling}
+                                                    onChange={(e) => updateSetting('defaultThrottling', parseInt(e.target.value) || 4)}
+                                                    className="w-24"
+                                                />
+                                                <span className="text-sm text-muted-foreground">minutes</span>
+                                            </div>
+                                        </div>
+                                        <SettingRow label="Auto-retry failed emails" description="Automatically retry after delay">
+                                            <ToggleSwitch
+                                                enabled={settings.autoRetry}
+                                                onToggle={() => updateSetting('autoRetry', !settings.autoRetry)}
+                                            />
+                                        </SettingRow>
+                                    </CardContent>
+                                </Card>
+
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Email Tracking</CardTitle>
+                                        <CardDescription>Monitor campaign engagement</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="pt-0">
+                                        <SettingRow label="Track email opens" description="Know when emails are opened">
+                                            <ToggleSwitch
+                                                enabled={settings.trackOpens}
+                                                onToggle={() => updateSetting('trackOpens', !settings.trackOpens)}
+                                            />
+                                        </SettingRow>
+                                        <SettingRow label="Track link clicks" description="Monitor link engagement">
+                                            <ToggleSwitch
+                                                enabled={settings.trackClicks}
+                                                onToggle={() => updateSetting('trackClicks', !settings.trackClicks)}
+                                            />
+                                        </SettingRow>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        </TabsContent>
+
+                        {/* Notifications Tab */}
+                        <TabsContent value="notifications" className="space-y-8 mt-0">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Email Notifications</CardTitle>
+                                    <CardDescription>Control what notifications you receive</CardDescription>
+                                </CardHeader>
+                                <CardContent className="pt-0">
+                                    <SettingRow label="Email notifications" description="Receive important updates via email">
+                                        <ToggleSwitch
+                                            enabled={settings.emailNotifications}
+                                            onToggle={() => updateSetting('emailNotifications', !settings.emailNotifications)}
+                                        />
+                                    </SettingRow>
+                                    <SettingRow label="Campaign complete" description="Notify when a campaign finishes">
+                                        <ToggleSwitch
+                                            enabled={settings.campaignComplete}
+                                            onToggle={() => updateSetting('campaignComplete', !settings.campaignComplete)}
+                                            disabled={!settings.emailNotifications}
+                                        />
+                                    </SettingRow>
+                                    <SettingRow label="Failure alerts" description="Notify when emails fail to send">
+                                        <ToggleSwitch
+                                            enabled={settings.failureAlerts}
+                                            onToggle={() => updateSetting('failureAlerts', !settings.failureAlerts)}
+                                            disabled={!settings.emailNotifications}
+                                        />
+                                    </SettingRow>
+                                    <SettingRow label="Weekly digest" description="Weekly performance summary">
+                                        <ToggleSwitch
+                                            enabled={settings.weeklyDigest}
+                                            onToggle={() => updateSetting('weeklyDigest', !settings.weeklyDigest)}
+                                            disabled={!settings.emailNotifications}
+                                        />
+                                    </SettingRow>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+
+                        {/* Security Tab */}
+                        <TabsContent value="security" className="space-y-8 mt-0">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Password</CardTitle>
+                                        <CardDescription>Keep your account secure</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-sm text-muted-foreground">Last changed 30 days ago</p>
+                                            <Button variant="outline">Change password</Button>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Two-Factor Authentication</CardTitle>
+                                        <CardDescription>Add extra security</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="pt-0">
+                                        <SettingRow label="Enable 2FA" description="Require verification code">
+                                            <ToggleSwitch
+                                                enabled={settings.twoFactorEnabled}
+                                                onToggle={() => {
+                                                    if (!settings.twoFactorEnabled) {
+                                                        toast.info('2FA setup would open here');
+                                                    }
+                                                    updateSetting('twoFactorEnabled', !settings.twoFactorEnabled);
+                                                }}
+                                            />
+                                        </SettingRow>
+                                    </CardContent>
+                                </Card>
+
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Session Management</CardTitle>
+                                        <CardDescription>Control active sessions</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="mb-6">
+                                            <label className="block text-sm font-medium text-foreground mb-2">Session timeout</label>
+                                            <select
+                                                value={settings.sessionTimeout}
+                                                onChange={(e) => updateSetting('sessionTimeout', parseInt(e.target.value))}
+                                                className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:border-primary outline-none"
+                                            >
+                                                <option value={15}>15 minutes</option>
+                                                <option value={30}>30 minutes</option>
+                                                <option value={60}>1 hour</option>
+                                                <option value={120}>2 hours</option>
+                                                <option value={480}>8 hours</option>
+                                            </select>
+                                        </div>
+                                        <Button variant="destructive" className="gap-2">
+                                            <LogOut className="w-4 h-4" />
+                                            Sign out all devices
+                                        </Button>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        </TabsContent>
+
+                        {/* Data Tab */}
+                        <TabsContent value="data" className="space-y-8 mt-0">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Export Data</CardTitle>
+                                        <CardDescription>Download your data</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <p className="text-sm text-muted-foreground mb-4">
+                                            Download campaigns, settings, and templates.
+                                        </p>
+                                        <Button variant="outline" className="w-full gap-2">
+                                            <Download className="w-4 h-4" />
+                                            Export all data
+                                        </Button>
+                                    </CardContent>
+                                </Card>
+
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Import Data</CardTitle>
+                                        <CardDescription>Restore from backup</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <p className="text-sm text-muted-foreground mb-4">
+                                            Import settings and templates.
+                                        </p>
+                                        <Button variant="outline" className="w-full gap-2">
+                                            <Upload className="w-4 h-4" />
+                                            Import data
+                                        </Button>
+                                    </CardContent>
+                                </Card>
+
+                                <Card className="border-destructive/50">
+                                    <CardHeader>
+                                        <CardTitle className="text-destructive">Danger Zone</CardTitle>
+                                        <CardDescription>Irreversible actions</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <p className="text-sm text-muted-foreground mb-4">
+                                            Permanently delete all data.
+                                        </p>
+                                        <Button
+                                            variant="destructive"
+                                            className="w-full gap-2"
+                                            onClick={() => toast.error('This would delete all data')}
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                            Delete all data
+                                        </Button>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        </TabsContent>
+                    </Tabs>
+                </div>
+            </ScrollArea>
+
+            {/* IMAP Config Dialog */}
+            <ImapConfigDialog
+                open={showImapConfig}
+                onOpenChange={setShowImapConfig}
+                account={selectedAccount}
+                onSuccess={handleImapSuccess}
+            />
         </div>
     );
 }

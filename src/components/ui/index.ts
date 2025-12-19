@@ -12,6 +12,7 @@ export { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGr
 export { Table, TableHeader, TableBody, TableFooter, TableHead, TableRow, TableCell, TableCaption } from './Table';
 export { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from './Tooltip';
 export { Progress } from './Progress';
+export { Checkbox } from './Checkbox';
 export {
     DropdownMenu,
     DropdownMenuContent,

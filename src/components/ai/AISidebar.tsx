@@ -132,13 +132,13 @@ export function AISidebar({
     useEffect(() => {
         if (pendingMessage && !isLoading) {
             const { message, selectedText, recipientEmail } = pendingMessage;
-            
+
             // Build context-aware message
             let fullMessage = message;
             if (recipientEmail) {
                 fullMessage = `For ${recipientEmail}: ${message}`;
             }
-            
+
             // Set input so user can review and send
             setInput(fullMessage);
             onPendingMessageHandled?.();
@@ -230,12 +230,12 @@ export function AISidebar({
                                 onInsertBody(result.result.template.body);
                             }
                         }
-                        
+
                         // Pass personalized emails to parent for preview cycling
                         if (result.result.personalizedEmails && onPersonalizedEmails) {
                             onPersonalizedEmails(result.result.personalizedEmails);
                         }
-                        
+
                         toast.success(`Generated ${result.result.totalRecipients} unique personalized emails!`);
                     } else if (result.result.success) {
                         toast.success(result.result.message);
@@ -279,10 +279,10 @@ export function AISidebar({
         setIsLoading(true);
         try {
             const token = localStorage.getItem('bulkEmailToken');
-            
+
             // Handle personalized emails differently
             const sendType = pendingPreview.previewType === 'personalized' ? 'personalized' : pendingPreview.previewType;
-            
+
             const response = await fetch(`${API_BASE}/confirm-send`, {
                 method: 'POST',
                 headers: {
@@ -721,7 +721,7 @@ export function AISidebar({
                     </div>
 
                     <div className="flex items-center justify-between rounded-b-md border-t bg-muted/50 px-3 py-2 dark:bg-muted mt-2">
-                        <Select defaultValue="mistral-medium">
+                        <Select defaultValue="mistral-large-latest">
                             <SelectTrigger className="h-7 w-auto min-w-[130px] border-none shadow-none gap-2 px-2 focus:ring-0 text-foreground bg-transparent">
                                 <div className="flex items-center gap-2">
                                     <SparklesIcon className="w-3 h-3 text-primary" />
@@ -729,9 +729,9 @@ export function AISidebar({
                                 </div>
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem className="text-xs" value="mistral-large">Mistral Large</SelectItem>
-                                <SelectItem className="text-xs" value="mistral-medium">Mistral Medium</SelectItem>
-                                <SelectItem className="text-xs" value="mistral-small">Mistral Small</SelectItem>
+                                <SelectItem className="text-xs" value="mistral-large-latest">Mistral Large 3</SelectItem>
+                                <SelectItem className="text-xs" value="mistral-medium-latest">Mistral Medium 3.1</SelectItem>
+                                <SelectItem className="text-xs" value="mistral-small-latest">Mistral Small 3.2</SelectItem>
                             </SelectContent>
                         </Select>
 
