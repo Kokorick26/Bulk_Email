@@ -38,7 +38,10 @@ router.put('/smtp-accounts/:id/imap', auth, async (req, res) => {
             imapHost,
             imapPort: Number(imapPort),
             imapUser,
-            imapPassword: imapPassword || existing.Item.imapPassword, // Keep existing if not provided
+            // Keep existing password if not provided OR if it's the masked placeholder
+            imapPassword: (imapPassword && imapPassword !== '********')
+                ? imapPassword
+                : existing.Item.imapPassword,
             imapTls: imapTls !== undefined ? imapTls : true,
             imapConfigured: true,
             updatedAt: new Date().toISOString(),
@@ -85,6 +88,14 @@ router.post('/smtp-accounts/:id/test-imap', auth, async (req, res) => {
             connTimeout: 10000,
             authTimeout: 10000,
         };
+
+        console.log('[IMAP Test] Connecting with:', {
+            user: imapConfig.user,
+            host: imapConfig.host,
+            port: imapConfig.port,
+            passwordSet: !!imapConfig.password,
+            passwordLength: imapConfig.password?.length
+        });
 
         const result = await testImapConnection(imapConfig);
 
@@ -172,6 +183,25 @@ router.post('/fetch/:accountId', auth, async (req, res) => {
         };
 
         const messages = await fetchImapMessages(imapConfig, folder, limit, accountId, req.user.userId);
+
+        // Cache messages to DynamoDB for persistence
+        if (messages.length > 0) {
+            console.log(`Caching ${messages.length} messages to DynamoDB...`);
+            const cachePromises = messages.map(msg =>
+                dynamoDB.put({
+                    TableName: INBOX_MESSAGES_TABLE,
+                    Item: {
+                        ...msg,
+                        cachedAt: new Date().toISOString()
+                    }
+                }).promise().catch(err => {
+                    console.error(`Failed to cache message ${msg.id}:`, err.message);
+                })
+            );
+            await Promise.all(cachePromises);
+            console.log(`Cached ${messages.length} messages successfully`);
+        }
+
         res.json({ messages, count: messages.length, folder });
     } catch (err) {
         console.error('Error fetching inbox:', err);
@@ -245,6 +275,13 @@ function fetchImapMessages(imapConfig, folder, limit, accountId, userId) {
                                 isStarred: flags.includes('\\Flagged'),
                                 hasAttachments: parsed.attachments?.length > 0,
                                 attachmentCount: parsed.attachments?.length || 0,
+                                attachments: (parsed.attachments || []).map((att, idx) => ({
+                                    id: `${accountId}-${uid}-${idx}`,
+                                    filename: att.filename || `attachment-${idx + 1}`,
+                                    contentType: att.contentType || 'application/octet-stream',
+                                    size: att.size || 0,
+                                    contentId: att.contentId || null,
+                                })),
                                 snippet: (parsed.text || '').substring(0, 200).replace(/\n/g, ' '),
                                 messageId: parsed.messageId || '',
                                 inReplyTo: parsed.inReplyTo || '',

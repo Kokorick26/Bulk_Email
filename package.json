@@ -10,7 +10,8 @@
         "client": "vite",
         "build": "vite build",
         "preview": "vite preview",
-        "setup-db": "node server/setup-tables.js"
+        "setup-db": "node server/setup-tables.js",
+        "seed-smtp": "node server/seed-smtp.js"
     },
     "dependencies": {
         "@radix-ui/react-avatar": "^1.1.11",

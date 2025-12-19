@@ -18,6 +18,14 @@ import {
 } from '../ui/DropdownMenu';
 import { useTheme } from '../../lib/ThemeContext';
 
+interface Attachment {
+    id: string;
+    filename: string;
+    contentType: string;
+    size: number;
+    contentId?: string | null;
+}
+
 interface Message {
     id: string;
     uid: number;
@@ -35,6 +43,7 @@ interface Message {
     isStarred: boolean;
     hasAttachments: boolean;
     attachmentCount: number;
+    attachments?: Attachment[];
     snippet: string;
     messageId: string;
     inReplyTo?: string;
@@ -47,9 +56,10 @@ interface EmailViewerProps {
     onDelete: () => void;
     onMarkAsRead: () => void;
     onReply?: () => void;
+    onForward?: () => void;
 }
 
-export default function EmailViewer({ message, onBack, onDelete, onMarkAsRead, onReply }: EmailViewerProps) {
+export default function EmailViewer({ message, onBack, onDelete, onMarkAsRead, onReply, onForward }: EmailViewerProps) {
     const { theme } = useTheme();
     const [isStarred, setIsStarred] = useState(message.isStarred);
     const [showRawHtml, setShowRawHtml] = useState(false);
@@ -299,19 +309,55 @@ export default function EmailViewer({ message, onBack, onDelete, onMarkAsRead, o
                     {/* Attachments */}
                     {message.hasAttachments && (
                         <div className={cn(
-                            'flex items-center gap-2 p-3 rounded-lg mb-6',
+                            'p-4 rounded-lg mb-6',
                             theme === 'dark' ? 'bg-[#303134]' : 'bg-[#f1f3f4]'
                         )}>
-                            <Paperclip className={cn(
-                                'w-5 h-5',
-                                theme === 'dark' ? 'text-[#9aa0a6]' : 'text-[#5f6368]'
-                            )} />
-                            <span className={cn(
-                                'text-sm',
-                                theme === 'dark' ? 'text-[#e8eaed]' : 'text-[#202124]'
-                            )}>
-                                {message.attachmentCount} attachment{message.attachmentCount > 1 ? 's' : ''}
-                            </span>
+                            <div className="flex items-center gap-2 mb-3">
+                                <Paperclip className={cn(
+                                    'w-5 h-5',
+                                    theme === 'dark' ? 'text-[#9aa0a6]' : 'text-[#5f6368]'
+                                )} />
+                                <span className={cn(
+                                    'text-sm font-medium',
+                                    theme === 'dark' ? 'text-[#e8eaed]' : 'text-[#202124]'
+                                )}>
+                                    {message.attachmentCount} attachment{message.attachmentCount > 1 ? 's' : ''}
+                                </span>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                {message.attachments?.map((att) => (
+                                    <div
+                                        key={att.id}
+                                        className={cn(
+                                            'flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors',
+                                            theme === 'dark'
+                                                ? 'bg-[#202124] border-[#3c4043] hover:bg-[#3c4043]'
+                                                : 'bg-white border-[#dadce0] hover:bg-[#e8eaed]'
+                                        )}
+                                        onClick={() => {
+                                            // TODO: Implement attachment download
+                                            console.log('Download attachment:', att.filename);
+                                        }}
+                                    >
+                                        <Download className={cn(
+                                            'w-4 h-4',
+                                            theme === 'dark' ? 'text-[#8ab4f8]' : 'text-[#1a73e8]'
+                                        )} />
+                                        <span className={cn(
+                                            'text-sm',
+                                            theme === 'dark' ? 'text-[#e8eaed]' : 'text-[#202124]'
+                                        )}>
+                                            {att.filename}
+                                        </span>
+                                        <span className={cn(
+                                            'text-xs',
+                                            theme === 'dark' ? 'text-[#9aa0a6]' : 'text-[#5f6368]'
+                                        )}>
+                                            ({Math.round(att.size / 1024)} KB)
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     )}
 
@@ -365,6 +411,7 @@ export default function EmailViewer({ message, onBack, onDelete, onMarkAsRead, o
                         </Button>
                         <Button
                             variant="outline"
+                            onClick={onForward}
                             className={cn(
                                 'flex items-center gap-2',
                                 theme === 'dark'

@@ -73,7 +73,8 @@ export default function ImapConfigDialog({ open, onOpenChange, account, onSucces
                 imapHost: account.imapHost || detectedPreset?.host || account.host.replace('smtp', 'imap'),
                 imapPort: String(account.imapPort || detectedPreset?.port || 993),
                 imapUser: account.imapUser || account.username,
-                imapPassword: account.imapPassword || '',
+                // Don't pre-fill password - leave empty, backend will use existing if empty
+                imapPassword: '',
                 imapTls: account.imapTls !== undefined ? account.imapTls : (detectedPreset?.tls ?? true),
             });
             setTestResult(null);
@@ -298,7 +299,7 @@ export default function ImapConfigDialog({ open, onOpenChange, account, onSucces
                                     setForm(p => ({ ...p, imapPassword: e.target.value }));
                                     setTestResult(null);
                                 }}
-                                placeholder="••••••••"
+                                placeholder={account?.imapConfigured ? 'Leave empty to keep existing' : 'Enter password'}
                                 className={cn(
                                     'pr-10',
                                     theme === 'dark'
@@ -321,7 +322,9 @@ export default function ImapConfigDialog({ open, onOpenChange, account, onSucces
                             'text-xs mt-1',
                             theme === 'dark' ? 'text-[#9aa0a6]' : 'text-[#5f6368]'
                         )}>
-                            For Gmail/Google Workspace, use an App Password
+                            {account?.imapConfigured
+                                ? 'Password already saved. Leave empty to keep it, or enter new to change.'
+                                : 'For Gmail/Google Workspace, use an App Password'}
                         </p>
                     </div>
 

@@ -20,49 +20,15 @@ router.get('/smtp-accounts', auth, async (req, res) => {
         // Don't send passwords in response
         const accounts = (data.Items || []).map(acc => ({
             ...acc,
-            password: acc.password ? '********' : ''
+            password: acc.password ? '********' : '',
+            imapPassword: acc.imapPassword ? '********' : ''
         })).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-        // Add env SMTP as system default if configured
-        const envFromEmail = process.env.SMTP_FROM || process.env.SMTP_USER;
-        const envFromName = process.env.SMTP_FROM_NAME || 'Bhawesh Bhaskar';
-        const envSmtp = process.env.SMTP_HOST && process.env.SMTP_USER ? {
-            id: 'env-default',
-            name: 'Bhawesh Bhaskar (System Default)',
-            host: process.env.SMTP_HOST,
-            port: Number(process.env.SMTP_PORT) || 587,
-            username: process.env.SMTP_USER,
-            password: '********',
-            fromEmail: envFromEmail,
-            email: `"${envFromName}" <${envFromEmail}>`,
-            fromName: envFromName,
-            isDefault: accounts.length === 0 || !accounts.some(a => a.isDefault),
-            isSystem: true,
-            createdAt: new Date().toISOString()
-        } : null;
-
-        // Put env SMTP first if it exists
-        const allAccounts = envSmtp ? [envSmtp, ...accounts] : accounts;
-
-        res.json(allAccounts);
+        res.json(accounts);
     } catch (err) {
         console.error('Error fetching SMTP accounts:', err);
-        // If table doesn't exist, return env config only
         if (err.code === 'ResourceNotFoundException') {
-            const envSmtp = process.env.SMTP_HOST && process.env.SMTP_USER ? [{
-                id: 'env-default',
-                name: 'System Default (ENV)',
-                host: process.env.SMTP_HOST,
-                port: Number(process.env.SMTP_PORT) || 587,
-                username: process.env.SMTP_USER,
-                password: '********',
-                fromEmail: process.env.SMTP_FROM || process.env.SMTP_USER,
-                fromName: process.env.SMTP_FROM_NAME || 'Bhawesh Bhaskar',
-                isDefault: true,
-                isSystem: true,
-                createdAt: new Date().toISOString()
-            }] : [];
-            return res.json(envSmtp);
+            return res.json([]);
         }
         res.status(500).json({ error: 'Could not load SMTP accounts' });
     }
@@ -729,7 +695,7 @@ async function processEmailsOneByOne(campaignId, campaign, recipientList, smtpAc
 
             transporter.close();
 
-            // Log success
+            // Log success with email content for preview
             try {
                 await dynamoDB.put({
                     TableName: EMAIL_LOGS_TABLE,
@@ -737,8 +703,12 @@ async function processEmailsOneByOne(campaignId, campaign, recipientList, smtpAc
                         id: uuidv4(),
                         campaignId,
                         email,
+                        recipientName: data.name || '',
                         status: 'sent',
                         messageId: info.messageId,
+                        subject: subject,
+                        htmlContent: html,
+                        textContent: text,
                         sentAt: new Date().toISOString(),
                     }
                 }).promise();
@@ -843,7 +813,7 @@ async function processEmailsPooled(campaignId, campaign, recipientList, smtpAcco
                     headers: {},
                 });
 
-                // Log success (ignore DB errors)
+                // Log success with content (ignore DB errors)
                 try {
                     await dynamoDB.put({
                         TableName: EMAIL_LOGS_TABLE,
@@ -851,8 +821,12 @@ async function processEmailsPooled(campaignId, campaign, recipientList, smtpAcco
                             id: uuidv4(),
                             campaignId,
                             email,
+                            recipientName: data.name || '',
                             status: 'sent',
                             messageId: info.messageId,
+                            subject: subject,
+                            htmlContent: html,
+                            textContent: text,
                             sentAt: new Date().toISOString(),
                         }
                     }).promise();

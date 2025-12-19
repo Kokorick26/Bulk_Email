@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../../lib/utils';
+import { cache } from '../../lib/cache';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { ScrollArea } from '../ui/ScrollArea';
@@ -56,9 +57,11 @@ interface SmtpAccount {
 interface InboxViewProps {
     smtpAccounts: SmtpAccount[];
     onRefreshAccounts: () => void;
+    onReply?: (message: Message) => void;
+    onForward?: (message: Message) => void;
 }
 
-export default function InboxView({ smtpAccounts, onRefreshAccounts }: InboxViewProps) {
+export default function InboxView({ smtpAccounts, onRefreshAccounts, onReply, onForward }: InboxViewProps) {
     const { theme } = useTheme();
     const [selectedAccount, setSelectedAccount] = useState<SmtpAccount | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
@@ -85,6 +88,23 @@ export default function InboxView({ smtpAccounts, onRefreshAccounts }: InboxView
     const fetchMessages = useCallback(async (fresh = false) => {
         if (!selectedAccount) return;
 
+        const cacheKey = `inbox:${selectedAccount.id}`;
+
+        // Try to load from IndexedDB cache first (instant)
+        if (!fresh) {
+            try {
+                const cachedMessages = await cache.getCachedMessages(selectedAccount.id, 'INBOX');
+                if (cachedMessages && cachedMessages.length > 0) {
+                    setMessages(cachedMessages);
+                    setLoading(false);
+                    console.log(`Loaded ${cachedMessages.length} messages from cache`);
+                    return; // Don't fetch if we have cached data
+                }
+            } catch (e) {
+                console.error('Cache read error:', e);
+            }
+        }
+
         setLoading(true);
         if (fresh) setFetching(true);
 
@@ -106,14 +126,22 @@ export default function InboxView({ smtpAccounts, onRefreshAccounts }: InboxView
                 }
 
                 const data = await res.json();
-                setMessages(data.messages || []);
+                const fetchedMessages = data.messages || [];
+                setMessages(fetchedMessages);
+
+                // Cache to IndexedDB
+                await cache.cacheMessages(selectedAccount.id, 'INBOX', fetchedMessages);
+
                 toast.success(`Fetched ${data.count} emails`);
             } else {
-                // Get cached messages
+                // Get from server cache (DynamoDB)
                 const res = await fetch(`${API_BASE}/messages/${selectedAccount.id}?folder=INBOX`, { headers });
                 if (res.ok) {
                     const data = await res.json();
                     setMessages(data);
+
+                    // Cache to IndexedDB
+                    await cache.cacheMessages(selectedAccount.id, 'INBOX', data);
                 }
             }
         } catch (err: any) {
@@ -125,9 +153,11 @@ export default function InboxView({ smtpAccounts, onRefreshAccounts }: InboxView
         }
     }, [selectedAccount]);
 
+    // Load cached first, then fetch fresh on first mount
     useEffect(() => {
         if (selectedAccount?.imapConfigured) {
-            fetchMessages(true);
+            // First try cache (instant)
+            fetchMessages(false);
         }
     }, [selectedAccount, fetchMessages]);
 
@@ -293,6 +323,8 @@ export default function InboxView({ smtpAccounts, onRefreshAccounts }: InboxView
                 onBack={() => setSelectedMessage(null)}
                 onDelete={() => handleDelete(selectedMessage)}
                 onMarkAsRead={() => handleMarkAsRead(selectedMessage)}
+                onReply={() => onReply?.(selectedMessage)}
+                onForward={() => onForward?.(selectedMessage)}
             />
         );
     }
