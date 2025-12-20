@@ -3,7 +3,7 @@ import {
     LayoutDashboard, Send, Server, History, FileText, Zap,
     BarChart2, TrendingUp, Mail, Loader2, RefreshCw,
     Inbox, Archive, Trash2, AlertCircle, FileEdit, Edit3,
-    Settings, ChevronRight,
+    Settings, ChevronRight, Megaphone,
     Check, Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -22,6 +22,9 @@ import { useTheme } from '../../lib/ThemeContext';
 import { useDashboardContext } from '../../layouts/DashboardShell';
 import InboxView from './InboxView';
 import SentView from './SentView';
+// New organized campaign components
+import { CampaignsList, CampaignCreate, CampaignDetail } from '../campaigns';
+import type { Campaign as OrganizedCampaign } from '../campaigns';
 
 const API_BASE = '/api/bulk-email';
 
@@ -64,7 +67,7 @@ interface EmailStats {
 
 type SidebarItem =
     | 'inbox' | 'sent' | 'drafts' | 'archive' | 'spam' | 'trash'
-    | 'overview' | 'compose' | 'campaign-builder' | 'templates' | 'history' | 'accounts' | 'settings';
+    | 'overview' | 'compose' | 'campaign-builder' | 'campaigns' | 'templates' | 'history' | 'accounts' | 'settings';
 
 export default function UnifiedDashboard() {
     // Hooks
@@ -72,12 +75,29 @@ export default function UnifiedDashboard() {
     const { sidebarCollapsed, setNavigateToSettings } = useDashboardContext();
 
     // State
-    const [activeItem, setActiveItem] = useState<SidebarItem>('campaign-builder');
+    const [activeItem, setActiveItem] = useState<SidebarItem>('campaigns');
     const [smtpAccounts, setSmtpAccounts] = useState<SmtpAccount[]>([]);
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
     const [stats, setStats] = useState<EmailStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [aiSidebarOpen, setAiSidebarOpen] = useState(true);
+
+    // New campaign flow states
+    const [campaignView, setCampaignView] = useState<'list' | 'create' | 'detail'>('list');
+    const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
+
+    // Convert campaigns to organized format
+    const organizedCampaigns: OrganizedCampaign[] = campaigns.map(c => ({
+        id: c.id,
+        name: c.name,
+        status: c.status === 'sending' ? 'active' : c.status === 'completed' ? 'completed' : c.status === 'failed' ? 'failed' : 'draft',
+        createdAt: c.createdAt,
+        completedAt: c.completedAt,
+        totalRecipients: c.totalRecipients,
+        sentCount: c.sentCount,
+        failedCount: c.failedCount,
+        progress: c.totalRecipients > 0 ? (c.sentCount / c.totalRecipients) * 100 : 0,
+    }));
 
     // AI Context for the sidebar
     const [aiContext, setAiContext] = useState({
@@ -199,10 +219,9 @@ export default function UnifiedDashboard() {
 
     const campaignItems = [
         { id: 'overview' as const, label: 'Overview', icon: LayoutDashboard },
-        { id: 'campaign-builder' as const, label: 'Campaign Builder', icon: Zap },
+        { id: 'campaigns' as const, label: 'Campaigns', icon: Megaphone },
         { id: 'compose' as const, label: 'Quick Compose', icon: Edit3 },
         { id: 'templates' as const, label: 'Templates', icon: FileText },
-        { id: 'history' as const, label: 'History', icon: History, badge: activeCampaigns || undefined },
         { id: 'accounts' as const, label: 'SMTP Accounts', icon: Server },
     ];
 
@@ -453,7 +472,61 @@ export default function UnifiedDashboard() {
             );
         }
 
-        // Campaign Builder with AI context updates
+        // NEW: Organized Campaigns View (like reference images)
+        if (activeItem === 'campaigns') {
+            if (campaignView === 'create') {
+                return (
+                    <ScrollArea className="flex-1">
+                        <div className="px-8 py-6">
+                            <CampaignCreate
+                                onBack={() => setCampaignView('list')}
+                                onComplete={(campaignId: string) => {
+                                    setSelectedCampaignId(campaignId);
+                                    setCampaignView('detail');
+                                    fetchData();
+                                }}
+                            />
+                        </div>
+                    </ScrollArea>
+                );
+            }
+
+            if (campaignView === 'detail' && selectedCampaignId) {
+                return (
+                    <ScrollArea className="flex-1">
+                        <div className="px-8 py-6">
+                            <CampaignDetail
+                                campaignId={selectedCampaignId}
+                                onBack={() => {
+                                    setCampaignView('list');
+                                    setSelectedCampaignId(null);
+                                }}
+                            />
+                        </div>
+                    </ScrollArea>
+                );
+            }
+
+            // Default: List view
+            return (
+                <ScrollArea className="flex-1">
+                    <div className="px-8 py-6">
+                        <CampaignsList
+                            campaigns={organizedCampaigns}
+                            loading={loading}
+                            onCreateNew={() => setCampaignView('create')}
+                            onViewCampaign={(id: string) => {
+                                setSelectedCampaignId(id);
+                                setCampaignView('detail');
+                            }}
+                            onDeleteCampaign={handleDeleteCampaign}
+                        />
+                    </div>
+                </ScrollArea>
+            );
+        }
+
+        // Campaign Builder with AI context updates (legacy)
         if (activeItem === 'campaign-builder') {
             return (
                 <ScrollArea className="flex-1">
@@ -599,11 +672,6 @@ export default function UnifiedDashboard() {
                             >
                                 <item.icon className="w-5 h-5 shrink-0" />
                                 {!sidebarCollapsed && <span className="flex-1 text-left">{item.label}</span>}
-                                {!sidebarCollapsed && item.badge !== undefined && (
-                                    <span className="text-xs bg-[#1a73e8] text-white px-2 py-0.5 rounded-full font-medium">
-                                        {item.badge}
-                                    </span>
-                                )}
                             </button>
                         ))}
 
