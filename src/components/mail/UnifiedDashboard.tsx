@@ -80,7 +80,7 @@ export default function UnifiedDashboard() {
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
     const [stats, setStats] = useState<EmailStats | null>(null);
     const [loading, setLoading] = useState(true);
-    const [aiSidebarOpen, setAiSidebarOpen] = useState(true);
+    const [aiSidebarOpen, setAiSidebarOpen] = useState(false);
 
     // New campaign flow states
     const [campaignView, setCampaignView] = useState<'list' | 'create' | 'detail'>('list');
@@ -210,6 +210,7 @@ export default function UnifiedDashboard() {
     // Sidebar items configuration
     const inboxItems = [
         { id: 'inbox' as const, label: 'Inbox', icon: Inbox },
+        { id: 'accounts' as const, label: 'Email Accounts', icon: Server },
         { id: 'sent' as const, label: 'Sent', icon: Send },
         { id: 'drafts' as const, label: 'Drafts', icon: FileEdit },
         { id: 'archive' as const, label: 'Archive', icon: Archive },
@@ -222,7 +223,6 @@ export default function UnifiedDashboard() {
         { id: 'campaigns' as const, label: 'Campaigns', icon: Megaphone },
         { id: 'compose' as const, label: 'Quick Compose', icon: Edit3 },
         { id: 'templates' as const, label: 'Templates', icon: FileText },
-        { id: 'accounts' as const, label: 'SMTP Accounts', icon: Server },
     ];
 
     // Render content based on active item
@@ -761,6 +761,24 @@ export default function UnifiedDashboard() {
                     pendingMessage={pendingAIMessage}
                     onPendingMessageHandled={() => setPendingAIMessage(null)}
                 />
+            )}
+
+            {/* Floating AI Toggle Button - Bottom Right */}
+            {showAiSidebar && !aiSidebarOpen && (
+                <button
+                    onClick={() => setAiSidebarOpen(true)}
+                    className={cn(
+                        'fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-full shadow-lg transition-all hover:scale-105',
+                        theme === 'dark'
+                            ? 'bg-[#1a73e8] text-white hover:bg-[#1557b0]'
+                            : 'bg-[#1a73e8] text-white hover:bg-[#1557b0]'
+                    )}
+                    title="Open Iris AI Assistant"
+                >
+                    <Sparkles className="w-5 h-5" />
+                    <span className="text-sm font-medium">Iris AI</span>
+                    <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                </button>
             )}
         </div>
     );

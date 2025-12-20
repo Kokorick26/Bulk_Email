@@ -10,26 +10,28 @@ export default function About() {
                     animate={{ opacity: 1, y: 0 }}
                     className="text-5xl font-bold mb-8"
                 >
-                    We are changing how the world emails.
+                    Transforming Digital Communication Through Email
                 </motion.h1>
                 <div className="prose prose-invert mx-auto text-white/60">
                     <p className="text-xl leading-relaxed mb-6">
-                        BulkMail started with a simple idea: Email infrastructure shouldn't be a black box.
-                        We believe in transparency, speed, and giving developers the tools they need to build better user experiences.
+                        BulkMail was born from a vision to democratize email communication. We're breaking down the barriers 
+                        that make email infrastructure complex and inaccessible, empowering businesses of all sizes to connect 
+                        with their audiences effectively and efficiently.
                     </p>
                     <p className="text-xl leading-relaxed">
-                        Founded in 2025, we process billions of emails for the most innovative companies on the planet.
-                        And we are just getting started.
+                        Since our inception, we've become the trusted partner for thousands of businesses, delivering billions 
+                        of emails with unparalleled reliability and insights. Our commitment to innovation drives us to constantly 
+                        push the boundaries of what's possible in email communication.
                     </p>
                 </div>
             </div>
 
             <div className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-8 max-w-5xl mx-auto">
                 {[
-                    { label: "Emails Sent", value: "10B+" },
+                    { label: "Emails Delivered", value: "15B+" },
                     { label: "Uptime", value: "99.99%" },
-                    { label: "Support", value: "24/7" },
-                    { label: "Team", value: "Global" }
+                    { label: "Global Support", value: "24/7" },
+                    { label: "Team Members", value: "100+" }
                 ].map((stat, i) => (
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}

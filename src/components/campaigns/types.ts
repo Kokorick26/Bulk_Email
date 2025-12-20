@@ -3,12 +3,13 @@
 export interface Campaign {
     id: string;
     name: string;
-    status: 'draft' | 'active' | 'paused' | 'completed' | 'failed';
+    status: 'draft' | 'active' | 'paused' | 'completed' | 'failed' | 'scheduled';
     createdAt: string;
     updatedAt?: string;
     completedAt?: string;
+    scheduledAt?: string;
 
-    // Statistics
+    // Enhanced Statistics
     totalRecipients: number;
     sentCount: number;
     failedCount: number;
@@ -16,9 +17,28 @@ export interface Campaign {
     clickCount?: number;
     replyCount?: number;
     bounceCount?: number;
+    unsubscribeCount?: number;
+    spamComplaintCount?: number;
 
-    // Progress
+    // Progress & Metrics
     progress: number;
+    deliveryRate?: number;
+    openRate?: number;
+    clickRate?: number;
+    replyRate?: number;
+    
+    // Campaign Settings
+    timezone?: string;
+    sendWindow?: {
+        start: string;
+        end: string;
+        days: string[];
+    };
+    
+    // Enhanced Metadata
+    tags?: string[];
+    priority?: 'low' | 'normal' | 'high';
+    aiGenerated?: boolean;
 }
 
 export interface Lead {

@@ -35,7 +35,7 @@ export const useDashboardContext = () => {
 export default function DashboardShell() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [searchFocused, setSearchFocused] = useState(false);
-    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
     const navigateToSettingsRef = useRef<() => void>(() => { });
     const navigate = useNavigate();
     const { theme } = useTheme();
@@ -127,14 +127,12 @@ export default function DashboardShell() {
                                 onClick={() => navigate('/dashboard')}
                             >
                                 <Mail className="w-8 h-8 text-[#c5221f]" />
-                                {!sidebarCollapsed && (
-                                    <span className={cn(
-                                        "text-[22px] font-normal tracking-tight hidden sm:inline",
-                                        theme === 'dark' ? 'text-[#9aa0a6]' : 'text-[#5f6368]'
-                                    )}>
-                                        BulkMail
-                                    </span>
-                                )}
+                                <span className={cn(
+                                    "text-[22px] font-normal tracking-tight hidden sm:inline",
+                                    theme === 'dark' ? 'text-[#9aa0a6]' : 'text-[#5f6368]'
+                                )}>
+                                    BulkMail
+                                </span>
                             </div>
                         </div>
 

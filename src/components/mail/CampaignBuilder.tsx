@@ -420,10 +420,14 @@ export function CampaignBuilder({ smtpAccounts, onSuccess, onContextChange, aiSu
         // Check if we have AI-personalized content for this recipient
         const aiPersonalized = aiPersonalizedEmails?.find(e => e.email === recipient.email);
         
+        // Enhanced personalization with fallback content
+        const defaultSubject = personalizeContent(customSubject, recipient) || "Hello {{name}}";
+        const defaultBody = personalizeContent(customBody, recipient) || "Hi {{name}},\n\nThis is a personalized email message.\n\nBest regards";
+        
         if (override) {
             return {
-                subject: override.subject ?? personalizeContent(customSubject, recipient),
-                body: override.body ?? personalizeContent(customBody, recipient),
+                subject: override.subject || defaultSubject,
+                body: override.body || defaultBody,
                 isModified: true,
                 isAiPersonalized: false
             };
@@ -431,19 +435,48 @@ export function CampaignBuilder({ smtpAccounts, onSuccess, onContextChange, aiSu
         
         if (aiPersonalized) {
             return {
-                subject: aiPersonalized.subject,
-                body: aiPersonalized.body,
+                subject: aiPersonalized.subject || defaultSubject,
+                body: aiPersonalized.body || defaultBody,
                 isModified: false,
                 isAiPersonalized: true
             };
         }
         
         return {
-            subject: personalizeContent(customSubject, recipient),
-            body: personalizeContent(customBody, recipient),
+            subject: defaultSubject,
+            body: defaultBody,
             isModified: false,
             isAiPersonalized: false
         };
+    };
+
+    // New: Email validation function
+    const validateEmailContent = () => {
+        const errors = [];
+        
+        if (!customSubject.trim()) {
+            errors.push("Subject line is required");
+        }
+        
+        if (!customBody.trim()) {
+            errors.push("Email body is required");
+        }
+        
+        if (customSubject.length > 200) {
+            errors.push("Subject line is too long (max 200 characters)");
+        }
+        
+        if (customBody.length > 50000) {
+            errors.push("Email body is too long (max 50,000 characters)");
+        }
+        
+        // Check for personalization tokens
+        const hasPersonalization = /\{\{[^}]+\}\}/.test(customSubject + customBody);
+        if (!hasPersonalization && recipients.length > 1) {
+            console.warn("Consider using personalization tokens for better engagement");
+        }
+        
+        return errors;
     };
 
 
