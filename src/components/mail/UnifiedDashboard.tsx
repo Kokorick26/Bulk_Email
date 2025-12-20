@@ -131,7 +131,7 @@ export default function UnifiedDashboard() {
 
     // Determine if we're in inbox or campaigns section
     const isInboxSection = ['inbox', 'sent', 'drafts', 'archive', 'spam', 'trash'].includes(activeItem);
-    const isCampaignSection = ['overview', 'compose', 'campaign-builder', 'templates', 'history', 'accounts'].includes(activeItem);
+    const isCampaignSection = ['overview', 'compose', 'campaign-builder', 'campaigns', 'templates', 'accounts'].includes(activeItem);
 
     // Fetch data from real API
     useEffect(() => {
@@ -501,6 +501,7 @@ export default function UnifiedDashboard() {
                                     setCampaignView('list');
                                     setSelectedCampaignId(null);
                                 }}
+                                onContextChange={(ctx: typeof aiContext) => setAiContext(ctx)}
                             />
                         </div>
                     </ScrollArea>

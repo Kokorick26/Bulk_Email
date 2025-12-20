@@ -1030,6 +1030,167 @@ router.get('/campaigns/:id', auth, async (req, res) => {
     }
 });
 
+// Create a new campaign
+router.post('/campaigns', auth, async (req, res) => {
+    try {
+        const { name, status } = req.body;
+
+        if (!name) {
+            return res.status(400).json({ error: 'Campaign name is required' });
+        }
+
+        const campaign = {
+            id: uuidv4(),
+            name,
+            status: status || 'draft',
+            totalRecipients: 0,
+            sentCount: 0,
+            failedCount: 0,
+            openCount: 0,
+            clickCount: 0,
+            replyCount: 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            createdBy: req.user.userId,
+            // Initialize empty data structures
+            leads: [],
+            sequence: null,
+            schedule: null,
+            options: null
+        };
+
+        await dynamoDB.put({ TableName: CAMPAIGNS_TABLE, Item: campaign }).promise();
+        res.status(201).json(campaign);
+    } catch (err) {
+        console.error('Error creating campaign:', err);
+        res.status(500).json({ error: 'Could not create campaign' });
+    }
+});
+
+// Update campaign
+router.put('/campaigns/:id', auth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updates = req.body;
+
+        const existing = await dynamoDB.get({
+            TableName: CAMPAIGNS_TABLE,
+            Key: { id }
+        }).promise();
+
+        if (!existing.Item) {
+            return res.status(404).json({ error: 'Campaign not found' });
+        }
+
+        const updated = {
+            ...existing.Item,
+            ...updates,
+            id, // Preserve ID
+            updatedAt: new Date().toISOString()
+        };
+
+        await dynamoDB.put({ TableName: CAMPAIGNS_TABLE, Item: updated }).promise();
+        res.json(updated);
+    } catch (err) {
+        console.error('Error updating campaign:', err);
+        res.status(500).json({ error: 'Could not update campaign' });
+    }
+});
+
+// Update campaign leads
+router.put('/campaigns/:id/leads', auth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { leads } = req.body;
+
+        await dynamoDB.update({
+            TableName: CAMPAIGNS_TABLE,
+            Key: { id },
+            UpdateExpression: 'SET leads = :leads, totalRecipients = :count, updatedAt = :updatedAt',
+            ExpressionAttributeValues: {
+                ':leads': leads || [],
+                ':count': (leads || []).length,
+                ':updatedAt': new Date().toISOString()
+            }
+        }).promise();
+
+        res.json({ message: 'Leads updated', count: (leads || []).length });
+    } catch (err) {
+        console.error('Error updating leads:', err);
+        res.status(500).json({ error: 'Could not update leads' });
+    }
+});
+
+// Update campaign sequence
+router.put('/campaigns/:id/sequence', auth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { sequence } = req.body;
+
+        await dynamoDB.update({
+            TableName: CAMPAIGNS_TABLE,
+            Key: { id },
+            UpdateExpression: 'SET #seq = :sequence, updatedAt = :updatedAt',
+            ExpressionAttributeNames: { '#seq': 'sequence' },
+            ExpressionAttributeValues: {
+                ':sequence': sequence,
+                ':updatedAt': new Date().toISOString()
+            }
+        }).promise();
+
+        res.json({ message: 'Sequence updated' });
+    } catch (err) {
+        console.error('Error updating sequence:', err);
+        res.status(500).json({ error: 'Could not update sequence' });
+    }
+});
+
+// Update campaign schedule
+router.put('/campaigns/:id/schedule', auth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { schedule } = req.body;
+
+        await dynamoDB.update({
+            TableName: CAMPAIGNS_TABLE,
+            Key: { id },
+            UpdateExpression: 'SET schedule = :schedule, updatedAt = :updatedAt',
+            ExpressionAttributeValues: {
+                ':schedule': schedule,
+                ':updatedAt': new Date().toISOString()
+            }
+        }).promise();
+
+        res.json({ message: 'Schedule updated' });
+    } catch (err) {
+        console.error('Error updating schedule:', err);
+        res.status(500).json({ error: 'Could not update schedule' });
+    }
+});
+
+// Update campaign options
+router.put('/campaigns/:id/options', auth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { options } = req.body;
+
+        await dynamoDB.update({
+            TableName: CAMPAIGNS_TABLE,
+            Key: { id },
+            UpdateExpression: 'SET options = :options, updatedAt = :updatedAt',
+            ExpressionAttributeValues: {
+                ':options': options,
+                ':updatedAt': new Date().toISOString()
+            }
+        }).promise();
+
+        res.json({ message: 'Options updated' });
+    } catch (err) {
+        console.error('Error updating options:', err);
+        res.status(500).json({ error: 'Could not update options' });
+    }
+});
+
 router.delete('/campaigns/:id', auth, async (req, res) => {
     try {
         await dynamoDB.delete({

@@ -89,7 +89,22 @@ export function ScheduleTab({ campaignId, schedule, onScheduleUpdate, className 
         }));
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
+        // Save to backend
+        try {
+            const token = localStorage.getItem('bulkEmailToken');
+            await fetch(`/api/bulk-email/campaigns/${campaignId}/schedule`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ schedule: localSchedule })
+            });
+        } catch (err) {
+            console.error('Error saving schedule:', err);
+        }
+
         onScheduleUpdate(localSchedule);
     };
 

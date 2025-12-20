@@ -15,9 +15,18 @@ import {
 import { LeadsTab, SequencesTab, ScheduleTab, OptionsTab, AnalyticsTab } from './tabs';
 import type { Campaign, CampaignTab, Lead, Sequence, CampaignSchedule, CampaignOptions } from './types';
 
+interface AIContext {
+    recipientCount: number;
+    headers: string[];
+    recipients: Array<{ email: string; name: string;[key: string]: string }>;
+    currentSubject: string;
+    currentBody: string;
+}
+
 interface CampaignDetailProps {
     campaignId: string;
     onBack: () => void;
+    onContextChange?: (context: AIContext) => void;
     className?: string;
 }
 
@@ -29,7 +38,7 @@ const tabs: { id: CampaignTab; label: string }[] = [
     { id: 'options', label: 'Options' },
 ];
 
-export function CampaignDetail({ campaignId, onBack, className }: CampaignDetailProps) {
+export function CampaignDetail({ campaignId, onBack, onContextChange, className }: CampaignDetailProps) {
     const { theme } = useTheme();
     const [activeTab, setActiveTab] = useState<CampaignTab>('leads');
     const [loading, setLoading] = useState(true);
@@ -40,6 +49,33 @@ export function CampaignDetail({ campaignId, onBack, className }: CampaignDetail
     const [sequence, setSequence] = useState<Sequence | null>(null);
     const [schedule, setSchedule] = useState<CampaignSchedule | null>(null);
     const [options, setOptions] = useState<CampaignOptions | null>(null);
+
+    // Update AI context when leads or sequence changes
+    useEffect(() => {
+        if (onContextChange) {
+            const firstStep = sequence?.steps?.[0];
+            const headers = leads.length > 0
+                ? Object.keys(leads[0]).filter(k => k !== 'id' && k !== 'status')
+                : ['firstName', 'lastName', 'email', 'company'];
+
+            const recipients = leads.map(lead => ({
+                email: lead.email,
+                name: lead.firstName || '',
+                firstName: lead.firstName || '',
+                lastName: lead.lastName || '',
+                company: lead.company || '',
+                ...lead.customFields
+            }));
+
+            onContextChange({
+                recipientCount: leads.length,
+                headers,
+                recipients,
+                currentSubject: firstStep?.subject || '',
+                currentBody: firstStep?.body || '',
+            });
+        }
+    }, [leads, sequence, onContextChange]);
 
     useEffect(() => {
         const fetchCampaignData = async () => {
@@ -62,8 +98,17 @@ export function CampaignDetail({ campaignId, onBack, className }: CampaignDetail
                         totalRecipients: data.totalRecipients || 0,
                         sentCount: data.sentCount || 0,
                         failedCount: data.failedCount || 0,
+                        openCount: data.openCount || 0,
+                        clickCount: data.clickCount || 0,
+                        replyCount: data.replyCount || 0,
                         progress: data.progress || 0,
                     });
+
+                    // Load related data from the campaign
+                    if (data.leads) setLeads(data.leads);
+                    if (data.sequence) setSequence(data.sequence);
+                    if (data.schedule) setSchedule(data.schedule);
+                    if (data.options) setOptions(data.options);
                 } else {
                     // Use mock data for demo
                     setCampaign({

@@ -157,7 +157,7 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
         ));
     };
 
-    const handleImportLeads = () => {
+    const handleImportLeads = async () => {
         // Convert parsed data to leads based on column mappings
         const newLeads: Lead[] = parsedData.map((row, index) => {
             const lead: Lead = {
@@ -192,7 +192,24 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
             return lead;
         }).filter(lead => lead.email && lead.email.includes('@'));
 
-        onLeadsUpdate([...leads, ...newLeads]);
+        const allLeads = [...leads, ...newLeads];
+
+        // Save to backend
+        try {
+            const token = localStorage.getItem('bulkEmailToken');
+            await fetch(`/api/bulk-email/campaigns/${campaignId}/leads`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ leads: allLeads })
+            });
+        } catch (err) {
+            console.error('Error saving leads:', err);
+        }
+
+        onLeadsUpdate(allLeads);
         setShowMapping(false);
         setUploadedFile(null);
         setColumnMappings([]);

@@ -105,7 +105,22 @@ export function OptionsTab({ campaignId, options, onOptionsUpdate, className }: 
         }));
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
+        // Save to backend
+        try {
+            const token = localStorage.getItem('bulkEmailToken');
+            await fetch(`/api/bulk-email/campaigns/${campaignId}/options`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ options: localOptions })
+            });
+        } catch (err) {
+            console.error('Error saving options:', err);
+        }
+
         onOptionsUpdate(localOptions);
     };
 
@@ -410,6 +425,19 @@ export function OptionsTab({ campaignId, options, onOptionsUpdate, className }: 
                     </div>
                 </motion.div>
             )}
+
+            {/* Save Button */}
+            <Button
+                onClick={handleSave}
+                className={cn(
+                    'px-6',
+                    theme === 'dark'
+                        ? 'bg-blue-600 hover:bg-blue-500 text-white'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                )}
+            >
+                Save
+            </Button>
         </div>
     );
 }

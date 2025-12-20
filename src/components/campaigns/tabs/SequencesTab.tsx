@@ -122,12 +122,28 @@ export function SequencesTab({ campaignId, sequence, onSequenceUpdate, leads = [
         }
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         const updatedSequence: Sequence = {
             id: sequence?.id || `sequence-${campaignId}`,
             campaignId,
             steps
         };
+
+        // Save to backend
+        try {
+            const token = localStorage.getItem('bulkEmailToken');
+            await fetch(`/api/bulk-email/campaigns/${campaignId}/sequence`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ sequence: updatedSequence })
+            });
+        } catch (err) {
+            console.error('Error saving sequence:', err);
+        }
+
         onSequenceUpdate(updatedSequence);
     };
 
