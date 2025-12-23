@@ -233,31 +233,31 @@ Your goal is to write emails that are indistinguishable from a real human sendin
 // Enhanced personalization with content variation
 const personalizeContent = (template, recipient, emailIndex = 0) => {
     let result = template;
-    
+
     // Replace variables
     Object.entries(recipient).forEach(([key, value]) => {
         const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'gi');
         result = result.replace(regex, value || '');
     });
-    
+
     // Add subtle variations to avoid tracking
     result = addContentVariation(result, emailIndex);
-    
+
     return result;
 };
 
 // Advanced content variation to prevent email provider tracking
 const addContentVariation = (content, seed = 0) => {
     if (!content) return content;
-    
+
     let result = content;
-    
+
     // 1. Random spacing variations
     const spacingVariations = [
         /\s+/g,
         /\s*([,.!?])\s*/g
     ];
-    
+
     // Add subtle spacing variations based on seed
     if (seed % 3 === 0) {
         result = result.replace(/\s+/g, (match) => {
@@ -265,7 +265,7 @@ const addContentVariation = (content, seed = 0) => {
             return variations[seed % variations.length];
         });
     }
-    
+
     // 2. Punctuation variations (very subtle)
     if (seed % 5 === 0) {
         result = result.replace(/\./g, (match, offset) => {
@@ -273,7 +273,7 @@ const addContentVariation = (content, seed = 0) => {
             return offset % 7 === 0 ? '.' : '.';
         });
     }
-    
+
     // 3. Word choice variations
     const wordVariations = {
         'quick': ['quick', 'fast', 'swift'],
@@ -287,7 +287,7 @@ const addContentVariation = (content, seed = 0) => {
         'help': ['help', 'assist', 'support'],
         'great': ['great', 'excellent', 'wonderful']
     };
-    
+
     // Apply word variations based on seed
     Object.entries(wordVariations).forEach(([word, alternatives]) => {
         const regex = new RegExp(`\\b${word}\\b`, 'gi');
@@ -296,7 +296,7 @@ const addContentVariation = (content, seed = 0) => {
             result = result.replace(regex, alternatives[altIndex]);
         }
     });
-    
+
     // 4. Sentence structure variations
     if (seed % 4 === 0) {
         // Occasionally combine short sentences
@@ -304,7 +304,7 @@ const addContentVariation = (content, seed = 0) => {
             return seed % 7 === 0 ? ', ' + nextChar.toLowerCase() : match;
         });
     }
-    
+
     // 5. HTML attribute variations (for HTML emails)
     if (result.includes('<')) {
         // Add random attributes or styling
@@ -313,24 +313,24 @@ const addContentVariation = (content, seed = 0) => {
             () => seed % 4 === 0 ? ' class="em-text"' : '',
             () => seed % 5 === 0 ? ' data-email-id="em' + seed + '"' : ''
         ];
-        
+
         result = result.replace(/<p>/g, (match) => {
             const variation = htmlVariations.find(v => v());
             return variation ? match.replace('>', variation + '>') : match;
         });
     }
-    
+
     // 6. Time-based variations
     const timeBasedVar = getTimeBasedVariation();
     result = result.replace(/\[time_greeting\]/g, timeBasedVar);
-    
+
     return result;
 };
 
 // Get time-based greeting variations
 const getTimeBasedVariation = () => {
     const hour = new Date().getHours();
-    
+
     if (hour < 12) {
         const morningGreetings = ['Good morning', 'Hope you\'re having a great morning', 'Morning'];
         return morningGreetings[Math.floor(Math.random() * morningGreetings.length)];
@@ -375,34 +375,34 @@ const sanitizeContent = (content) => {
 // Generate truly unique personalized email for each recipient using AI
 const generateUniqueEmail = async (baseSubject, baseBody, recipient, index, style, headers) => {
     const apiKey = process.env.MISTRAL_API_KEY;
-    
+
     // For light personalization, just do variable replacement with variations
     if (style === 'light' || !apiKey) {
         let subject = baseSubject;
         let body = baseBody;
-        
+
         // Replace variables
         Object.entries(recipient).forEach(([key, value]) => {
             const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'gi');
             subject = subject.replace(regex, value || '');
             body = body.replace(regex, value || '');
         });
-        
+
         // Add subtle variations
         body = addContentVariation(body, index);
-        
+
         return { subject: sanitizeContent(subject), body: sanitizeContent(body) };
     }
-    
+
     // For medium/heavy personalization, use AI to generate unique content
     const recipientInfo = Object.entries(recipient)
         .map(([k, v]) => `${k}: "${v}"`)
         .join(', ');
-    
-    const personalizationPrompt = style === 'heavy' 
+
+    const personalizationPrompt = style === 'heavy'
         ? `Write a completely unique email for this specific person. Make it feel like you researched them personally.`
         : `Personalize this email template for this specific recipient. Keep the core message but adapt the tone and details.`;
-    
+
     try {
         const response = await fetch(MISTRAL_API_URL, {
             method: 'POST',
@@ -413,8 +413,8 @@ const generateUniqueEmail = async (baseSubject, baseBody, recipient, index, styl
             body: JSON.stringify({
                 model: 'mistral-large-latest',
                 messages: [
-                    { 
-                        role: 'system', 
+                    {
+                        role: 'system',
                         content: `You are an expert email copywriter. ${personalizationPrompt}
                         
 CRITICAL RULES:
@@ -425,8 +425,8 @@ CRITICAL RULES:
 - Keep it concise and human-sounding.
 - Do not use [brackets] for placeholders.`
                     },
-                    { 
-                        role: 'user', 
+                    {
+                        role: 'user',
                         content: `Recipient info: ${recipientInfo}
 
 Base subject: ${baseSubject}
@@ -447,19 +447,19 @@ Generate a personalized version for this recipient. Remember: NO em dashes, NO e
 
         const data = await response.json();
         const content = data.choices?.[0]?.message?.content || '';
-        
+
         // Parse subject and body from response
         const lines = content.trim().split('\n');
         let subject = lines[0].replace(/^Subject:\s*/i, '').trim();
         let body = lines.slice(1).join('\n').trim();
-        
+
         // If parsing failed, use base with variable replacement
         if (!subject || !body) {
             return generateUniqueEmail(baseSubject, baseBody, recipient, index, 'light', headers);
         }
-        
+
         return { subject: sanitizeContent(subject), body: sanitizeContent(body) };
-        
+
     } catch (error) {
         console.error('AI personalization error:', error);
         // Fallback to simple personalization
@@ -616,7 +616,7 @@ const executeTool = async (toolName, args, context, userId) => {
         case 'insert_email_content': {
             const { subject, body } = args;
             const recipients = context?.recipients || [];
-            
+
             // If there are recipients, generate unique emails for each
             if (recipients.length > 0) {
                 // Redirect to personalize_all_emails
@@ -626,7 +626,7 @@ const executeTool = async (toolName, args, context, userId) => {
                     personalizationStyle: 'medium'
                 }, context, userId);
             }
-            
+
             // No recipients yet, just insert the template
             return {
                 success: true,
@@ -650,14 +650,14 @@ const executeTool = async (toolName, args, context, userId) => {
 
             // Generate unique personalized content for each recipient
             const personalizedEmails = [];
-            
+
             for (let i = 0; i < recipients.length; i++) {
                 const r = recipients[i];
                 const personalizedEmail = await generateUniqueEmail(
-                    baseSubject, 
-                    baseBody, 
-                    r, 
-                    i, 
+                    baseSubject,
+                    baseBody,
+                    r,
+                    i,
                     personalizationStyle,
                     context?.headers || []
                 );
@@ -853,9 +853,107 @@ router.post('/chat', auth, async (req, res) => {
             });
         }
 
+
     } catch (error) {
         console.error('AI chat error:', error);
         res.status(500).json({ error: 'Failed to process AI request' });
+    }
+});
+
+// Generate email content based on prompt (for SequencesTab)
+router.post('/generate', auth, async (req, res) => {
+    try {
+        const { prompt, context } = req.body;
+
+        const apiKey = process.env.MISTRAL_API_KEY;
+        if (!apiKey) {
+            // Return a fallback template if no API key
+            return res.json({
+                subject: `Quick question about ${context?.mergeFields?.includes('company') ? '{{company}}' : 'your company'}`,
+                body: `Hi {{firstName}},\n\n${prompt || 'I wanted to reach out and connect.'}\n\nWould you have 15 minutes this week for a quick call?\n\nBest regards`
+            });
+        }
+
+        // Build context for AI
+        let contextInfo = '';
+        if (context) {
+            if (context.mergeFields?.length > 0) {
+                contextInfo += `\nAvailable personalization merge fields: ${context.mergeFields.map(f => `{{${f}}}`).join(', ')}`;
+            }
+            if (context.leadCount > 0) {
+                contextInfo += `\nThis email will be sent to ${context.leadCount} recipients.`;
+            }
+            if (context.currentSubject) {
+                contextInfo += `\nCurrent subject: "${context.currentSubject}"`;
+            }
+            if (context.currentBody) {
+                contextInfo += `\nCurrent body: "${context.currentBody}"`;
+            }
+        }
+
+        const response = await fetch(MISTRAL_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: 'mistral-large-latest',
+                messages: [
+                    {
+                        role: 'system',
+                        content: `You are an expert email copywriter. Generate email content based on the user's request.
+                        
+RULES:
+- NEVER use em dashes (—) or en dashes (–). Only use hyphens (-) or colons (:).
+- NEVER use markdown ** or * formatting.
+- Keep emails concise and human-sounding.
+- Use personalization merge fields like {{firstName}}, {{company}} where appropriate.
+- Output format: First line is subject (no "Subject:" prefix), then blank line, then body.
+- Do not use [brackets] for placeholders.
+- Make the email ready to send.${contextInfo}`
+                    },
+                    {
+                        role: 'user',
+                        content: prompt
+                    }
+                ],
+                temperature: 0.8,
+                max_tokens: 1024
+            })
+        });
+
+        if (!response.ok) {
+            // Fallback
+            return res.json({
+                subject: `Quick question`,
+                body: `Hi {{firstName}},\n\n${prompt}\n\nBest regards`
+            });
+        }
+
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content || '';
+
+        // Parse subject and body
+        const lines = content.trim().split('\n');
+        let subject = lines[0].replace(/^Subject:\s*/i, '').replace(/\*\*/g, '').trim();
+        let body = lines.slice(1).join('\n').replace(/\*\*/g, '').trim();
+
+        // Remove any "Body:" prefix
+        body = body.replace(/^Body:\s*/i, '').trim();
+
+        // Sanitize em dashes
+        subject = subject.replace(/[—–]/g, '-');
+        body = body.replace(/[—–]/g, '-');
+
+        res.json({ subject, body });
+
+    } catch (error) {
+        console.error('Generate error:', error);
+        res.json({
+            subject: 'Quick question',
+            body: `Hi {{firstName}},\n\nI wanted to reach out to you.\n\nBest regards`
+        });
     }
 });
 
@@ -1191,7 +1289,7 @@ router.post('/confirm-send', auth, async (req, res) => {
         } else if (sendType === 'personalized') {
             // Send AI-generated unique personalized emails to each recipient
             const { personalizedEmails } = req.body;
-            
+
             if (!personalizedEmails || personalizedEmails.length === 0) {
                 return res.status(400).json({ error: 'No personalized emails provided' });
             }

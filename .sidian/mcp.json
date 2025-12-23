@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/bhaweshbhaskar/Desktop/Desktop/freelance/Bulk_Email"
+      ]
+    }
+  }
+}

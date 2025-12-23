@@ -215,6 +215,38 @@ router.post('/smtp-accounts/:id/test', auth, async (req, res) => {
     }
 });
 
+// Direct SMTP connection test (without existing account - for new account setup)
+router.post('/smtp-accounts/test-connection', auth, async (req, res) => {
+    try {
+        const { host, port, username, password } = req.body;
+
+        if (!host || !username || !password) {
+            return res.status(400).json({ error: 'Host, username, and password are required' });
+        }
+
+        const transporter = nodemailer.createTransport({
+            host,
+            port: port || 587,
+            secure: port === 465,
+            auth: {
+                user: username,
+                pass: password,
+            },
+            connectionTimeout: 10000,
+            greetingTimeout: 10000,
+        });
+
+        // Verify the connection
+        await transporter.verify();
+        transporter.close();
+
+        res.json({ message: 'SMTP connection successful!' });
+    } catch (err) {
+        console.error('SMTP test failed:', err);
+        res.status(400).json({ error: err.message || 'SMTP connection failed' });
+    }
+});
+
 // ============ GET TRANSPORTER ============
 
 // Get transporter for a specific account or default/env

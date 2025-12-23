@@ -13,6 +13,41 @@ const CAMPAIGNS_TABLE = 'EmailCampaigns';
 
 // ============ IMAP CONFIGURATION ============
 
+// Direct IMAP test (without existing account - for new account setup)
+router.post('/test-imap', auth, async (req, res) => {
+    try {
+        const { host, port, user, password, tls = true } = req.body;
+
+        if (!host || !user || !password) {
+            return res.status(400).json({ error: 'Host, user, and password are required' });
+        }
+
+        const imapConfig = {
+            user,
+            password,
+            host,
+            port: port || 993,
+            tls,
+            tlsOptions: { rejectUnauthorized: false },
+            connTimeout: 10000,
+            authTimeout: 10000,
+        };
+
+        console.log('[IMAP Direct Test] Connecting to:', { host, port: imapConfig.port, user });
+
+        const result = await testImapConnection(imapConfig);
+
+        if (result.success) {
+            res.json({ message: 'IMAP connection successful!', mailboxes: result.mailboxes });
+        } else {
+            res.status(400).json({ error: result.error });
+        }
+    } catch (err) {
+        console.error('IMAP test failed:', err);
+        res.status(500).json({ error: err.message || 'IMAP test failed' });
+    }
+});
+
 // Update SMTP account with IMAP settings
 router.put('/smtp-accounts/:id/imap', auth, async (req, res) => {
     try {
@@ -152,11 +187,29 @@ function testImapConnection(imapConfig) {
 
 // ============ INBOX MESSAGES ============
 
+// Folder name mappings for different email providers
+const folderMappings = {
+    'INBOX': ['INBOX'],
+    'Sent': ['Sent', 'Sent Items', 'Sent Mail', '[Gmail]/Sent Mail', 'INBOX.Sent'],
+    'Drafts': ['Drafts', '[Gmail]/Drafts', 'Draft', 'INBOX.Drafts'],
+    'Archive': ['Archive', '[Gmail]/All Mail', 'All Mail', 'INBOX.Archive'],
+    'Spam': ['Spam', 'Junk', 'Junk E-mail', '[Gmail]/Spam', 'INBOX.Spam', 'Bulk Mail'],
+    'Trash': ['Trash', 'Deleted Items', 'Deleted', '[Gmail]/Trash', 'INBOX.Trash', 'Deleted Messages']
+};
+
+// Get possible folder names for a given folder
+function getPossibleFolderNames(folder) {
+    return folderMappings[folder] || [folder];
+}
+
 // Fetch inbox messages from IMAP
 router.post('/fetch/:accountId', auth, async (req, res) => {
     try {
         const { accountId } = req.params;
         const { folder = 'INBOX', limit = 50 } = req.body;
+
+        // Get possible folder names to try
+        const possibleFolders = getPossibleFolderNames(folder);
 
         const account = await dynamoDB.get({
             TableName: SMTP_ACCOUNTS_TABLE,
@@ -182,7 +235,27 @@ router.post('/fetch/:accountId', auth, async (req, res) => {
             authTimeout: 30000,
         };
 
-        const messages = await fetchImapMessages(imapConfig, folder, limit, accountId, req.user.userId);
+        // Try multiple folder names for this folder type
+        let messages = [];
+        let successFolder = folder;
+        let lastError = null;
+
+        for (const tryFolder of possibleFolders) {
+            try {
+                console.log(`Trying folder: ${tryFolder}`);
+                messages = await fetchImapMessages(imapConfig, tryFolder, limit, accountId, req.user.userId);
+                successFolder = tryFolder;
+                console.log(`Successfully fetched ${messages.length} messages from ${tryFolder}`);
+                break;
+            } catch (err) {
+                console.log(`Folder ${tryFolder} failed: ${err.message}`);
+                lastError = err;
+            }
+        }
+
+        if (messages.length === 0 && lastError) {
+            console.log(`All folder variations failed. Last error: ${lastError.message}`);
+        }
 
         // Cache messages to DynamoDB for persistence
         if (messages.length > 0) {
@@ -192,6 +265,7 @@ router.post('/fetch/:accountId', auth, async (req, res) => {
                     TableName: INBOX_MESSAGES_TABLE,
                     Item: {
                         ...msg,
+                        folder: successFolder, // Use the actual folder that worked
                         cachedAt: new Date().toISOString()
                     }
                 }).promise().catch(err => {
@@ -202,7 +276,7 @@ router.post('/fetch/:accountId', auth, async (req, res) => {
             console.log(`Cached ${messages.length} messages successfully`);
         }
 
-        res.json({ messages, count: messages.length, folder });
+        res.json({ messages, count: messages.length, folder: successFolder });
     } catch (err) {
         console.error('Error fetching inbox:', err);
         res.status(500).json({ error: err.message || 'Could not fetch inbox' });

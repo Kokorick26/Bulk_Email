@@ -10,28 +10,26 @@ export default function About() {
                     animate={{ opacity: 1, y: 0 }}
                     className="text-5xl font-bold mb-8"
                 >
-                    Transforming Digital Communication Through Email
+                    Pioneering the Future of Email Communication
                 </motion.h1>
                 <div className="prose prose-invert mx-auto text-white/60">
                     <p className="text-xl leading-relaxed mb-6">
-                        BulkMail was born from a vision to democratize email communication. We're breaking down the barriers 
-                        that make email infrastructure complex and inaccessible, empowering businesses of all sizes to connect 
-                        with their audiences effectively and efficiently.
+                        At BulkMail, we're revolutionizing how businesses connect with their audience through cutting-edge email technology.
+                        Our intelligent platform combines simplicity with power, enabling organizations of all sizes to achieve remarkable results.
                     </p>
                     <p className="text-xl leading-relaxed">
-                        Since our inception, we've become the trusted partner for thousands of businesses, delivering billions 
-                        of emails with unparalleled reliability and insights. Our commitment to innovation drives us to constantly 
-                        push the boundaries of what's possible in email communication.
+                        We've built the most advanced email infrastructure in the industry, trusted by thousands of companies to deliver
+                        critical communications with perfect precision. Your success is our mission, and we stop at nothing to ensure it.
                     </p>
                 </div>
             </div>
 
             <div className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-8 max-w-5xl mx-auto">
                 {[
-                    { label: "Emails Delivered", value: "15B+" },
+                    { label: "Messages Processed", value: "25B+" },
                     { label: "Uptime", value: "99.99%" },
-                    { label: "Global Support", value: "24/7" },
-                    { label: "Team Members", value: "100+" }
+                    { label: "Response Time", value: "<1hr" },
+                    { label: "Experts", value: "200+" }
                 ].map((stat, i) => (
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}

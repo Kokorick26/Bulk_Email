@@ -151,13 +151,45 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
     };
 
     const handleResumeCampaign = async () => {
-        // TODO: Implement resume campaign
-        console.log('Resume campaign');
+        if (!campaign) return;
+        try {
+            const token = localStorage.getItem('bulkEmailToken');
+            const response = await fetch(`/api/bulk-email/campaigns/${campaignId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ status: 'active' })
+            });
+
+            if (response.ok) {
+                setCampaign({ ...campaign, status: 'active' });
+            }
+        } catch (error) {
+            console.error('Error resuming campaign:', error);
+        }
     };
 
     const handlePauseCampaign = async () => {
-        // TODO: Implement pause campaign
-        console.log('Pause campaign');
+        if (!campaign) return;
+        try {
+            const token = localStorage.getItem('bulkEmailToken');
+            const response = await fetch(`/api/bulk-email/campaigns/${campaignId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ status: 'paused' })
+            });
+
+            if (response.ok) {
+                setCampaign({ ...campaign, status: 'paused' });
+            }
+        } catch (error) {
+            console.error('Error pausing campaign:', error);
+        }
     };
 
     if (loading) {

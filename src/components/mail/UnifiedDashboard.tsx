@@ -13,7 +13,7 @@ import { ScrollArea } from '../ui/ScrollArea';
 import { EmptyState } from '../dashboard/EmptyState';
 import { ComposePanel } from './ComposePanel';
 import { CampaignHistory } from './CampaignHistory';
-import { SmtpAccounts } from './SmtpAccounts';
+import { EmailAccounts } from './EmailAccounts';
 import { TemplateManager } from './TemplateManager';
 import { CampaignBuilder } from './CampaignBuilder';
 import { SettingsPage } from '../settings/SettingsPage';
@@ -131,7 +131,7 @@ export default function UnifiedDashboard() {
 
     // Determine if we're in inbox or campaigns section
     const isInboxSection = ['inbox', 'sent', 'drafts', 'archive', 'spam', 'trash'].includes(activeItem);
-    const isCampaignSection = ['overview', 'compose', 'campaign-builder', 'campaigns', 'templates', 'accounts'].includes(activeItem);
+    const isCampaignSection = ['campaign-builder', 'campaigns', 'accounts'].includes(activeItem);
 
     // Fetch data from real API
     useEffect(() => {
@@ -207,22 +207,11 @@ export default function UnifiedDashboard() {
         );
     }
 
-    // Sidebar items configuration
-    const inboxItems = [
-        { id: 'inbox' as const, label: 'Inbox', icon: Inbox },
+    // Main sidebar items (simplified - Mailhub is a single entry that opens mail view with inner sidebar)
+    const mainSidebarItems = [
+        { id: 'inbox' as const, label: 'Mailhub', icon: Inbox }, // Opens mail view with its own folder sidebar
         { id: 'accounts' as const, label: 'Email Accounts', icon: Server },
-        { id: 'sent' as const, label: 'Sent', icon: Send },
-        { id: 'drafts' as const, label: 'Drafts', icon: FileEdit },
-        { id: 'archive' as const, label: 'Archive', icon: Archive },
-        { id: 'spam' as const, label: 'Spam', icon: AlertCircle },
-        { id: 'trash' as const, label: 'Trash', icon: Trash2 },
-    ];
-
-    const campaignItems = [
-        { id: 'overview' as const, label: 'Overview', icon: LayoutDashboard },
         { id: 'campaigns' as const, label: 'Campaigns', icon: Megaphone },
-        { id: 'compose' as const, label: 'Quick Compose', icon: Edit3 },
-        { id: 'templates' as const, label: 'Templates', icon: FileText },
     ];
 
     // Render content based on active item
@@ -238,6 +227,7 @@ export default function UnifiedDashboard() {
                 <InboxView
                     smtpAccounts={smtpAccounts}
                     onRefreshAccounts={fetchData}
+                    onNavigateToAccounts={() => setActiveItem('accounts')}
                 />
             );
         }
@@ -580,7 +570,7 @@ export default function UnifiedDashboard() {
             return (
                 <ScrollArea className="flex-1">
                     <div className="px-8 py-6">
-                        <SmtpAccounts
+                        <EmailAccounts
                             accounts={smtpAccounts}
                             onRefresh={fetchData}
                         />
@@ -603,56 +593,10 @@ export default function UnifiedDashboard() {
                 sidebarCollapsed ? 'w-[72px]' : 'w-[256px]',
                 theme === 'dark' ? 'bg-[#202124]' : 'bg-white'
             )}>
-                <ScrollArea className="flex-1 pt-2">
-                    {/* Mail Section */}
-                    <div className={cn('mb-4', sidebarCollapsed && 'flex flex-col items-center')}>
-                        {inboxItems.map((item) => (
-                            <button
-                                key={item.id}
-                                onClick={() => setActiveItem(item.id)}
-                                title={sidebarCollapsed ? item.label : undefined}
-                                className={cn(
-                                    'flex items-center text-sm transition-colors',
-                                    sidebarCollapsed
-                                        ? 'w-10 h-10 justify-center rounded-full my-1'
-                                        : 'w-full gap-3 px-6 py-2.5 rounded-r-full mr-3',
-                                    activeItem === item.id
-                                        ? theme === 'dark'
-                                            ? 'bg-[#3c4043] text-[#8ab4f8] font-medium'
-                                            : 'bg-[#d3e3fd] text-[#001d35] font-medium'
-                                        : theme === 'dark'
-                                            ? 'hover:bg-[#3c4043] text-[#e8eaed]'
-                                            : 'hover:bg-[#e8eaed] text-[#202124]'
-                                )}
-                            >
-                                <item.icon className="w-5 h-5 shrink-0" />
-                                {!sidebarCollapsed && <span className="flex-1 text-left">{item.label}</span>}
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* Divider */}
-                    <div className={cn(
-                        'h-px my-3',
-                        theme === 'dark' ? 'bg-[#3c4043]' : 'bg-[#dadce0]',
-                        sidebarCollapsed ? 'mx-2' : 'mx-4'
-                    )} />
-
-                    {/* Campaigns Section */}
-                    {!sidebarCollapsed && (
-                        <div className="px-4 py-2">
-                            <span className={cn(
-                                'text-xs font-medium uppercase tracking-wide',
-                                theme === 'dark' ? 'text-[#9aa0a6]' : 'text-[#5f6368]'
-                            )}>
-                                Campaigns
-                            </span>
-                        </div>
-                    )}
-
-                    {/* Campaign items */}
+                <ScrollArea className="flex-1 pt-4">
+                    {/* Main Navigation Items */}
                     <div className={cn(sidebarCollapsed && 'flex flex-col items-center')}>
-                        {campaignItems.map((item) => (
+                        {mainSidebarItems.map((item) => (
                             <button
                                 key={item.id}
                                 onClick={() => setActiveItem(item.id)}
@@ -662,7 +606,7 @@ export default function UnifiedDashboard() {
                                     sidebarCollapsed
                                         ? 'w-10 h-10 justify-center rounded-full my-1'
                                         : 'w-full gap-3 px-6 py-2.5 rounded-r-full mr-3',
-                                    activeItem === item.id
+                                    activeItem === item.id || (item.id === 'inbox' && isInboxSection)
                                         ? theme === 'dark'
                                             ? 'bg-[#3c4043] text-[#8ab4f8] font-medium'
                                             : 'bg-[#d3e3fd] text-[#001d35] font-medium'
@@ -675,13 +619,20 @@ export default function UnifiedDashboard() {
                                 {!sidebarCollapsed && <span className="flex-1 text-left">{item.label}</span>}
                             </button>
                         ))}
+
+                        {/* Divider */}
+                        <div className={cn(
+                            'h-px my-3',
+                            theme === 'dark' ? 'bg-[#3c4043]' : 'bg-[#dadce0]',
+                            sidebarCollapsed ? 'mx-2' : 'mx-4'
+                        )} />
 
                         {/* Settings */}
                         <button
                             onClick={() => setActiveItem('settings')}
                             title={sidebarCollapsed ? 'Settings' : undefined}
                             className={cn(
-                                'flex items-center text-sm transition-colors mt-4',
+                                'flex items-center text-sm transition-colors',
                                 sidebarCollapsed
                                     ? 'w-10 h-10 justify-center rounded-full my-1'
                                     : 'w-full gap-3 px-6 py-2.5 rounded-r-full mr-3',
