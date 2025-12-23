@@ -3,7 +3,7 @@ import {
     LayoutDashboard, Send, Server, History, FileText, Zap,
     BarChart2, TrendingUp, Mail, Loader2, RefreshCw,
     Inbox, Archive, Trash2, AlertCircle, FileEdit, Edit3,
-    Settings, ChevronRight, Megaphone,
+    Settings, ChevronRight, Megaphone, Target,
     Check, Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -25,6 +25,8 @@ import SentView from './SentView';
 // New organized campaign components
 import { CampaignsList, CampaignCreate, CampaignDetail } from '../campaigns';
 import type { Campaign as OrganizedCampaign } from '../campaigns';
+// AI Lead Discovery
+import { LeadDiscovery } from '../discovery';
 
 const API_BASE = '/api/bulk-email';
 
@@ -67,7 +69,7 @@ interface EmailStats {
 
 type SidebarItem =
     | 'inbox' | 'sent' | 'drafts' | 'archive' | 'spam' | 'trash'
-    | 'overview' | 'compose' | 'campaign-builder' | 'campaigns' | 'templates' | 'history' | 'accounts' | 'settings';
+    | 'overview' | 'compose' | 'campaign-builder' | 'campaigns' | 'templates' | 'history' | 'accounts' | 'settings' | 'discovery';
 
 export default function UnifiedDashboard() {
     // Hooks
@@ -131,7 +133,7 @@ export default function UnifiedDashboard() {
 
     // Determine if we're in inbox or campaigns section
     const isInboxSection = ['inbox', 'sent', 'drafts', 'archive', 'spam', 'trash'].includes(activeItem);
-    const isCampaignSection = ['campaign-builder', 'campaigns', 'accounts'].includes(activeItem);
+    const isCampaignSection = ['campaign-builder', 'campaigns', 'accounts', 'discovery'].includes(activeItem);
 
     // Fetch data from real API
     useEffect(() => {
@@ -211,6 +213,7 @@ export default function UnifiedDashboard() {
     const mainSidebarItems = [
         { id: 'inbox' as const, label: 'Mailhub', icon: Inbox }, // Opens mail view with its own folder sidebar
         { id: 'accounts' as const, label: 'Email Accounts', icon: Server },
+        { id: 'discovery' as const, label: 'Lead Discovery', icon: Target }, // AI Sales Discovery Engine
         { id: 'campaigns' as const, label: 'Campaigns', icon: Megaphone },
     ];
 
@@ -577,6 +580,11 @@ export default function UnifiedDashboard() {
                     </div>
                 </ScrollArea>
             );
+        }
+
+        // AI Lead Discovery
+        if (activeItem === 'discovery') {
+            return <LeadDiscovery />;
         }
 
         return null;
