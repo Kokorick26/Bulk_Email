@@ -6,6 +6,8 @@ import Home from './pages/landing/Home';
 import Features from './pages/landing/Features';
 import Pricing from './pages/landing/Pricing';
 import About from './pages/landing/About';
+import Contact from './pages/landing/Contact';
+import Changelog from './pages/landing/Changelog';
 import Login from './components/Login';
 import DashboardShell from './layouts/DashboardShell';
 
@@ -59,10 +61,13 @@ function App() {
                         <Route path="/features" element={<Features />} />
                         <Route path="/pricing" element={<Pricing />} />
                         <Route path="/about" element={<About />} />
+                        <Route path="/contact" element={<Contact />} />
+                        <Route path="/changelog" element={<Changelog />} />
                     </Route>
 
                     {/* Auth Routes */}
                     <Route path="/login" element={<LoginRoute />} />
+                    <Route path="/signup" element={<LoginRoute />} />
 
                     {/* Protected Dashboard Routes */}
                     <Route

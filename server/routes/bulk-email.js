@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import dynamoDB from '../db.js';
 import auth from '../middleware/auth.js';
 import nodemailer from 'nodemailer';
+import { executeCampaign, startCampaignScheduler } from '../services/campaignExecutor.js';
 
 const router = express.Router();
 const CAMPAIGNS_TABLE = 'EmailCampaigns';
@@ -10,6 +11,10 @@ const EMAIL_LOGS_TABLE = 'EmailLogs';
 const TEMPLATES_TABLE = 'EmailTemplates';
 const SMTP_ACCOUNTS_TABLE = 'SmtpAccounts';
 const NEWSLETTER_TABLE = 'NewsletterSubscribers';
+const LEAD_PROGRESS_TABLE = 'LeadProgress';
+
+// Start the campaign scheduler on server startup
+startCampaignScheduler(5); // Check every 5 minutes
 
 // ============ SMTP ACCOUNTS MANAGEMENT ============
 
@@ -1223,8 +1228,181 @@ router.put('/campaigns/:id/options', auth, async (req, res) => {
     }
 });
 
+// Start/Resume a campaign - this actually begins sending emails
+router.post('/campaigns/:id/start', auth, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Get campaign
+        const campaign = await dynamoDB.get({
+            TableName: CAMPAIGNS_TABLE,
+            Key: { id }
+        }).promise();
+
+        if (!campaign.Item) {
+            return res.status(404).json({ error: 'Campaign not found' });
+        }
+
+        // Validate campaign has required data
+        if (!campaign.Item.leads || campaign.Item.leads.length === 0) {
+            return res.status(400).json({ error: 'Campaign has no leads. Please add leads first.' });
+        }
+
+        if (!campaign.Item.sequence || !campaign.Item.sequence.steps || campaign.Item.sequence.steps.length === 0) {
+            return res.status(400).json({ error: 'Campaign has no email sequence. Please create at least one step.' });
+        }
+
+        // Check if first step has content
+        const firstStep = campaign.Item.sequence.steps[0];
+        if (!firstStep.subject || !firstStep.body) {
+            return res.status(400).json({ error: 'First step must have a subject and body.' });
+        }
+
+        // Update campaign status to active
+        await dynamoDB.update({
+            TableName: CAMPAIGNS_TABLE,
+            Key: { id },
+            UpdateExpression: 'SET #status = :status, startedAt = :startedAt, updatedAt = :updatedAt',
+            ExpressionAttributeNames: { '#status': 'status' },
+            ExpressionAttributeValues: {
+                ':status': 'active',
+                ':startedAt': new Date().toISOString(),
+                ':updatedAt': new Date().toISOString()
+            }
+        }).promise();
+
+        // Execute campaign immediately (in background)
+        setImmediate(() => {
+            executeCampaign(id).catch(err => {
+                console.error('[Campaign Start] Execution error:', err);
+            });
+        });
+
+        res.json({
+            message: 'Campaign started successfully',
+            status: 'active',
+            totalLeads: campaign.Item.leads.length,
+            totalSteps: campaign.Item.sequence.steps.length
+        });
+
+    } catch (err) {
+        console.error('Error starting campaign:', err);
+        res.status(500).json({ error: 'Could not start campaign' });
+    }
+});
+
+// Pause a campaign
+router.post('/campaigns/:id/pause', auth, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        await dynamoDB.update({
+            TableName: CAMPAIGNS_TABLE,
+            Key: { id },
+            UpdateExpression: 'SET #status = :status, pausedAt = :pausedAt, updatedAt = :updatedAt',
+            ExpressionAttributeNames: { '#status': 'status' },
+            ExpressionAttributeValues: {
+                ':status': 'paused',
+                ':pausedAt': new Date().toISOString(),
+                ':updatedAt': new Date().toISOString()
+            }
+        }).promise();
+
+        res.json({ message: 'Campaign paused', status: 'paused' });
+
+    } catch (err) {
+        console.error('Error pausing campaign:', err);
+        res.status(500).json({ error: 'Could not pause campaign' });
+    }
+});
+
+// Get campaign lead progress
+router.get('/campaigns/:id/progress', auth, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const data = await dynamoDB.scan({
+            TableName: LEAD_PROGRESS_TABLE,
+            FilterExpression: 'campaignId = :campaignId',
+            ExpressionAttributeValues: { ':campaignId': id }
+        }).promise();
+
+        const progress = data.Items || [];
+
+        // Calculate summary
+        const summary = {
+            total: progress.length,
+            pending: progress.filter(p => p.status === 'pending').length,
+            inProgress: progress.filter(p => p.status === 'in_progress').length,
+            completed: progress.filter(p => p.status === 'completed').length,
+            replied: progress.filter(p => p.status === 'replied').length,
+            bounced: progress.filter(p => p.status === 'bounced').length
+        };
+
+        res.json({ summary, leads: progress });
+
+    } catch (err) {
+        console.error('Error fetching campaign progress:', err);
+        if (err.code === 'ResourceNotFoundException') {
+            return res.json({ summary: { total: 0 }, leads: [] });
+        }
+        res.status(500).json({ error: 'Could not fetch campaign progress' });
+    }
+});
+
+// Execute campaign on demand (for testing or manual trigger)
+router.post('/campaigns/:id/execute', auth, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Check campaign exists and is active
+        const campaign = await dynamoDB.get({
+            TableName: CAMPAIGNS_TABLE,
+            Key: { id }
+        }).promise();
+
+        if (!campaign.Item) {
+            return res.status(404).json({ error: 'Campaign not found' });
+        }
+
+        if (campaign.Item.status !== 'active') {
+            return res.status(400).json({ error: 'Campaign is not active. Start the campaign first.' });
+        }
+
+        // Execute synchronously for this request
+        const result = await executeCampaign(id);
+
+        res.json({
+            message: 'Campaign execution completed',
+            result
+        });
+
+    } catch (err) {
+        console.error('Error executing campaign:', err);
+        res.status(500).json({ error: 'Could not execute campaign' });
+    }
+});
+
 router.delete('/campaigns/:id', auth, async (req, res) => {
     try {
+        // Also delete lead progress for this campaign
+        try {
+            const progressData = await dynamoDB.scan({
+                TableName: LEAD_PROGRESS_TABLE,
+                FilterExpression: 'campaignId = :campaignId',
+                ExpressionAttributeValues: { ':campaignId': req.params.id }
+            }).promise();
+
+            for (const item of progressData.Items || []) {
+                await dynamoDB.delete({
+                    TableName: LEAD_PROGRESS_TABLE,
+                    Key: { id: item.id }
+                }).promise();
+            }
+        } catch (e) {
+            // Ignore errors deleting progress
+        }
+
         await dynamoDB.delete({
             TableName: CAMPAIGNS_TABLE,
             Key: { id: req.params.id }

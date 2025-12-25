@@ -33,12 +33,13 @@ interface CampaignsListProps {
     className?: string;
 }
 
-const statusConfig = {
+const statusConfig: Record<string, { label: string; color: string; textColor: string; pulse?: boolean }> = {
     draft: { label: 'Draft', color: 'bg-gray-500', textColor: 'text-gray-400' },
     active: { label: 'Active', color: 'bg-emerald-500', textColor: 'text-emerald-400', pulse: true },
     paused: { label: 'Paused', color: 'bg-amber-500', textColor: 'text-amber-400' },
     completed: { label: 'Completed', color: 'bg-blue-500', textColor: 'text-blue-400' },
     failed: { label: 'Failed', color: 'bg-red-500', textColor: 'text-red-400' },
+    scheduled: { label: 'Scheduled', color: 'bg-purple-500', textColor: 'text-purple-400' },
 };
 
 export function CampaignsList({

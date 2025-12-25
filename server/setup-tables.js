@@ -66,6 +66,22 @@ const tables = [
             },
         ],
     },
+    {
+        TableName: 'LeadProgress',
+        KeySchema: [{ AttributeName: 'id', KeyType: 'HASH' }],
+        AttributeDefinitions: [
+            { AttributeName: 'id', AttributeType: 'S' },
+            { AttributeName: 'campaignId', AttributeType: 'S' },
+        ],
+        BillingMode: 'PAY_PER_REQUEST',
+        GlobalSecondaryIndexes: [
+            {
+                IndexName: 'CampaignIdIndex',
+                KeySchema: [{ AttributeName: 'campaignId', KeyType: 'HASH' }],
+                Projection: { ProjectionType: 'ALL' },
+            },
+        ],
+    },
 ];
 
 async function createTable(tableConfig) {

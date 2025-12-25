@@ -51,46 +51,48 @@
         --gmail-compose-bg: #c2e7ff;
     }
 
-    /* Dark Mode Variables */
+    /* Dark Mode Variables - Premium Deep Black / Glass Theme */
     .dark {
-        --background: 220 9% 8%;
-        --foreground: 0 0% 93%;
+        --background: 240 10% 3.9%;
+        /* #09090b */
+        --foreground: 0 0% 98%;
 
-        --card: 220 9% 12%;
-        --card-foreground: 0 0% 93%;
+        --card: 240 10% 3.9%;
+        --card-foreground: 0 0% 98%;
 
-        --popover: 220 9% 12%;
-        --popover-foreground: 0 0% 93%;
+        --popover: 240 10% 3.9%;
+        --popover-foreground: 0 0% 98%;
 
-        --primary: 213 90% 65%;
-        --primary-foreground: 220 9% 8%;
+        --primary: 263.4 70% 50.4%;
+        /* Violet */
+        --primary-foreground: 210 40% 98%;
 
-        --secondary: 220 9% 18%;
-        --secondary-foreground: 0 0% 93%;
+        --secondary: 240 3.7% 15.9%;
+        --secondary-foreground: 0 0% 98%;
 
-        --muted: 220 9% 18%;
-        --muted-foreground: 220 9% 60%;
+        --muted: 240 3.7% 15.9%;
+        --muted-foreground: 240 5% 64.9%;
 
-        --accent: 220 9% 18%;
-        --accent-foreground: 0 0% 93%;
+        --accent: 240 3.7% 15.9%;
+        --accent-foreground: 0 0% 98%;
 
-        --destructive: 0 72% 51%;
-        --destructive-foreground: 0 0% 100%;
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 0 0% 98%;
 
-        --border: 220 9% 20%;
-        --input: 220 9% 20%;
-        --ring: 213 90% 65%;
+        --border: 240 3.7% 15.9%;
+        --input: 240 3.7% 15.9%;
+        --ring: 240 4.9% 83.9%;
 
-        /* Gmail dark specific colors */
-        --gmail-red: #ea4335;
-        --gmail-blue: #8ab4f8;
-        --gmail-hover: #3c4043;
-        --gmail-border: #3c4043;
-        --gmail-text: #e8eaed;
-        --gmail-text-secondary: #9aa0a6;
-        --gmail-sidebar-hover: #3c4043;
-        --gmail-sidebar-active: #394457;
-        --gmail-compose-bg: #394457;
+        /* Premium Dark Theme Overrides */
+        --gmail-red: #f43f5e;
+        --gmail-blue: #6366f1;
+        --gmail-hover: rgba(255, 255, 255, 0.05);
+        --gmail-border: rgba(255, 255, 255, 0.08);
+        --gmail-text: #ffffff;
+        --gmail-text-secondary: #a1a1aa;
+        --gmail-sidebar-hover: rgba(255, 255, 255, 0.05);
+        --gmail-sidebar-active: rgba(99, 102, 241, 0.15);
+        --gmail-compose-bg: #18181b;
     }
 }
 
@@ -105,7 +107,7 @@
     }
 
     .dark body {
-        @apply bg-[#202124] text-[#e8eaed];
+        @apply bg-[#09090b] text-foreground selection:bg-indigo-500/30 selection:text-indigo-200;
     }
 
     h1,
@@ -133,7 +135,7 @@
     }
 
     .dark .gmail-card {
-        @apply bg-[#303134] border-[#3c4043];
+        @apply bg-[#121215] border-white/5 shadow-2xl;
     }
 
     .gmail-btn {
@@ -161,7 +163,7 @@
     }
 
     .dark .gmail-input {
-        @apply bg-[#3c4043] text-[#e8eaed] placeholder:text-[#9aa0a6] focus:ring-[#8ab4f8] focus:bg-[#303134];
+        @apply bg-black/20 border border-white/10 text-white placeholder:text-zinc-500 focus:ring-indigo-500 focus:bg-black/40 focus:border-indigo-500/50;
     }
 
     .gmail-sidebar-item {
@@ -173,7 +175,7 @@
     }
 
     .dark .gmail-sidebar-item-active {
-        @apply bg-[#394457] text-[#c2e7ff];
+        @apply bg-indigo-500/10 text-indigo-400 font-semibold border-r-2 border-indigo-500;
     }
 
     .gmail-sidebar-item-hover {
@@ -181,7 +183,7 @@
     }
 
     .dark .gmail-sidebar-item-hover {
-        @apply hover:bg-[#3c4043];
+        @apply hover:bg-white/5;
     }
 }
 
@@ -196,12 +198,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #dadce0;
+    background: #3f3f46;
     border-radius: 99px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #bdc1c6;
+    background: #52525b;
 }
 
 /* Gmail Compose Button */

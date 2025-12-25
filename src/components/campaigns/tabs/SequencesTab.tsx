@@ -363,6 +363,69 @@ export function SequencesTab({ campaignId, sequence, onSequenceUpdate, leads = [
                     'flex-1 rounded-xl border overflow-hidden flex flex-col',
                     theme === 'dark' ? 'border-gray-800 bg-[#1a1a1a]' : 'border-gray-200 bg-white'
                 )}>
+                    {/* Delay Settings - Only show for steps after first */}
+                    {steps.findIndex(s => s.id === activeStepId) > 0 && (
+                        <div className={cn(
+                            'flex items-center gap-4 px-6 py-3 border-b',
+                            theme === 'dark' ? 'border-gray-800 bg-[#151515]' : 'border-gray-100 bg-gray-50'
+                        )}>
+                            <Clock className={cn(
+                                'w-4 h-4',
+                                theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                            )} />
+                            <span className={cn(
+                                'text-sm font-medium',
+                                theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                            )}>
+                                Wait
+                            </span>
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="number"
+                                    min="0"
+                                    max="365"
+                                    value={activeStep.delayDays}
+                                    onChange={(e) => handleUpdateStep(activeStepId, { delayDays: parseInt(e.target.value) || 0 })}
+                                    className={cn(
+                                        'w-16 px-2 py-1.5 rounded-lg border text-sm text-center focus:outline-none focus:ring-2',
+                                        theme === 'dark'
+                                            ? 'bg-[#252525] border-gray-700 text-white focus:ring-blue-500/30'
+                                            : 'bg-white border-gray-200 text-gray-900 focus:ring-blue-500/30'
+                                    )}
+                                />
+                                <span className={cn(
+                                    'text-sm',
+                                    theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                                )}>days</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="number"
+                                    min="0"
+                                    max="23"
+                                    value={activeStep.delayHours}
+                                    onChange={(e) => handleUpdateStep(activeStepId, { delayHours: parseInt(e.target.value) || 0 })}
+                                    className={cn(
+                                        'w-16 px-2 py-1.5 rounded-lg border text-sm text-center focus:outline-none focus:ring-2',
+                                        theme === 'dark'
+                                            ? 'bg-[#252525] border-gray-700 text-white focus:ring-blue-500/30'
+                                            : 'bg-white border-gray-200 text-gray-900 focus:ring-blue-500/30'
+                                    )}
+                                />
+                                <span className={cn(
+                                    'text-sm',
+                                    theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                                )}>hours</span>
+                            </div>
+                            <span className={cn(
+                                'text-xs ml-2',
+                                theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                            )}>
+                                after previous step (if no reply)
+                            </span>
+                        </div>
+                    )}
+
                     {/* Subject Line */}
                     <div className={cn(
                         'flex items-center gap-4 px-6 py-4 border-b',
@@ -401,6 +464,108 @@ export function SequencesTab({ campaignId, sequence, onSequenceUpdate, leads = [
                             Preview
                         </button>
                     </div>
+
+                    {/* Variants Section - Show if variants exist */}
+                    {activeStep.variants.length > 0 && (
+                        <div className={cn(
+                            'px-6 py-3 border-b',
+                            theme === 'dark' ? 'border-gray-800 bg-[#151515]' : 'border-gray-100 bg-gray-50'
+                        )}>
+                            <div className="flex items-center justify-between mb-3">
+                                <span className={cn(
+                                    'text-sm font-medium',
+                                    theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                                )}>
+                                    A/B Test Variants ({activeStep.variants.length})
+                                </span>
+                                <button
+                                    onClick={() => handleAddVariant(activeStepId)}
+                                    className={cn(
+                                        'flex items-center gap-1 text-xs font-medium px-2 py-1 rounded transition-colors',
+                                        theme === 'dark'
+                                            ? 'text-blue-400 hover:bg-blue-500/10'
+                                            : 'text-blue-600 hover:bg-blue-50'
+                                    )}
+                                >
+                                    <Plus className="w-3 h-3" />
+                                    Add Variant
+                                </button>
+                            </div>
+                            <div className="space-y-2">
+                                {activeStep.variants.map((variant, vIndex) => (
+                                    <div
+                                        key={variant.id}
+                                        className={cn(
+                                            'flex items-center gap-3 p-3 rounded-lg',
+                                            theme === 'dark' ? 'bg-[#1a1a1a] border border-gray-700' : 'bg-white border border-gray-200'
+                                        )}
+                                    >
+                                        <span className={cn(
+                                            'text-xs font-medium px-2 py-1 rounded',
+                                            theme === 'dark' ? 'bg-purple-500/20 text-purple-400' : 'bg-purple-100 text-purple-600'
+                                        )}>
+                                            {String.fromCharCode(65 + vIndex)}
+                                        </span>
+                                        <input
+                                            type="text"
+                                            value={variant.subject}
+                                            onChange={(e) => {
+                                                const newVariants = activeStep.variants.map(v =>
+                                                    v.id === variant.id ? { ...v, subject: e.target.value } : v
+                                                );
+                                                handleUpdateStep(activeStepId, { variants: newVariants });
+                                            }}
+                                            placeholder="Variant subject line"
+                                            className={cn(
+                                                'flex-1 px-3 py-1.5 rounded border text-sm focus:outline-none focus:ring-2',
+                                                theme === 'dark'
+                                                    ? 'bg-[#252525] border-gray-600 text-white focus:ring-purple-500/30'
+                                                    : 'bg-gray-50 border-gray-200 text-gray-900 focus:ring-purple-500/30'
+                                            )}
+                                        />
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                max="100"
+                                                value={variant.weight}
+                                                onChange={(e) => {
+                                                    const newVariants = activeStep.variants.map(v =>
+                                                        v.id === variant.id ? { ...v, weight: parseInt(e.target.value) || 0 } : v
+                                                    );
+                                                    handleUpdateStep(activeStepId, { variants: newVariants });
+                                                }}
+                                                className={cn(
+                                                    'w-14 px-2 py-1.5 rounded border text-sm text-center focus:outline-none focus:ring-2',
+                                                    theme === 'dark'
+                                                        ? 'bg-[#252525] border-gray-600 text-white focus:ring-purple-500/30'
+                                                        : 'bg-gray-50 border-gray-200 text-gray-900 focus:ring-purple-500/30'
+                                                )}
+                                            />
+                                            <span className={cn(
+                                                'text-xs',
+                                                theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                                            )}>%</span>
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                const newVariants = activeStep.variants.filter(v => v.id !== variant.id);
+                                                handleUpdateStep(activeStepId, { variants: newVariants });
+                                            }}
+                                            className={cn(
+                                                'p-1.5 rounded transition-colors',
+                                                theme === 'dark'
+                                                    ? 'text-gray-500 hover:text-red-400 hover:bg-red-500/10'
+                                                    : 'text-gray-400 hover:text-red-500 hover:bg-red-50'
+                                            )}
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Body Editor */}
                     <div className="flex-1 p-6 overflow-auto">

@@ -284,57 +284,57 @@ export default function UnifiedDashboard() {
 
                         {/* Stats Grid */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                            <div className="gmail-card p-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-[#e8f0fe] flex items-center justify-center">
-                                        <BarChart2 className="w-5 h-5 text-[#1a73e8]" />
+                            <div className="gmail-card p-5 border border-white/5 dark:bg-gradient-to-br dark:from-[#121215] dark:to-[#0c0c10] dark:shadow-lg transition-all hover:border-white/10 group">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-xl bg-indigo-500/10 dark:bg-indigo-500/20 flex items-center justify-center ring-1 ring-indigo-500/20 group-hover:scale-110 transition-transform duration-300">
+                                        <BarChart2 className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
                                     </div>
                                     <div>
-                                        <div className="text-2xl font-medium text-[#202124] dark:text-[#e8eaed]">
+                                        <div className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
                                             {stats?.totalCampaigns || 0}
                                         </div>
-                                        <div className="text-sm text-[#5f6368]">Total Campaigns</div>
+                                        <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mt-1">Total Campaigns</div>
                                     </div>
                                 </div>
                             </div>
-                            <div className="gmail-card p-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-[#e6f4ea] flex items-center justify-center">
-                                        <Send className="w-5 h-5 text-[#1e8e3e]" />
+                            <div className="gmail-card p-5 border border-white/5 dark:bg-gradient-to-br dark:from-[#121215] dark:to-[#0c0c10] dark:shadow-lg transition-all hover:border-white/10 group">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 flex items-center justify-center ring-1 ring-emerald-500/20 group-hover:scale-110 transition-transform duration-300">
+                                        <Send className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
                                     </div>
                                     <div>
-                                        <div className="text-2xl font-medium text-[#202124] dark:text-[#e8eaed]">
+                                        <div className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
                                             {stats?.totalEmailsSent || 0}
                                         </div>
-                                        <div className="text-sm text-[#5f6368]">Emails Sent</div>
+                                        <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mt-1">Emails Sent</div>
                                     </div>
                                 </div>
                             </div>
-                            <div className="gmail-card p-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-[#fef7e0] flex items-center justify-center">
-                                        <TrendingUp className="w-5 h-5 text-[#f9ab00]" />
+                            <div className="gmail-card p-5 border border-white/5 dark:bg-gradient-to-br dark:from-[#121215] dark:to-[#0c0c10] dark:shadow-lg transition-all hover:border-white/10 group">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-xl bg-amber-500/10 dark:bg-amber-500/20 flex items-center justify-center ring-1 ring-amber-500/20 group-hover:scale-110 transition-transform duration-300">
+                                        <TrendingUp className="w-6 h-6 text-amber-600 dark:text-amber-400" />
                                     </div>
                                     <div>
-                                        <div className="text-2xl font-medium text-[#202124] dark:text-[#e8eaed]">
+                                        <div className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
                                             {stats?.totalEmailsSent
                                                 ? Math.round((stats.totalEmailsSent / (stats.totalEmailsSent + stats.totalEmailsFailed)) * 100)
                                                 : 0}%
                                         </div>
-                                        <div className="text-sm text-[#5f6368]">Success Rate</div>
+                                        <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mt-1">Success Rate</div>
                                     </div>
                                 </div>
                             </div>
-                            <div className="gmail-card p-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-[#fce8e6] flex items-center justify-center">
-                                        <Server className="w-5 h-5 text-[#d93025]" />
+                            <div className="gmail-card p-5 border border-white/5 dark:bg-gradient-to-br dark:from-[#121215] dark:to-[#0c0c10] dark:shadow-lg transition-all hover:border-white/10 group">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-xl bg-rose-500/10 dark:bg-rose-500/20 flex items-center justify-center ring-1 ring-rose-500/20 group-hover:scale-110 transition-transform duration-300">
+                                        <Server className="w-6 h-6 text-rose-600 dark:text-rose-400" />
                                     </div>
                                     <div>
-                                        <div className="text-2xl font-medium text-[#202124] dark:text-[#e8eaed]">
+                                        <div className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
                                             {stats?.totalSmtpAccounts || smtpAccounts.length || 0}
                                         </div>
-                                        <div className="text-sm text-[#5f6368]">SMTP Accounts</div>
+                                        <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mt-1">SMTP Accounts</div>
                                     </div>
                                 </div>
                             </div>
@@ -599,7 +599,7 @@ export default function UnifiedDashboard() {
             <div className={cn(
                 'shrink-0 flex flex-col py-2 overflow-hidden hidden md:flex',
                 sidebarCollapsed ? 'w-[72px]' : 'w-[256px]',
-                theme === 'dark' ? 'bg-[#202124]' : 'bg-white'
+                theme === 'dark' ? 'bg-[#0c0c10] border-r border-white/5' : 'bg-white border-r border-gray-100'
             )}>
                 <ScrollArea className="flex-1 pt-4">
                     {/* Main Navigation Items */}
@@ -693,8 +693,8 @@ export default function UnifiedDashboard() {
 
             {/* Main Content Area */}
             <div className={cn(
-                'flex-1 flex overflow-hidden rounded-tl-2xl',
-                theme === 'dark' ? 'bg-[#171717]' : 'bg-[#f6f8fc]'
+                'flex-1 flex overflow-hidden',
+                theme === 'dark' ? 'bg-[#09090b]' : 'bg-[#f6f8fc]'
             )}>
                 {renderContent()}
             </div>

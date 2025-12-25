@@ -152,22 +152,48 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
 
     const handleResumeCampaign = async () => {
         if (!campaign) return;
+
+        // Validate before starting
+        if (leads.length === 0) {
+            alert('Please add leads before starting the campaign.');
+            setActiveTab('leads');
+            return;
+        }
+
+        if (!sequence || !sequence.steps || sequence.steps.length === 0) {
+            alert('Please create at least one email step before starting the campaign.');
+            setActiveTab('sequences');
+            return;
+        }
+
+        const firstStep = sequence.steps[0];
+        if (!firstStep.subject || !firstStep.body) {
+            alert('Please add a subject and body to the first email step.');
+            setActiveTab('sequences');
+            return;
+        }
+
         try {
             const token = localStorage.getItem('bulkEmailToken');
-            const response = await fetch(`/api/bulk-email/campaigns/${campaignId}`, {
-                method: 'PUT',
+            const response = await fetch(`/api/bulk-email/campaigns/${campaignId}/start`, {
+                method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({ status: 'active' })
+                }
             });
+
+            const data = await response.json();
 
             if (response.ok) {
                 setCampaign({ ...campaign, status: 'active' });
+                alert(`Campaign started! Sending to ${data.totalLeads} leads with ${data.totalSteps} steps.`);
+            } else {
+                alert(data.error || 'Failed to start campaign');
             }
         } catch (error) {
             console.error('Error resuming campaign:', error);
+            alert('Failed to start campaign. Please try again.');
         }
     };
 
@@ -175,20 +201,23 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
         if (!campaign) return;
         try {
             const token = localStorage.getItem('bulkEmailToken');
-            const response = await fetch(`/api/bulk-email/campaigns/${campaignId}`, {
-                method: 'PUT',
+            const response = await fetch(`/api/bulk-email/campaigns/${campaignId}/pause`, {
+                method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({ status: 'paused' })
+                }
             });
 
             if (response.ok) {
                 setCampaign({ ...campaign, status: 'paused' });
+            } else {
+                const data = await response.json();
+                alert(data.error || 'Failed to pause campaign');
             }
         } catch (error) {
             console.error('Error pausing campaign:', error);
+            alert('Failed to pause campaign. Please try again.');
         }
     };
 

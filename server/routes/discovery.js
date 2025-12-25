@@ -11,15 +11,30 @@ const DUCKDUCKGO_API = 'https://api.duckduckgo.com/';
 const DUCKDUCKGO_HTML = 'https://html.duckduckgo.com/html/';
 
 // Optimized system prompt - concise and focused
-const DISCOVERY_SYSTEM_PROMPT = `You are a B2B lead discovery AI. Analyze web search results and identify the best matching companies.
+const DISCOVERY_SYSTEM_PROMPT = `You are an expert B2B lead discovery AI. Analyze web search results and identify the BEST matching companies for the user's target market.
 
-For each lead provide:
-- companyName, website (REAL URL from results), linkedInUrl
-- industry, country, region, companySize
-- description, aiReasoning (2 sentences why they need user's product)
-- suggestedRole, confidenceScore (60-95), matchedCriteria[], foundOnPlatform
+For EACH lead you identify, provide accurate information:
+- companyName: The actual company name (not a product or website title)
+- website: The REAL company website URL from search results (must be valid)
+- linkedInUrl: LinkedIn company page URL (format: linkedin.com/company/slug)
+- industry: SPECIFIC industry category (e.g., "E-commerce Platform", "Marketing Automation SaaS", "Healthcare Analytics", "FinTech Payments")
+- country: The country where the company is headquartered
+- region: Geographic region (UK, USA, Europe, Asia Pacific, etc.)
+- companySize: Estimate based on context (Startup 1-10, Small 11-50, SME 51-200, Mid-Market 201-1000, Enterprise 1000+)
+- description: A SPECIFIC 2-3 sentence description of what the company actually does. Be specific about their products/services. Do NOT write generic marketing fluff.
+- aiReasoning: 2 specific sentences explaining WHY this company would benefit from what the user is offering. Be concrete about the value proposition.
+- suggestedRole: The best decision-maker role to contact (e.g., "VP of Marketing", "CTO", "Head of Operations")
+- confidenceScore: 60-95 based on how well they match the user's criteria
+- matchedCriteria: Array of 2-4 specific reasons why this is a good match
+- foundOnPlatform: Source where you found them
 
-Rules: 3-5 leads max, only verified URLs, specific reasoning. JSON only.`;
+Rules:
+1. Return 3-5 leads maximum
+2. ONLY use real URLs from the search results - never make up URLs
+3. Be SPECIFIC in descriptions - mention actual products, services, or unique aspects
+4. Match industry accurately based on what the company actually does
+5. Return valid JSON only in format: { "leads": [...] }`;
+
 
 // Cache for search results (simple in-memory cache)
 const searchCache = new Map();
@@ -234,23 +249,48 @@ function extractCompanyInfo(result, prompt, filters) {
     else if (filters?.region?.includes('usa')) { country = 'United States'; region = 'USA'; }
     else if (filters?.region?.includes('europe')) { region = 'Europe'; }
 
-    // Determine industry
+    // Determine industry - be MORE specific
     let industry = 'Technology';
     const promptLower = prompt.toLowerCase();
     const descLower = (description + title).toLowerCase();
 
-    if (promptLower.includes('ecommerce') || promptLower.includes('e-commerce') || descLower.includes('ecommerce') || descLower.includes('shop') || descLower.includes('retail')) {
+    // Check for specific industries
+    if (promptLower.includes('ecommerce') || promptLower.includes('e-commerce') || descLower.includes('ecommerce') || descLower.includes('shop') || descLower.includes('retail') || descLower.includes('store')) {
         industry = 'E-commerce';
-    } else if (promptLower.includes('saas') || descLower.includes('saas') || descLower.includes('software')) {
+    } else if (descLower.includes('marketing automation') || descLower.includes('email marketing') || descLower.includes('crm')) {
+        industry = 'Marketing Automation';
+    } else if (promptLower.includes('saas') || descLower.includes('saas') || descLower.includes('subscription') || descLower.includes('cloud platform')) {
         industry = 'SaaS';
-    } else if (promptLower.includes('fintech') || promptLower.includes('finance') || descLower.includes('payment') || descLower.includes('finance')) {
+    } else if (promptLower.includes('fintech') || promptLower.includes('finance') || descLower.includes('payment') || descLower.includes('finance') || descLower.includes('banking') || descLower.includes('crypto')) {
         industry = 'FinTech';
-    } else if (promptLower.includes('health') || descLower.includes('health') || descLower.includes('medical')) {
+    } else if (promptLower.includes('health') || descLower.includes('health') || descLower.includes('medical') || descLower.includes('healthcare') || descLower.includes('clinic') || descLower.includes('pharma')) {
         industry = 'Healthcare Tech';
-    } else if (promptLower.includes('marketing') || descLower.includes('marketing') || descLower.includes('advertising')) {
+    } else if (promptLower.includes('marketing') || descLower.includes('marketing') || descLower.includes('advertising') || descLower.includes('agency') || descLower.includes('digital marketing')) {
         industry = 'Digital Marketing';
-    } else if (descLower.includes('logistics') || descLower.includes('delivery') || descLower.includes('shipping')) {
-        industry = 'Logistics';
+    } else if (descLower.includes('logistics') || descLower.includes('delivery') || descLower.includes('shipping') || descLower.includes('freight') || descLower.includes('supply chain')) {
+        industry = 'Logistics & Supply Chain';
+    } else if (descLower.includes('ai') || descLower.includes('machine learning') || descLower.includes('artificial intelligence') || descLower.includes('deep learning')) {
+        industry = 'AI & Machine Learning';
+    } else if (descLower.includes('hr') || descLower.includes('human resources') || descLower.includes('recruiting') || descLower.includes('talent') || descLower.includes('hiring')) {
+        industry = 'HR Tech';
+    } else if (descLower.includes('property') || descLower.includes('real estate') || descLower.includes('proptech') || descLower.includes('rent')) {
+        industry = 'PropTech';
+    } else if (descLower.includes('education') || descLower.includes('learning') || descLower.includes('training') || descLower.includes('course') || descLower.includes('edtech')) {
+        industry = 'EdTech';
+    } else if (descLower.includes('legal') || descLower.includes('law') || descLower.includes('compliance') || descLower.includes('contract')) {
+        industry = 'Legal Tech';
+    } else if (descLower.includes('cybersecurity') || descLower.includes('security') || descLower.includes('infosec')) {
+        industry = 'Cybersecurity';
+    } else if (descLower.includes('analytics') || descLower.includes('data') || descLower.includes('intelligence') || descLower.includes('insights')) {
+        industry = 'Data & Analytics';
+    } else if (descLower.includes('manufacturing') || descLower.includes('industrial') || descLower.includes('factory')) {
+        industry = 'Manufacturing Tech';
+    } else if (descLower.includes('travel') || descLower.includes('hospitality') || descLower.includes('booking') || descLower.includes('hotel')) {
+        industry = 'Travel & Hospitality';
+    } else if (descLower.includes('food') || descLower.includes('restaurant') || descLower.includes('catering')) {
+        industry = 'FoodTech';
+    } else if (descLower.includes('media') || descLower.includes('entertainment') || descLower.includes('streaming') || descLower.includes('content')) {
+        industry = 'Media & Entertainment';
     }
 
     if (filters?.industry?.length > 0) {
