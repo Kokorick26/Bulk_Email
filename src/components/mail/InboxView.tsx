@@ -63,7 +63,6 @@ interface InboxViewProps {
     onForward?: (message: Message) => void;
 }
 
-type TabType = 'primary' | 'others';
 type FilterType = 'all' | 'unread' | 'starred' | 'has_attachments';
 
 export default function InboxView({ smtpAccounts, onRefreshAccounts, onReply, onForward }: InboxViewProps) {
@@ -75,12 +74,9 @@ export default function InboxView({ smtpAccounts, onRefreshAccounts, onReply, on
     const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
     const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
     const [searchQuery, setSearchQuery] = useState('');
-    const [inboxSearch, setInboxSearch] = useState('');
     const [showImapConfig, setShowImapConfig] = useState(false);
     const [accountToConfig, setAccountToConfig] = useState<SmtpAccount | null>(null);
-    const [activeTab, setActiveTab] = useState<TabType>('primary');
     const [activeFilter, setActiveFilter] = useState<FilterType>('all');
-    const [sidebarSection, setSidebarSection] = useState<'status' | 'inboxes' | 'sent' | 'drafts' | 'archive' | 'spam' | 'trash' | 'more'>('inboxes');
     const [activeFolder, setActiveFolder] = useState<string>('INBOX');
 
     // Filter accounts with IMAP configured
@@ -243,9 +239,6 @@ export default function InboxView({ smtpAccounts, onRefreshAccounts, onReply, on
 
     // Apply filters
     const filteredMessages = messages.filter(m => {
-        // Tab filter
-        if (activeTab === 'others' && !m.campaign) return false;
-        if (activeTab === 'primary' && m.campaign) return false;
 
         // Status filter
         if (activeFilter === 'unread' && m.isRead) return false;
@@ -372,491 +365,231 @@ export default function InboxView({ smtpAccounts, onRefreshAccounts, onReply, on
 
     return (
         <div className="flex-1 flex overflow-hidden h-full">
-            {/* Left Sidebar - Inbox Style */}
+            {/* Left Sidebar - Folder Categories Only */}
             <div className={cn(
-                'w-44 flex-shrink-0 flex flex-col border-r',
+                'w-48 flex-shrink-0 flex flex-col border-r',
                 theme === 'dark' ? 'bg-[#1a1a1a] border-gray-800' : 'bg-[#f8f9fa] border-gray-200'
             )}>
                 <ScrollArea className="flex-1 py-4">
-                    {/* Status Section */}
-                    <div className="px-4 mb-4">
-                        <button
-                            onClick={() => setSidebarSection('status')}
-                            className={cn(
-                                'w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                                sidebarSection === 'status'
-                                    ? theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-gray-200 text-gray-900'
-                                    : theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'
-                            )}
-                        >
-                            <span>Status</span>
-                        </button>
-
-                        {sidebarSection === 'status' && (
-                            <div className="mt-2 space-y-1">
-                                <button
-                                    onClick={() => setActiveFilter('all')}
-                                    className={cn(
-                                        'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors',
-                                        activeFilter === 'all'
-                                            ? 'bg-blue-600 text-white'
-                                            : theme === 'dark' ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-100'
-                                    )}
-                                >
-                                    <Mail className="w-4 h-4" />
-                                    All Messages
-                                    {messages.length > 0 && (
-                                        <span className={cn(
-                                            'ml-auto text-xs px-1.5 py-0.5 rounded',
-                                            activeFilter === 'all' ? 'bg-blue-500' : theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
-                                        )}>
-                                            {messages.length}
-                                        </span>
-                                    )}
-                                </button>
-                                <button
-                                    onClick={() => setActiveFilter('unread')}
-                                    className={cn(
-                                        'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors',
-                                        activeFilter === 'unread'
-                                            ? 'bg-blue-600 text-white'
-                                            : theme === 'dark' ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-100'
-                                    )}
-                                >
-                                    <MailOpen className="w-4 h-4" />
-                                    Unread
-                                    {unreadCount > 0 && (
-                                        <span className={cn(
-                                            'ml-auto text-xs px-1.5 py-0.5 rounded',
-                                            activeFilter === 'unread' ? 'bg-blue-500' : 'bg-blue-600 text-white'
-                                        )}>
-                                            {unreadCount}
-                                        </span>
-                                    )}
-                                </button>
-                                <button
-                                    onClick={() => setActiveFilter('starred')}
-                                    className={cn(
-                                        'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors',
-                                        activeFilter === 'starred'
-                                            ? 'bg-blue-600 text-white'
-                                            : theme === 'dark' ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-100'
-                                    )}
-                                >
-                                    <Star className="w-4 h-4" />
-                                    Starred
-                                </button>
-                            </div>
-                        )}
+                    {/* Filter Section */}
+                    <div className="px-3 mb-6">
+                        <div className={cn(
+                            'text-xs font-semibold uppercase tracking-wider mb-3 px-3',
+                            theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                        )}>
+                            Filters
+                        </div>
+                        <div className="space-y-1">
+                            <button
+                                onClick={() => setActiveFilter('all')}
+                                className={cn(
+                                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all',
+                                    activeFilter === 'all'
+                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
+                                        : theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'
+                                )}
+                            >
+                                <Mail className="w-4 h-4" />
+                                <span>All Mail</span>
+                                {messages.length > 0 && (
+                                    <span className={cn(
+                                        'ml-auto text-xs px-2 py-0.5 rounded-full',
+                                        activeFilter === 'all' ? 'bg-blue-500' : theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
+                                    )}>
+                                        {messages.length}
+                                    </span>
+                                )}
+                            </button>
+                            <button
+                                onClick={() => setActiveFilter('unread')}
+                                className={cn(
+                                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all',
+                                    activeFilter === 'unread'
+                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
+                                        : theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'
+                                )}
+                            >
+                                <MailOpen className="w-4 h-4" />
+                                <span>Unread</span>
+                                {unreadCount > 0 && (
+                                    <span className={cn(
+                                        'ml-auto text-xs px-2 py-0.5 rounded-full bg-red-500 text-white'
+                                    )}>
+                                        {unreadCount}
+                                    </span>
+                                )}
+                            </button>
+                            <button
+                                onClick={() => setActiveFilter('starred')}
+                                className={cn(
+                                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all',
+                                    activeFilter === 'starred'
+                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
+                                        : theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'
+                                )}
+                            >
+                                <Star className="w-4 h-4" />
+                                <span>Starred</span>
+                            </button>
+                        </div>
                     </div>
 
-                    {/* All Inboxes Section */}
-                    <div className="px-4 mb-4">
-                        <button
-                            onClick={() => setSidebarSection('inboxes')}
-                            className={cn(
-                                'w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                                sidebarSection === 'inboxes'
-                                    ? theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-gray-200 text-gray-900'
-                                    : theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'
-                            )}
-                        >
-                            <span>All Inboxes</span>
-                            {activeFolder === 'INBOX' && (
-                                <span className="ml-auto w-2 h-2 bg-blue-500 rounded-full" />
-                            )}
-                        </button>
-
-                        {sidebarSection === 'inboxes' && (
-                            <div className="mt-2 space-y-2">
-                                <div className="relative">
-                                    <Search className={cn(
-                                        'absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4',
-                                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                                    )} />
-                                    <input
-                                        type="text"
-                                        placeholder="Search"
-                                        value={inboxSearch}
-                                        onChange={(e) => setInboxSearch(e.target.value)}
-                                        className={cn(
-                                            'w-full pl-9 pr-3 py-2 rounded-lg text-sm border-0',
-                                            theme === 'dark'
-                                                ? 'bg-gray-800 text-white placeholder:text-gray-500'
-                                                : 'bg-gray-100 text-gray-900 placeholder:text-gray-400'
-                                        )}
-                                    />
-                                </div>
-
-                                {/* Inbox accounts list */}
-                                <div className="space-y-1 mt-2">
-                                    {configuredAccounts
-                                        .filter(acc => !inboxSearch || acc.fromEmail.toLowerCase().includes(inboxSearch.toLowerCase()))
-                                        .map(account => (
-                                            <button
-                                                key={account.id}
-                                                onClick={() => {
-                                                    setSelectedAccount(account);
-                                                    setActiveFolder('INBOX');
-                                                }}
-                                                className={cn(
-                                                    'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors text-left',
-                                                    selectedAccount?.id === account.id
-                                                        ? 'bg-blue-600 text-white'
-                                                        : theme === 'dark' ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-100'
-                                                )}
-                                            >
-                                                <div className={cn(
-                                                    'w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium',
-                                                    selectedAccount?.id === account.id
-                                                        ? 'bg-blue-500 text-white'
-                                                        : theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-600'
-                                                )}>
-                                                    {account.fromEmail.charAt(0).toUpperCase()}
-                                                </div>
-                                                <span className="truncate flex-1">{account.fromEmail}</span>
-                                            </button>
-                                        ))}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Sent Section */}
-                    <div className="px-4 mb-4">
-                        <button
-                            onClick={() => setSidebarSection('sent')}
-                            className={cn(
-                                'w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                                sidebarSection === 'sent'
-                                    ? theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-gray-200 text-gray-900'
-                                    : theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'
-                            )}
-                        >
-                            <div className="flex items-center gap-2">
+                    {/* Folders Section */}
+                    <div className="px-3 mb-6">
+                        <div className={cn(
+                            'text-xs font-semibold uppercase tracking-wider mb-3 px-3',
+                            theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                        )}>
+                            Folders
+                        </div>
+                        <div className="space-y-1">
+                            <button
+                                onClick={() => setActiveFolder('INBOX')}
+                                className={cn(
+                                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all',
+                                    activeFolder === 'INBOX'
+                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
+                                        : theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'
+                                )}
+                            >
+                                <Inbox className="w-4 h-4" />
+                                <span>Inbox</span>
+                            </button>
+                            <button
+                                onClick={() => setActiveFolder('Sent')}
+                                className={cn(
+                                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all',
+                                    activeFolder === 'Sent'
+                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
+                                        : theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'
+                                )}
+                            >
                                 <Mail className="w-4 h-4" />
                                 <span>Sent</span>
-                            </div>
-                            {activeFolder === 'Sent' && (
-                                <span className="w-2 h-2 bg-blue-500 rounded-full" />
-                            )}
-                        </button>
-
-                        {sidebarSection === 'sent' && (
-                            <div className="mt-2 space-y-1">
-                                {configuredAccounts.map(account => (
-                                    <button
-                                        key={account.id}
-                                        onClick={() => {
-                                            setSelectedAccount(account);
-                                            setActiveFolder('Sent');
-                                        }}
-                                        className={cn(
-                                            'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors text-left',
-                                            selectedAccount?.id === account.id && activeFolder === 'Sent'
-                                                ? 'bg-blue-600 text-white'
-                                                : theme === 'dark' ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-100'
-                                        )}
-                                    >
-                                        <div className={cn(
-                                            'w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium',
-                                            selectedAccount?.id === account.id && activeFolder === 'Sent'
-                                                ? 'bg-blue-500 text-white'
-                                                : theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-600'
-                                        )}>
-                                            {account.fromEmail.charAt(0).toUpperCase()}
-                                        </div>
-                                        <span className="truncate flex-1">{account.fromEmail}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Drafts Section */}
-                    <div className="px-4 mb-4">
-                        <button
-                            onClick={() => setSidebarSection('drafts')}
-                            className={cn(
-                                'w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                                sidebarSection === 'drafts'
-                                    ? theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-gray-200 text-gray-900'
-                                    : theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'
-                            )}
-                        >
-                            <div className="flex items-center gap-2">
-                                <Mail className="w-4 h-4" />
+                            </button>
+                            <button
+                                onClick={() => setActiveFolder('Drafts')}
+                                className={cn(
+                                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all',
+                                    activeFolder === 'Drafts'
+                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
+                                        : theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'
+                                )}
+                            >
+                                <Folder className="w-4 h-4" />
                                 <span>Drafts</span>
-                            </div>
-                            {activeFolder === 'Drafts' && (
-                                <span className="w-2 h-2 bg-blue-500 rounded-full" />
-                            )}
-                        </button>
-
-                        {sidebarSection === 'drafts' && (
-                            <div className="mt-2 space-y-1">
-                                {configuredAccounts.map(account => (
-                                    <button
-                                        key={account.id}
-                                        onClick={() => {
-                                            setSelectedAccount(account);
-                                            setActiveFolder('Drafts');
-                                        }}
-                                        className={cn(
-                                            'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors text-left',
-                                            selectedAccount?.id === account.id && activeFolder === 'Drafts'
-                                                ? 'bg-blue-600 text-white'
-                                                : theme === 'dark' ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-100'
-                                        )}
-                                    >
-                                        <div className={cn(
-                                            'w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium',
-                                            selectedAccount?.id === account.id && activeFolder === 'Drafts'
-                                                ? 'bg-blue-500 text-white'
-                                                : theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-600'
-                                        )}>
-                                            {account.fromEmail.charAt(0).toUpperCase()}
-                                        </div>
-                                        <span className="truncate flex-1">{account.fromEmail}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Archive Section */}
-                    <div className="px-4 mb-4">
-                        <button
-                            onClick={() => setSidebarSection('archive')}
-                            className={cn(
-                                'w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                                sidebarSection === 'archive'
-                                    ? theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-gray-200 text-gray-900'
-                                    : theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'
-                            )}
-                        >
-                            <div className="flex items-center gap-2">
+                            </button>
+                            <button
+                                onClick={() => setActiveFolder('Archive')}
+                                className={cn(
+                                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all',
+                                    activeFolder === 'Archive'
+                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
+                                        : theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'
+                                )}
+                            >
                                 <Archive className="w-4 h-4" />
                                 <span>Archive</span>
-                            </div>
-                            {activeFolder === 'Archive' && (
-                                <span className="w-2 h-2 bg-blue-500 rounded-full" />
-                            )}
-                        </button>
-
-                        {sidebarSection === 'archive' && (
-                            <div className="mt-2 space-y-1">
-                                {configuredAccounts.map(account => (
-                                    <button
-                                        key={account.id}
-                                        onClick={() => {
-                                            setSelectedAccount(account);
-                                            setActiveFolder('Archive');
-                                        }}
-                                        className={cn(
-                                            'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors text-left',
-                                            selectedAccount?.id === account.id && activeFolder === 'Archive'
-                                                ? 'bg-blue-600 text-white'
-                                                : theme === 'dark' ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-100'
-                                        )}
-                                    >
-                                        <div className={cn(
-                                            'w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium',
-                                            selectedAccount?.id === account.id && activeFolder === 'Archive'
-                                                ? 'bg-blue-500 text-white'
-                                                : theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-600'
-                                        )}>
-                                            {account.fromEmail.charAt(0).toUpperCase()}
-                                        </div>
-                                        <span className="truncate flex-1">{account.fromEmail}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Spam Section */}
-                    <div className="px-4 mb-4">
-                        <button
-                            onClick={() => setSidebarSection('spam')}
-                            className={cn(
-                                'w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                                sidebarSection === 'spam'
-                                    ? theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-gray-200 text-gray-900'
-                                    : theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'
-                            )}
-                        >
-                            <div className="flex items-center gap-2">
+                            </button>
+                            <button
+                                onClick={() => setActiveFolder('Spam')}
+                                className={cn(
+                                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all',
+                                    activeFolder === 'Spam'
+                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
+                                        : theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'
+                                )}
+                            >
                                 <AlertCircle className="w-4 h-4" />
                                 <span>Spam</span>
-                            </div>
-                            {activeFolder === 'Spam' && (
-                                <span className="w-2 h-2 bg-blue-500 rounded-full" />
-                            )}
-                        </button>
-
-                        {sidebarSection === 'spam' && (
-                            <div className="mt-2 space-y-1">
-                                {configuredAccounts.map(account => (
-                                    <button
-                                        key={account.id}
-                                        onClick={() => {
-                                            setSelectedAccount(account);
-                                            setActiveFolder('Spam');
-                                        }}
-                                        className={cn(
-                                            'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors text-left',
-                                            selectedAccount?.id === account.id && activeFolder === 'Spam'
-                                                ? 'bg-blue-600 text-white'
-                                                : theme === 'dark' ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-100'
-                                        )}
-                                    >
-                                        <div className={cn(
-                                            'w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium',
-                                            selectedAccount?.id === account.id && activeFolder === 'Spam'
-                                                ? 'bg-blue-500 text-white'
-                                                : theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-600'
-                                        )}>
-                                            {account.fromEmail.charAt(0).toUpperCase()}
-                                        </div>
-                                        <span className="truncate flex-1">{account.fromEmail}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Trash Section */}
-                    <div className="px-4 mb-4">
-                        <button
-                            onClick={() => setSidebarSection('trash')}
-                            className={cn(
-                                'w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                                sidebarSection === 'trash'
-                                    ? theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-gray-200 text-gray-900'
-                                    : theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'
-                            )}
-                        >
-                            <div className="flex items-center gap-2">
+                            </button>
+                            <button
+                                onClick={() => setActiveFolder('Trash')}
+                                className={cn(
+                                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all',
+                                    activeFolder === 'Trash'
+                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
+                                        : theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'
+                                )}
+                            >
                                 <Trash2 className="w-4 h-4" />
                                 <span>Trash</span>
-                            </div>
-                            {activeFolder === 'Trash' && (
-                                <span className="w-2 h-2 bg-blue-500 rounded-full" />
-                            )}
-                        </button>
-
-                        {sidebarSection === 'trash' && (
-                            <div className="mt-2 space-y-1">
-                                {configuredAccounts.map(account => (
-                                    <button
-                                        key={account.id}
-                                        onClick={() => {
-                                            setSelectedAccount(account);
-                                            setActiveFolder('Trash');
-                                        }}
-                                        className={cn(
-                                            'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors text-left',
-                                            selectedAccount?.id === account.id && activeFolder === 'Trash'
-                                                ? 'bg-blue-600 text-white'
-                                                : theme === 'dark' ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-100'
-                                        )}
-                                    >
-                                        <div className={cn(
-                                            'w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium',
-                                            selectedAccount?.id === account.id && activeFolder === 'Trash'
-                                                ? 'bg-blue-500 text-white'
-                                                : theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-600'
-                                        )}>
-                                            {account.fromEmail.charAt(0).toUpperCase()}
-                                        </div>
-                                        <span className="truncate flex-1">{account.fromEmail}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
+                            </button>
+                        </div>
                     </div>
 
-                    {/* More Section */}
-                    <div className="px-4">
-                        <button
-                            onClick={() => setSidebarSection('more')}
-                            className={cn(
-                                'w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                                sidebarSection === 'more'
-                                    ? theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-gray-200 text-gray-900'
-                                    : theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'
-                            )}
-                        >
-                            <span>More</span>
-                        </button>
-
-                        {sidebarSection === 'more' && (
-                            <div className="mt-2 space-y-1">
-                                <button
-                                    onClick={() => {
-                                        if (unconfiguredAccounts.length > 0) {
-                                            handleOpenImapConfig(unconfiguredAccounts[0]);
-                                        }
-                                    }}
-                                    className={cn(
-                                        'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors',
-                                        theme === 'dark' ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-100'
-                                    )}
-                                >
-                                    <Settings2 className="w-4 h-4" />
-                                    Configure IMAP
-                                </button>
-                                <button
-                                    onClick={() => fetchMessages(true)}
-                                    disabled={fetching}
-                                    className={cn(
-                                        'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors',
-                                        theme === 'dark' ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-100'
-                                    )}
-                                >
-                                    <RefreshCw className={cn('w-4 h-4', fetching && 'animate-spin')} />
-                                    Refresh Inbox
-                                </button>
-                            </div>
-                        )}
+                    {/* Actions Section */}
+                    <div className="px-3">
+                        <div className={cn(
+                            'text-xs font-semibold uppercase tracking-wider mb-3 px-3',
+                            theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                        )}>
+                            Actions
+                        </div>
+                        <div className="space-y-1">
+                            <button
+                                onClick={() => fetchMessages(true)}
+                                disabled={fetching}
+                                className={cn(
+                                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all',
+                                    theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'
+                                )}
+                            >
+                                <RefreshCw className={cn('w-4 h-4', fetching && 'animate-spin')} />
+                                <span>{fetching ? 'Refreshing...' : 'Refresh'}</span>
+                            </button>
+                        </div>
                     </div>
                 </ScrollArea>
             </div>
 
             {/* Main Email List Area */}
             <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-                {/* Tabs - Primary / Others */}
+                {/* Email Account Tabs */}
                 <div className={cn(
-                    'flex items-center gap-6 px-6 border-b',
+                    'flex items-center gap-2 px-4 border-b overflow-x-auto',
                     theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
                 )}>
-                    <button
-                        onClick={() => setActiveTab('primary')}
-                        className={cn(
-                            'py-4 text-sm font-medium border-b-2 transition-colors -mb-px',
-                            activeTab === 'primary'
-                                ? 'border-blue-500 text-blue-500'
-                                : theme === 'dark'
-                                    ? 'border-transparent text-gray-400 hover:text-gray-300'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                        )}
-                    >
-                        Primary
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('others')}
-                        className={cn(
-                            'py-4 text-sm font-medium border-b-2 transition-colors -mb-px',
-                            activeTab === 'others'
-                                ? 'border-blue-500 text-blue-500'
-                                : theme === 'dark'
-                                    ? 'border-transparent text-gray-400 hover:text-gray-300'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                        )}
-                    >
-                        Others
-                    </button>
+                    {configuredAccounts.map(account => (
+                        <button
+                            key={account.id}
+                            onClick={() => setSelectedAccount(account)}
+                            className={cn(
+                                'flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all -mb-px whitespace-nowrap',
+                                selectedAccount?.id === account.id
+                                    ? 'border-blue-500 text-blue-500'
+                                    : theme === 'dark'
+                                        ? 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600'
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                            )}
+                        >
+                            <div className={cn(
+                                'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold',
+                                selectedAccount?.id === account.id
+                                    ? 'bg-blue-500 text-white'
+                                    : theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-600'
+                            )}>
+                                {account.fromEmail.charAt(0).toUpperCase()}
+                            </div>
+                            <span className="max-w-[180px] truncate">{account.fromEmail}</span>
+                        </button>
+                    ))}
+
+                    {/* Add Account Button */}
+                    {unconfiguredAccounts.length > 0 && (
+                        <button
+                            onClick={() => handleOpenImapConfig(unconfiguredAccounts[0])}
+                            className={cn(
+                                'flex items-center gap-2 px-3 py-3 text-sm transition-colors -mb-px',
+                                theme === 'dark'
+                                    ? 'text-gray-500 hover:text-gray-300'
+                                    : 'text-gray-400 hover:text-gray-600'
+                            )}
+                        >
+                            <Settings2 className="w-4 h-4" />
+                            <span>Add</span>
+                        </button>
+                    )}
                 </div>
 
                 {/* Search Bar */}

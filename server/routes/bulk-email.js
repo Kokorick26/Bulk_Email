@@ -683,6 +683,32 @@ async function processEmailsOneByOne(campaignId, campaign, recipientList, smtpAc
         const email = typeof recipient === 'string' ? recipient : recipient.email;
         const data = typeof recipient === 'object' ? recipient : { email };
 
+        // ======= REAL-TIME STATUS CHECK =======
+        // Check if campaign was paused/stopped DURING execution
+        if (i % 5 === 0) { // Check every 5 emails
+            try {
+                const statusCheck = await dynamoDB.get({
+                    TableName: CAMPAIGNS_TABLE,
+                    Key: { id: campaignId },
+                    ProjectionExpression: '#status',
+                    ExpressionAttributeNames: { '#status': 'status' }
+                }).promise();
+
+                const currentStatus = statusCheck.Item?.status;
+                if (currentStatus === 'paused' || currentStatus === 'stopped' || currentStatus === 'cancelled') {
+                    console.log(`[Batch] ⏹️ Campaign ${currentStatus} - STOPPING IMMEDIATELY`);
+                    console.log(`[Batch] Progress: ${sentCount} sent, ${failedCount} failed`);
+
+                    // Save progress and exit
+                    await finalizeCampaign(campaignId, sentCount, failedCount);
+                    return;
+                }
+            } catch (statusErr) {
+                // Ignore status check errors
+            }
+        }
+        // ======= END STATUS CHECK =======
+
         // 1. Respect Delay (if not first email)
         if (i > 0 && delaySeconds > 0) {
             console.log(`[Batch] Waiting ${delaySeconds}s before next email...`);
@@ -811,8 +837,30 @@ async function processEmailsPooled(campaignId, campaign, recipientList, smtpAcco
     try {
         const { transporter, fromEmail, fromName } = await getTransporter(smtpAccountId);
 
-        for (const recipient of recipients) {
+        for (let idx = 0; idx < recipients.length; idx++) {
+            const recipient = recipients[idx];
             const email = recipient.email;
+
+            // ======= REAL-TIME STATUS CHECK =======
+            if (idx % 10 === 0) { // Check every 10 emails for pooled (faster)
+                try {
+                    const statusCheck = await dynamoDB.get({
+                        TableName: CAMPAIGNS_TABLE,
+                        Key: { id: campaignId },
+                        ProjectionExpression: '#status',
+                        ExpressionAttributeNames: { '#status': 'status' }
+                    }).promise();
+
+                    const currentStatus = statusCheck.Item?.status;
+                    if (currentStatus === 'paused' || currentStatus === 'stopped' || currentStatus === 'cancelled') {
+                        console.log(`[Pooled] ⏹️ Campaign ${currentStatus} - STOPPING IMMEDIATELY`);
+                        transporter.close();
+                        await finalizeCampaign(campaignId, sentCount, failedCount);
+                        return;
+                    }
+                } catch (statusErr) { /* Ignore */ }
+            }
+            // ======= END STATUS CHECK =======
 
             try {
                 // Generate unique message ID
@@ -1348,6 +1396,73 @@ router.get('/campaigns/:id/progress', auth, async (req, res) => {
             return res.json({ summary: { total: 0 }, leads: [] });
         }
         res.status(500).json({ error: 'Could not fetch campaign progress' });
+    }
+});
+
+// Get routing status for a campaign (intelligent email routing)
+router.get('/campaigns/:id/routing', auth, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Get campaign
+        const campaign = await dynamoDB.get({
+            TableName: CAMPAIGNS_TABLE,
+            Key: { id }
+        }).promise();
+
+        if (!campaign.Item) {
+            return res.status(404).json({ error: 'Campaign not found' });
+        }
+
+        // Import email router dynamically
+        const { getRoutingStatus, calculateDistribution } = await import('../services/emailRouter.js');
+
+        // Get all SMTP accounts
+        const accountsData = await dynamoDB.scan({
+            TableName: SMTP_ACCOUNTS_TABLE
+        }).promise();
+        const accounts = accountsData.Items || [];
+
+        if (accounts.length === 0) {
+            return res.json({
+                message: 'No SMTP accounts configured',
+                accounts: [],
+                distribution: null
+            });
+        }
+
+        // Get routing config from campaign options
+        const options = campaign.Item.options || {};
+        const routingConfig = {
+            maxEmailsPerAccountPerCampaign: options.maxEmailsPerAccount || 15,
+            maxEmailsPerAccountPerDay: options.maxDailyPerAccount || 50,
+            rotationStrategy: options.rotationStrategy || 'round-robin'
+        };
+
+        // Get current routing status
+        const status = await getRoutingStatus(accounts, id, routingConfig);
+
+        // Calculate distribution for total leads
+        const totalLeads = campaign.Item.leads?.length || 0;
+        const distribution = calculateDistribution(totalLeads, accounts.length, routingConfig);
+
+        res.json({
+            campaignId: id,
+            totalLeads,
+            config: routingConfig,
+            distribution,
+            accounts: status.accounts,
+            summary: {
+                totalAccountsAvailable: status.totalAccountsAvailable,
+                totalEmailsRemaining: status.totalEmailsRemaining,
+                allLimitsReached: status.allLimitsReached,
+                canSendAll: distribution.canSendAll
+            }
+        });
+
+    } catch (err) {
+        console.error('Error fetching routing status:', err);
+        res.status(500).json({ error: 'Could not fetch routing status' });
     }
 });
 

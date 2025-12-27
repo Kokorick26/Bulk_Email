@@ -6,6 +6,7 @@
  * - Reply detection via IMAP
  * - Delay-based follow-ups
  * - Stop on reply/click functionality
+ * - INTELLIGENT EMAIL ROUTING across multiple SMTP accounts
  */
 
 import Imap from 'imap';
@@ -13,6 +14,7 @@ import { simpleParser } from 'mailparser';
 import dynamoDB from '../db.js';
 import nodemailer from 'nodemailer';
 import { v4 as uuidv4 } from 'uuid';
+import { getNextAccount, markEmailSent, getRoutingStatus, calculateDistribution } from './emailRouter.js';
 
 const CAMPAIGNS_TABLE = 'EmailCampaigns';
 const EMAIL_LOGS_TABLE = 'EmailLogs';
@@ -589,17 +591,57 @@ export async function executeCampaign(campaignId) {
         console.log(`[CampaignExecutor] Processing campaign: ${campaign.name}`);
 
         const options = campaign.options || { stopOnReply: true, stopOnClick: false };
-        const smtpAccountId = options.smtpAccountId;
+
+        // ========== INTELLIGENT EMAIL ROUTING ==========
+        // Get all available SMTP accounts for this user
+        const userId = campaign.userId;
+        let allSmtpAccounts = [];
+
+        try {
+            const accountsData = await dynamoDB.scan({
+                TableName: SMTP_ACCOUNTS_TABLE,
+                FilterExpression: 'userId = :userId',
+                ExpressionAttributeValues: { ':userId': userId }
+            }).promise();
+            allSmtpAccounts = accountsData.Items || [];
+        } catch (err) {
+            console.log('[CampaignExecutor] Error fetching SMTP accounts:', err.message);
+        }
+
+        // If no accounts found or intelligentRouting disabled, fall back to single account
+        const useIntelligentRouting = options.useIntelligentRouting !== false && allSmtpAccounts.length > 1;
+        const routingConfig = {
+            maxEmailsPerAccountPerCampaign: options.maxEmailsPerAccount || 15,
+            maxEmailsPerAccountPerDay: options.maxDailyPerAccount || 50,
+            rotationStrategy: options.rotationStrategy || 'round-robin'
+        };
+
+        if (useIntelligentRouting) {
+            console.log(`[CampaignExecutor] 🔄 Intelligent Routing ENABLED with ${allSmtpAccounts.length} accounts`);
+            console.log(`[CampaignExecutor] Max ${routingConfig.maxEmailsPerAccountPerCampaign} emails per account per campaign`);
+
+            // Show distribution calculation
+            const distribution = calculateDistribution(
+                campaign.leads.length,
+                allSmtpAccounts.length,
+                routingConfig
+            );
+            console.log(`[CampaignExecutor] Distribution: ${JSON.stringify(distribution)}`);
+        } else {
+            console.log(`[CampaignExecutor] Using single SMTP account (${options.smtpAccountId || 'default'})`);
+        }
+        // ========== END ROUTING SETUP ==========
 
         // Initialize lead progress if not already done
         await initializeLeadProgress(campaignId, campaign.leads);
 
-        // Get SMTP account for reply checking
+        // Get SMTP account for reply checking (use first account or specified account)
         let smtpAccount = null;
-        if (smtpAccountId) {
+        const primaryAccountId = options.smtpAccountId || (allSmtpAccounts[0]?.id);
+        if (primaryAccountId) {
             const accountData = await dynamoDB.get({
                 TableName: SMTP_ACCOUNTS_TABLE,
-                Key: { id: smtpAccountId }
+                Key: { id: primaryAccountId }
             }).promise();
             smtpAccount = accountData.Item;
         }
@@ -616,21 +658,67 @@ export async function executeCampaign(campaignId) {
         const schedule = campaign.schedule;
 
         // Check if we should respect individual lead timezones
-        // If leads have timezone data, we'll check each one individually
-        // Otherwise, fall back to campaign schedule
         const useLeadTimezones = options.useLeadTimezones !== false; // Default: true
 
-        // Process leads with rate limiting AND timezone awareness
+        // Process leads with rate limiting, timezone awareness, AND intelligent routing
         let sentCount = 0;
         let failedCount = 0;
-        let skippedCount = 0; // Leads skipped due to timezone (not in working hours)
-        const delayBetweenEmails = schedule?.delayBetweenEmails || 600; // 10 minutes default (in seconds)
+        let skippedCount = 0;
+        let routingExhausted = 0; // Leads skipped because all accounts reached limits
+        const delayBetweenEmails = schedule?.delayBetweenEmails || 600;
         const dailyLimit = options.dailyLimit || 100;
 
-        console.log(`[CampaignExecutor] Starting timezone-aware sending (useLeadTimezones: ${useLeadTimezones})`);
+        // Track which account sent to which lead (for logging)
+        const accountUsageMap = new Map();
+
+        console.log(`[CampaignExecutor] Starting sending (intelligentRouting: ${useIntelligentRouting}, timezoneAware: ${useLeadTimezones})`);
 
         for (let i = 0; i < leadsToProcess.length; i++) {
             const lead = leadsToProcess[i];
+
+            // ======= REAL-TIME STATUS CHECK =======
+            // Check if campaign was paused/stopped DURING execution
+            if (i % 3 === 0 || i === 0) { // Check every 3 emails to reduce DB calls
+                try {
+                    const statusCheck = await dynamoDB.get({
+                        TableName: CAMPAIGNS_TABLE,
+                        Key: { id: campaignId },
+                        ProjectionExpression: '#status',
+                        ExpressionAttributeNames: { '#status': 'status' }
+                    }).promise();
+
+                    const currentStatus = statusCheck.Item?.status;
+                    if (currentStatus !== 'active') {
+                        console.log(`[CampaignExecutor] ⏹️ Campaign ${currentStatus} - STOPPING IMMEDIATELY`);
+                        console.log(`[CampaignExecutor] Progress saved: ${sentCount} sent, ${failedCount} failed`);
+
+                        // Save current progress before stopping
+                        await dynamoDB.update({
+                            TableName: CAMPAIGNS_TABLE,
+                            Key: { id: campaignId },
+                            UpdateExpression: 'SET sentCount = if_not_exists(sentCount, :zero) + :sent, failedCount = if_not_exists(failedCount, :zero) + :failed, updatedAt = :updatedAt',
+                            ExpressionAttributeValues: {
+                                ':zero': 0,
+                                ':sent': sentCount,
+                                ':failed': failedCount,
+                                ':updatedAt': new Date().toISOString()
+                            }
+                        }).promise();
+
+                        return {
+                            success: true,
+                            sent: sentCount,
+                            failed: failedCount,
+                            stopped: true,
+                            reason: `Campaign ${currentStatus}`,
+                            accountsUsed: accountUsageMap.size
+                        };
+                    }
+                } catch (statusErr) {
+                    console.log('[CampaignExecutor] Could not check status, continuing...');
+                }
+            }
+            // ======= END STATUS CHECK =======
 
             if (sentCount >= dailyLimit) {
                 console.log('[CampaignExecutor] Daily limit reached');
@@ -644,7 +732,6 @@ export async function executeCampaign(campaignId) {
             console.log(`[CampaignExecutor] Email #${sentCount + 1}: ${leadData.email} scheduled for ${scheduledTime.toISOString()}`);
 
             // ======= TIMEZONE CHECK =======
-            // Check if this lead is within their working hours
             if (useLeadTimezones) {
                 const tzInfo = getLeadTimezoneInfo(leadData, schedule);
                 console.log(`[CampaignExecutor] Lead ${leadData.email}: TZ=${tzInfo.timezone} (${tzInfo.source}), Local Time=${tzInfo.localTime} ${tzInfo.weekday}`);
@@ -652,13 +739,32 @@ export async function executeCampaign(campaignId) {
                 if (!isLeadWithinWorkingHours(leadData, schedule)) {
                     console.log(`[CampaignExecutor] Skipping ${leadData.email} - outside their working hours`);
                     skippedCount++;
-                    continue; // Skip this lead, will be processed later when in their working hours
+                    continue;
                 }
             }
             // ======= END TIMEZONE CHECK =======
 
+            // ======= INTELLIGENT ROUTING - SELECT ACCOUNT =======
+            let selectedAccountId = options.smtpAccountId; // Default to specified account
+
+            if (useIntelligentRouting) {
+                // Get next available account using intelligent routing
+                const nextAccount = await getNextAccount(allSmtpAccounts, campaignId, routingConfig);
+
+                if (!nextAccount) {
+                    console.log(`[CampaignExecutor] ⚠️ All accounts reached their limits for this campaign`);
+                    routingExhausted++;
+
+                    // If all accounts exhausted, we'll continue with remaining leads in next run
+                    continue;
+                }
+
+                selectedAccountId = nextAccount.id;
+                console.log(`[CampaignExecutor] 🔄 Routing to: ${nextAccount.fromEmail}`);
+            }
+            // ======= END ROUTING =======
+
             // First email sends immediately, subsequent emails wait for delay
-            // This creates: Email 1 = instant, Email 2 = +10min, Email 3 = +20min, etc.
             if (sentCount > 0 && delayBetweenEmails > 0) {
                 console.log(`[CampaignExecutor] Waiting ${delayBetweenEmails} seconds before sending to ${leadData.email}...`);
                 await new Promise(resolve => setTimeout(resolve, delayBetweenEmails * 1000));
@@ -669,15 +775,33 @@ export async function executeCampaign(campaignId) {
                 lead,
                 lead.step,
                 lead.stepIndex,
-                smtpAccountId
+                selectedAccountId
             );
 
             if (success) {
                 sentCount++;
                 console.log(`[CampaignExecutor] ✓ Email ${sentCount} sent to ${leadData.email}`);
+
+                // Track account usage for intelligent routing
+                if (useIntelligentRouting && selectedAccountId) {
+                    await markEmailSent(selectedAccountId, campaignId);
+
+                    // Update usage map for logging
+                    const currentCount = accountUsageMap.get(selectedAccountId) || 0;
+                    accountUsageMap.set(selectedAccountId, currentCount + 1);
+                }
             } else {
                 failedCount++;
                 console.log(`[CampaignExecutor] ✗ Failed to send to ${leadData.email}`);
+            }
+        }
+
+        // Log routing summary
+        if (useIntelligentRouting && accountUsageMap.size > 0) {
+            console.log('[CampaignExecutor] 📊 Routing Summary:');
+            for (const [accountId, count] of accountUsageMap.entries()) {
+                const account = allSmtpAccounts.find(a => a.id === accountId);
+                console.log(`  - ${account?.fromEmail || accountId}: ${count} emails`);
             }
         }
 
@@ -694,8 +818,15 @@ export async function executeCampaign(campaignId) {
             }
         }).promise();
 
-        console.log(`[CampaignExecutor] Completed: ${sentCount} sent, ${failedCount} failed, ${skippedCount} skipped (outside working hours)`);
-        return { success: true, sent: sentCount, failed: failedCount, skipped: skippedCount };
+        console.log(`[CampaignExecutor] Completed: ${sentCount} sent, ${failedCount} failed, ${skippedCount} skipped (timezone), ${routingExhausted} exhausted (routing limits)`);
+        return {
+            success: true,
+            sent: sentCount,
+            failed: failedCount,
+            skipped: skippedCount,
+            routingExhausted,
+            accountsUsed: accountUsageMap.size
+        };
 
     } catch (error) {
         console.error('[CampaignExecutor] Error:', error);

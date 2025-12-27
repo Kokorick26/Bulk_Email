@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Plus, Search, Filter, ChevronDown, MoreHorizontal,
     Play, Pause, Trash2, Copy, BarChart2, Users, Send,
-    CheckCircle, XCircle, Clock, TrendingUp, Eye, Mail, Loader2
+    CheckCircle, XCircle, Clock, TrendingUp, Eye, Mail, Loader2,
+    ChevronRight, Megaphone
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useTheme } from '../../lib/ThemeContext';
@@ -11,6 +12,7 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Badge } from '../ui/Badge';
 import { Progress } from '../ui/Progress';
+import { ScrollArea } from '../ui/ScrollArea';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -54,6 +56,8 @@ export function CampaignsList({
     className
 }: CampaignsListProps) {
     const { theme } = useTheme();
+    const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
     const [filter, setFilter] = useState<CampaignFilter>({
         status: 'all',
         sortBy: 'newest',
@@ -62,7 +66,7 @@ export function CampaignsList({
 
     const filteredCampaigns = campaigns
         .filter(c => filter.status === 'all' || c.status === filter.status)
-        .filter(c => !filter.search || c.name.toLowerCase().includes(filter.search.toLowerCase()))
+        .filter(c => !searchQuery || c.name.toLowerCase().includes(searchQuery.toLowerCase()))
         .sort((a, b) => {
             switch (filter.sortBy) {
                 case 'oldest': return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
@@ -81,360 +85,504 @@ export function CampaignsList({
         });
     };
 
+    // Handle campaign selection
+    const handleSelectCampaign = (campaign: Campaign) => {
+        setSelectedCampaign(campaign);
+    };
+
+    // Handle view campaign details
+    const handleViewDetails = (campaign: Campaign) => {
+        onViewCampaign(campaign.id);
+    };
+
     return (
-        <div className={cn('space-y-6', className)}>
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className={cn(
-                        'text-2xl font-semibold',
-                        theme === 'dark' ? 'text-white' : 'text-gray-900'
-                    )}>
-                        Campaigns
-                    </h1>
-                    <p className={cn(
-                        'text-sm mt-1',
-                        theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                    )}>
-                        Manage your email campaigns and track performance
-                    </p>
-                </div>
-                <Button
-                    onClick={onCreateNew}
-                    className={cn(
-                        'gap-2',
-                        theme === 'dark'
-                            ? 'bg-blue-600 hover:bg-blue-500 text-white'
-                            : 'bg-blue-600 hover:bg-blue-700 text-white'
-                    )}
-                >
-                    <Plus className="w-4 h-4" />
-                    Add New
-                </Button>
-            </div>
-
-            {/* Filters Bar */}
+        <div className={cn('flex flex-1 min-h-0', className)}>
+            {/* Sidebar - List of Campaigns */}
             <div className={cn(
-                'flex items-center gap-4 p-4 rounded-xl border',
-                theme === 'dark'
-                    ? 'bg-[#1a1a1a] border-gray-800'
-                    : 'bg-white border-gray-200'
+                'w-72 flex-shrink-0 flex flex-col border-r',
+                theme === 'dark' ? 'bg-[#1a1a1a] border-gray-800' : 'bg-gray-50 border-gray-200'
             )}>
-                {/* Search */}
-                <div className="relative flex-1 max-w-xs">
-                    <Search className={cn(
-                        'absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4',
-                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                    )} />
-                    <input
-                        type="text"
-                        placeholder="Search..."
-                        value={filter.search}
-                        onChange={(e) => setFilter(f => ({ ...f, search: e.target.value }))}
-                        className={cn(
-                            'w-full pl-10 pr-4 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2',
-                            theme === 'dark'
-                                ? 'bg-[#252525] border-gray-700 text-white placeholder:text-gray-500 focus:ring-blue-500/30'
-                                : 'bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 focus:ring-blue-500/30'
-                        )}
-                    />
-                </div>
-
-                {/* Status Filter */}
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <button className={cn(
-                            'flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors',
-                            theme === 'dark'
-                                ? 'bg-[#252525] border-gray-700 text-gray-300 hover:bg-[#303030]'
-                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                {/* Sidebar Header */}
+                <div className={cn(
+                    'p-4 border-b',
+                    theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
+                )}>
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className={cn(
+                            'text-lg font-semibold',
+                            theme === 'dark' ? 'text-white' : 'text-gray-900'
                         )}>
-                            <Filter className="w-4 h-4" />
-                            {filter.status === 'all' ? 'All statuses' : statusConfig[filter.status].label}
-                            <ChevronDown className="w-4 h-4" />
+                            Campaigns
+                        </h2>
+                        <button
+                            onClick={onCreateNew}
+                            className={cn(
+                                'p-2 rounded-lg transition-colors',
+                                theme === 'dark'
+                                    ? 'bg-blue-600 text-white hover:bg-blue-500'
+                                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                            )}
+                        >
+                            <Plus className="w-4 h-4" />
                         </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-40">
-                        <DropdownMenuItem onClick={() => setFilter(f => ({ ...f, status: 'all' }))}>
-                            All statuses
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        {Object.entries(statusConfig).map(([key, config]) => (
-                            <DropdownMenuItem
-                                key={key}
-                                onClick={() => setFilter(f => ({ ...f, status: key as Campaign['status'] }))}
-                            >
-                                <span className={cn('w-2 h-2 rounded-full mr-2', config.color)} />
-                                {config.label}
-                            </DropdownMenuItem>
-                        ))}
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                    </div>
 
-                {/* Sort */}
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <button className={cn(
-                            'flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors',
-                            theme === 'dark'
-                                ? 'bg-[#252525] border-gray-700 text-gray-300 hover:bg-[#303030]'
-                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-                        )}>
-                            {filter.sortBy === 'newest' && 'Newest first'}
-                            {filter.sortBy === 'oldest' && 'Oldest first'}
-                            {filter.sortBy === 'name' && 'Name A-Z'}
-                            {filter.sortBy === 'recipients' && 'Most recipients'}
-                            <ChevronDown className="w-4 h-4" />
-                        </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                        <DropdownMenuItem onClick={() => setFilter(f => ({ ...f, sortBy: 'newest' }))}>
-                            Newest first
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setFilter(f => ({ ...f, sortBy: 'oldest' }))}>
-                            Oldest first
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setFilter(f => ({ ...f, sortBy: 'name' }))}>
-                            Name A-Z
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setFilter(f => ({ ...f, sortBy: 'recipients' }))}>
-                            Most recipients
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </div>
-
-            {/* Campaigns Table */}
-            <div className={cn(
-                'rounded-xl border overflow-hidden',
-                theme === 'dark'
-                    ? 'bg-[#1a1a1a] border-gray-800'
-                    : 'bg-white border-gray-200'
-            )}>
-                {loading ? (
-                    <div className="flex items-center justify-center py-20">
-                        <Loader2 className={cn(
-                            'w-8 h-8 animate-spin',
+                    {/* Search */}
+                    <div className="relative">
+                        <Search className={cn(
+                            'absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4',
                             theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                         )} />
+                        <input
+                            type="text"
+                            placeholder="Search campaigns..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className={cn(
+                                'w-full pl-10 pr-4 py-2 rounded-lg border text-sm',
+                                theme === 'dark'
+                                    ? 'bg-[#252525] border-gray-700 text-white placeholder:text-gray-500'
+                                    : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400'
+                            )}
+                        />
                     </div>
-                ) : filteredCampaigns.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 px-4">
+                </div>
+
+                {/* Campaigns List */}
+                <ScrollArea className="flex-1">
+                    <div className="p-2 space-y-1">
+                        {loading ? (
+                            <div className="flex items-center justify-center py-8">
+                                <Loader2 className={cn(
+                                    'w-6 h-6 animate-spin',
+                                    theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                )} />
+                            </div>
+                        ) : filteredCampaigns.length === 0 ? (
+                            <div className={cn(
+                                'text-center py-8',
+                                theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                            )}>
+                                <Megaphone className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                                <p className="text-sm">No campaigns yet</p>
+                                <button
+                                    onClick={onCreateNew}
+                                    className="text-blue-500 text-sm mt-2 hover:underline"
+                                >
+                                    Create your first campaign
+                                </button>
+                            </div>
+                        ) : (
+                            filteredCampaigns.map(campaign => {
+                                const status = statusConfig[campaign.status];
+                                const progress = campaign.totalRecipients > 0
+                                    ? (campaign.sentCount / campaign.totalRecipients) * 100
+                                    : 0;
+
+                                return (
+                                    <button
+                                        key={campaign.id}
+                                        onClick={() => handleSelectCampaign(campaign)}
+                                        className={cn(
+                                            'w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors group',
+                                            selectedCampaign?.id === campaign.id
+                                                ? theme === 'dark'
+                                                    ? 'bg-blue-500/20 text-blue-400'
+                                                    : 'bg-blue-50 text-blue-600'
+                                                : theme === 'dark'
+                                                    ? 'hover:bg-gray-800 text-gray-300'
+                                                    : 'hover:bg-gray-100 text-gray-700'
+                                        )}
+                                    >
+                                        <Megaphone className="w-4 h-4 flex-shrink-0" />
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <p className="text-sm font-medium truncate">{campaign.name}</p>
+                                                <span className={cn(
+                                                    'w-1.5 h-1.5 rounded-full flex-shrink-0',
+                                                    status.color,
+                                                    status.pulse && 'animate-pulse'
+                                                )} />
+                                            </div>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <p className={cn(
+                                                    'text-xs',
+                                                    theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                                )}>
+                                                    {campaign.totalRecipients} leads
+                                                </p>
+                                                {progress > 0 && (
+                                                    <span className={cn(
+                                                        'text-xs',
+                                                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                                    )}>
+                                                        • {Math.round(progress)}%
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <ChevronRight className={cn(
+                                            'w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity',
+                                            theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                        )} />
+                                    </button>
+                                );
+                            })
+                        )}
+                    </div>
+                </ScrollArea>
+            </div>
+
+            {/* Main Content */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+                {selectedCampaign ? (
+                    <>
+                        {/* Campaign Header */}
                         <div className={cn(
-                            'w-16 h-16 rounded-full flex items-center justify-center mb-4',
+                            'flex items-center justify-between px-6 py-4 border-b',
+                            theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
+                        )}>
+                            <div>
+                                <div className="flex items-center gap-3">
+                                    <h1 className={cn(
+                                        'text-xl font-semibold',
+                                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                                    )}>
+                                        {selectedCampaign.name}
+                                    </h1>
+                                    <span className={cn(
+                                        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
+                                        theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100',
+                                        statusConfig[selectedCampaign.status].textColor
+                                    )}>
+                                        <span className={cn(
+                                            'w-1.5 h-1.5 rounded-full',
+                                            statusConfig[selectedCampaign.status].color,
+                                            statusConfig[selectedCampaign.status].pulse && 'animate-pulse'
+                                        )} />
+                                        {statusConfig[selectedCampaign.status].label}
+                                    </span>
+                                </div>
+                                <p className={cn(
+                                    'text-sm mt-1',
+                                    theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                                )}>
+                                    Created {formatDate(selectedCampaign.createdAt)} • {selectedCampaign.totalRecipients} recipients
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {selectedCampaign.status === 'active' && onPauseCampaign && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => onPauseCampaign(selectedCampaign.id)}
+                                        className={cn(
+                                            'gap-2',
+                                            theme === 'dark' ? 'border-gray-700' : 'border-gray-300'
+                                        )}
+                                    >
+                                        <Pause className="w-4 h-4" />
+                                        Pause
+                                    </Button>
+                                )}
+                                {selectedCampaign.status === 'paused' && onResumeCampaign && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => onResumeCampaign(selectedCampaign.id)}
+                                        className={cn(
+                                            'gap-2',
+                                            theme === 'dark' ? 'border-gray-700' : 'border-gray-300'
+                                        )}
+                                    >
+                                        <Play className="w-4 h-4" />
+                                        Resume
+                                    </Button>
+                                )}
+                                {onDuplicateCampaign && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => onDuplicateCampaign(selectedCampaign.id)}
+                                        className={cn(
+                                            'gap-2',
+                                            theme === 'dark' ? 'border-gray-700' : 'border-gray-300'
+                                        )}
+                                    >
+                                        <Copy className="w-4 h-4" />
+                                        Duplicate
+                                    </Button>
+                                )}
+                                <Button
+                                    size="sm"
+                                    onClick={() => handleViewDetails(selectedCampaign)}
+                                    className="gap-2 bg-blue-600 hover:bg-blue-500 text-white"
+                                >
+                                    <Eye className="w-4 h-4" />
+                                    View Details
+                                </Button>
+                                <button
+                                    onClick={() => onDeleteCampaign(selectedCampaign.id)}
+                                    className={cn(
+                                        'p-2 rounded-lg transition-colors',
+                                        theme === 'dark'
+                                            ? 'text-red-400 hover:bg-red-500/20'
+                                            : 'text-red-500 hover:bg-red-50'
+                                    )}
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Campaign Stats */}
+                        <div className={cn(
+                            'px-6 py-6 border-b',
+                            theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
+                        )}>
+                            <div className="grid grid-cols-4 gap-6">
+                                {/* Progress */}
+                                <div className={cn(
+                                    'p-4 rounded-xl border',
+                                    theme === 'dark' ? 'bg-[#1a1a1a] border-gray-800' : 'bg-white border-gray-200'
+                                )}>
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <div className={cn(
+                                            'p-2 rounded-lg',
+                                            theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-50'
+                                        )}>
+                                            <TrendingUp className="w-5 h-5 text-blue-500" />
+                                        </div>
+                                        <span className={cn(
+                                            'text-sm font-medium',
+                                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                                        )}>Progress</span>
+                                    </div>
+                                    <div className="flex items-end gap-2">
+                                        <span className={cn(
+                                            'text-2xl font-bold',
+                                            theme === 'dark' ? 'text-white' : 'text-gray-900'
+                                        )}>
+                                            {selectedCampaign.totalRecipients > 0
+                                                ? Math.round((selectedCampaign.sentCount / selectedCampaign.totalRecipients) * 100)
+                                                : 0}%
+                                        </span>
+                                    </div>
+                                    <Progress
+                                        value={selectedCampaign.totalRecipients > 0
+                                            ? (selectedCampaign.sentCount / selectedCampaign.totalRecipients) * 100
+                                            : 0}
+                                        className="h-1.5 mt-3"
+                                    />
+                                </div>
+
+                                {/* Sent */}
+                                <div className={cn(
+                                    'p-4 rounded-xl border',
+                                    theme === 'dark' ? 'bg-[#1a1a1a] border-gray-800' : 'bg-white border-gray-200'
+                                )}>
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <div className={cn(
+                                            'p-2 rounded-lg',
+                                            theme === 'dark' ? 'bg-emerald-500/20' : 'bg-emerald-50'
+                                        )}>
+                                            <Send className="w-5 h-5 text-emerald-500" />
+                                        </div>
+                                        <span className={cn(
+                                            'text-sm font-medium',
+                                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                                        )}>Sent</span>
+                                    </div>
+                                    <span className={cn(
+                                        'text-2xl font-bold',
+                                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                                    )}>
+                                        {selectedCampaign.sentCount}
+                                    </span>
+                                    <p className={cn(
+                                        'text-xs mt-1',
+                                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                    )}>
+                                        of {selectedCampaign.totalRecipients} total
+                                    </p>
+                                </div>
+
+                                {/* Replied */}
+                                <div className={cn(
+                                    'p-4 rounded-xl border',
+                                    theme === 'dark' ? 'bg-[#1a1a1a] border-gray-800' : 'bg-white border-gray-200'
+                                )}>
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <div className={cn(
+                                            'p-2 rounded-lg',
+                                            theme === 'dark' ? 'bg-purple-500/20' : 'bg-purple-50'
+                                        )}>
+                                            <Mail className="w-5 h-5 text-purple-500" />
+                                        </div>
+                                        <span className={cn(
+                                            'text-sm font-medium',
+                                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                                        )}>Replied</span>
+                                    </div>
+                                    <span className={cn(
+                                        'text-2xl font-bold',
+                                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                                    )}>
+                                        {selectedCampaign.replyCount || 0}
+                                    </span>
+                                    <p className={cn(
+                                        'text-xs mt-1',
+                                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                    )}>
+                                        {selectedCampaign.sentCount > 0
+                                            ? `${Math.round(((selectedCampaign.replyCount || 0) / selectedCampaign.sentCount) * 100)}% reply rate`
+                                            : '0% reply rate'}
+                                    </p>
+                                </div>
+
+                                {/* Clicked */}
+                                <div className={cn(
+                                    'p-4 rounded-xl border',
+                                    theme === 'dark' ? 'bg-[#1a1a1a] border-gray-800' : 'bg-white border-gray-200'
+                                )}>
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <div className={cn(
+                                            'p-2 rounded-lg',
+                                            theme === 'dark' ? 'bg-amber-500/20' : 'bg-amber-50'
+                                        )}>
+                                            <BarChart2 className="w-5 h-5 text-amber-500" />
+                                        </div>
+                                        <span className={cn(
+                                            'text-sm font-medium',
+                                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                                        )}>Clicked</span>
+                                    </div>
+                                    <span className={cn(
+                                        'text-2xl font-bold',
+                                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                                    )}>
+                                        {selectedCampaign.clickCount || 0}
+                                    </span>
+                                    <p className={cn(
+                                        'text-xs mt-1',
+                                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                    )}>
+                                        {selectedCampaign.sentCount > 0
+                                            ? `${Math.round(((selectedCampaign.clickCount || 0) / selectedCampaign.sentCount) * 100)}% click rate`
+                                            : '0% click rate'}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Campaign Details Preview */}
+                        <div className="flex-1 overflow-y-auto px-6 py-6">
+                            <div className={cn(
+                                'p-6 rounded-xl border',
+                                theme === 'dark' ? 'bg-[#1a1a1a] border-gray-800' : 'bg-white border-gray-200'
+                            )}>
+                                <h3 className={cn(
+                                    'text-lg font-medium mb-4',
+                                    theme === 'dark' ? 'text-white' : 'text-gray-900'
+                                )}>
+                                    Quick Overview
+                                </h3>
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <span className={cn(
+                                            'text-sm',
+                                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                                        )}>Status</span>
+                                        <span className={cn(
+                                            'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
+                                            theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100',
+                                            statusConfig[selectedCampaign.status].textColor
+                                        )}>
+                                            <span className={cn(
+                                                'w-1.5 h-1.5 rounded-full',
+                                                statusConfig[selectedCampaign.status].color
+                                            )} />
+                                            {statusConfig[selectedCampaign.status].label}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className={cn(
+                                            'text-sm',
+                                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                                        )}>Total Recipients</span>
+                                        <span className={cn(
+                                            'text-sm font-medium',
+                                            theme === 'dark' ? 'text-white' : 'text-gray-900'
+                                        )}>{selectedCampaign.totalRecipients}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className={cn(
+                                            'text-sm',
+                                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                                        )}>Created</span>
+                                        <span className={cn(
+                                            'text-sm font-medium',
+                                            theme === 'dark' ? 'text-white' : 'text-gray-900'
+                                        )}>{formatDate(selectedCampaign.createdAt)}</span>
+                                    </div>
+                                    {selectedCampaign.updatedAt && (
+                                        <div className="flex items-center justify-between">
+                                            <span className={cn(
+                                                'text-sm',
+                                                theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                                            )}>Last Updated</span>
+                                            <span className={cn(
+                                                'text-sm font-medium',
+                                                theme === 'dark' ? 'text-white' : 'text-gray-900'
+                                            )}>{formatDate(selectedCampaign.updatedAt)}</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="mt-6 pt-6 border-t border-gray-800">
+                                    <Button
+                                        onClick={() => handleViewDetails(selectedCampaign)}
+                                        className="w-full gap-2 bg-blue-600 hover:bg-blue-500 text-white"
+                                    >
+                                        <Eye className="w-4 h-4" />
+                                        View Full Campaign Details
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    </>
+                ) : (
+                    /* Empty State - No campaign selected */
+                    <div className="flex-1 flex flex-col items-center justify-center">
+                        <div className={cn(
+                            'w-20 h-20 rounded-full flex items-center justify-center mb-6',
                             theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'
                         )}>
-                            <Mail className={cn(
-                                'w-8 h-8',
+                            <Megaphone className={cn(
+                                'w-10 h-10',
                                 theme === 'dark' ? 'text-gray-600' : 'text-gray-400'
                             )} />
                         </div>
-                        <p className={cn(
-                            'text-lg font-medium mb-1',
-                            theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                        <h2 className={cn(
+                            'text-xl font-semibold mb-2',
+                            theme === 'dark' ? 'text-white' : 'text-gray-900'
                         )}>
-                            No results found with filter
-                        </p>
+                            Select a campaign
+                        </h2>
                         <p className={cn(
-                            'text-sm',
-                            theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
+                            'text-sm text-center max-w-sm mb-6',
+                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                         )}>
-                            Try adjusting your search or filter criteria
+                            Choose a campaign from the sidebar or create a new one
                         </p>
+                        <Button
+                            onClick={onCreateNew}
+                            className="gap-2 bg-blue-600 hover:bg-blue-500 text-white"
+                        >
+                            <Plus className="w-4 h-4" />
+                            Create New Campaign
+                        </Button>
                     </div>
-                ) : (
-                    <Table>
-                        <TableHeader>
-                            <TableRow className={cn(
-                                theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
-                            )}>
-                                <TableHead className={cn(
-                                    'w-10',
-                                    theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                                )}>
-                                    <input type="checkbox" className="rounded" />
-                                </TableHead>
-                                <TableHead className={cn(
-                                    theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                                )}>NAME</TableHead>
-                                <TableHead className={cn(
-                                    theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                                )}>STATUS</TableHead>
-                                <TableHead className={cn(
-                                    theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                                )}>PROGRESS</TableHead>
-                                <TableHead className={cn(
-                                    'text-center',
-                                    theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                                )}>SENT</TableHead>
-                                <TableHead className={cn(
-                                    'text-center',
-                                    theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                                )}>CLICK</TableHead>
-                                <TableHead className={cn(
-                                    'text-center',
-                                    theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                                )}>REPLIED</TableHead>
-                                <TableHead className={cn(
-                                    'text-center',
-                                    theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                                )}>OPPORTUNITIES</TableHead>
-                                <TableHead className="w-10" />
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            <AnimatePresence mode="popLayout">
-                                {filteredCampaigns.map((campaign, index) => {
-                                    const progress = campaign.totalRecipients > 0
-                                        ? (campaign.sentCount / campaign.totalRecipients) * 100
-                                        : 0;
-                                    const status = statusConfig[campaign.status];
-
-                                    return (
-                                        <motion.tr
-                                            key={campaign.id}
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0, x: -10 }}
-                                            transition={{ delay: index * 0.02 }}
-                                            onClick={() => onViewCampaign(campaign.id)}
-                                            className={cn(
-                                                'cursor-pointer transition-colors',
-                                                theme === 'dark'
-                                                    ? 'border-gray-800 hover:bg-gray-800/50'
-                                                    : 'border-gray-100 hover:bg-gray-50'
-                                            )}
-                                        >
-                                            <TableCell onClick={(e) => e.stopPropagation()}>
-                                                <input type="checkbox" className="rounded" />
-                                            </TableCell>
-                                            <TableCell>
-                                                <div>
-                                                    <span className={cn(
-                                                        'font-medium',
-                                                        theme === 'dark' ? 'text-white' : 'text-gray-900'
-                                                    )}>
-                                                        {campaign.name}
-                                                    </span>
-                                                    <p className={cn(
-                                                        'text-xs mt-0.5',
-                                                        theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
-                                                    )}>
-                                                        Created {formatDate(campaign.createdAt)}
-                                                    </p>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <span className={cn(
-                                                    'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
-                                                    theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100',
-                                                    status.textColor
-                                                )}>
-                                                    <span className={cn(
-                                                        'w-1.5 h-1.5 rounded-full',
-                                                        status.color,
-                                                        status.pulse && 'animate-pulse'
-                                                    )} />
-                                                    {status.label}
-                                                </span>
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center gap-3 min-w-[150px]">
-                                                    <Progress
-                                                        value={progress}
-                                                        className="h-1.5 flex-1"
-                                                    />
-                                                    <span className={cn(
-                                                        'text-xs font-medium min-w-[35px]',
-                                                        theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                                                    )}>
-                                                        {Math.round(progress)}%
-                                                    </span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-center">
-                                                <span className={cn(
-                                                    'font-medium',
-                                                    theme === 'dark' ? 'text-white' : 'text-gray-900'
-                                                )}>
-                                                    {campaign.sentCount}
-                                                </span>
-                                            </TableCell>
-                                            <TableCell className="text-center">
-                                                <span className={cn(
-                                                    'font-medium',
-                                                    theme === 'dark' ? 'text-white' : 'text-gray-900'
-                                                )}>
-                                                    {campaign.clickCount || 0}
-                                                </span>
-                                            </TableCell>
-                                            <TableCell className="text-center">
-                                                <span className={cn(
-                                                    'font-medium',
-                                                    theme === 'dark' ? 'text-white' : 'text-gray-900'
-                                                )}>
-                                                    {campaign.replyCount || 0}
-                                                </span>
-                                            </TableCell>
-                                            <TableCell className="text-center">
-                                                <span className={cn(
-                                                    'font-medium text-emerald-400'
-                                                )}>
-                                                    {(campaign.replyCount || 0) + (campaign.clickCount || 0)}
-                                                </span>
-                                            </TableCell>
-                                            <TableCell onClick={(e) => e.stopPropagation()}>
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <button className={cn(
-                                                            'p-1.5 rounded-lg transition-colors',
-                                                            theme === 'dark'
-                                                                ? 'hover:bg-gray-700 text-gray-400'
-                                                                : 'hover:bg-gray-100 text-gray-500'
-                                                        )}>
-                                                            <MoreHorizontal className="w-4 h-4" />
-                                                        </button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        <DropdownMenuItem onClick={() => onViewCampaign(campaign.id)}>
-                                                            <Eye className="w-4 h-4 mr-2" />
-                                                            View Details
-                                                        </DropdownMenuItem>
-                                                        {campaign.status === 'active' && onPauseCampaign && (
-                                                            <DropdownMenuItem onClick={() => onPauseCampaign(campaign.id)}>
-                                                                <Pause className="w-4 h-4 mr-2" />
-                                                                Pause Campaign
-                                                            </DropdownMenuItem>
-                                                        )}
-                                                        {campaign.status === 'paused' && onResumeCampaign && (
-                                                            <DropdownMenuItem onClick={() => onResumeCampaign(campaign.id)}>
-                                                                <Play className="w-4 h-4 mr-2" />
-                                                                Resume Campaign
-                                                            </DropdownMenuItem>
-                                                        )}
-                                                        {onDuplicateCampaign && (
-                                                            <DropdownMenuItem onClick={() => onDuplicateCampaign(campaign.id)}>
-                                                                <Copy className="w-4 h-4 mr-2" />
-                                                                Duplicate
-                                                            </DropdownMenuItem>
-                                                        )}
-                                                        <DropdownMenuSeparator />
-                                                        <DropdownMenuItem
-                                                            onClick={() => onDeleteCampaign(campaign.id)}
-                                                            className="text-red-500 focus:text-red-500"
-                                                        >
-                                                            <Trash2 className="w-4 h-4 mr-2" />
-                                                            Delete
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </TableCell>
-                                        </motion.tr>
-                                    );
-                                })}
-                            </AnimatePresence>
-                        </TableBody>
-                    </Table>
                 )}
             </div>
         </div>
