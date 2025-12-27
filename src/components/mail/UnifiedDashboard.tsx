@@ -27,6 +27,8 @@ import { CampaignsList, CampaignCreate, CampaignDetail } from '../campaigns';
 import type { Campaign as OrganizedCampaign } from '../campaigns';
 // AI Lead Discovery
 import { LeadDiscovery } from '../discovery';
+// Lead Lists
+import { LeadListsPage } from '../../pages/LeadListsPage';
 
 const API_BASE = '/api/bulk-email';
 
@@ -69,7 +71,7 @@ interface EmailStats {
 
 type SidebarItem =
     | 'inbox' | 'sent' | 'drafts' | 'archive' | 'spam' | 'trash'
-    | 'overview' | 'compose' | 'campaign-builder' | 'campaigns' | 'templates' | 'history' | 'accounts' | 'settings' | 'discovery';
+    | 'overview' | 'compose' | 'campaign-builder' | 'campaigns' | 'templates' | 'history' | 'accounts' | 'settings' | 'discovery' | 'lead-lists';
 
 export default function UnifiedDashboard() {
     // Hooks
@@ -133,7 +135,7 @@ export default function UnifiedDashboard() {
 
     // Determine if we're in inbox or campaigns section
     const isInboxSection = ['inbox', 'sent', 'drafts', 'archive', 'spam', 'trash'].includes(activeItem);
-    const isCampaignSection = ['campaign-builder', 'campaigns', 'accounts', 'discovery'].includes(activeItem);
+    const isCampaignSection = ['campaign-builder', 'campaigns', 'accounts', 'discovery', 'lead-lists'].includes(activeItem);
 
     // Fetch data from real API
     useEffect(() => {
@@ -214,6 +216,7 @@ export default function UnifiedDashboard() {
         { id: 'inbox' as const, label: 'Mailhub', icon: Inbox }, // Opens mail view with its own folder sidebar
         { id: 'accounts' as const, label: 'Email Accounts', icon: Server },
         { id: 'discovery' as const, label: 'Lead Discovery', icon: Target }, // AI Sales Discovery Engine
+        { id: 'lead-lists' as const, label: 'Lead Lists', icon: FileText }, // Lead Lists / Contacts database
         { id: 'campaigns' as const, label: 'Campaigns', icon: Megaphone },
     ];
 
@@ -230,7 +233,6 @@ export default function UnifiedDashboard() {
                 <InboxView
                     smtpAccounts={smtpAccounts}
                     onRefreshAccounts={fetchData}
-                    onNavigateToAccounts={() => setActiveItem('accounts')}
                 />
             );
         }
@@ -585,6 +587,19 @@ export default function UnifiedDashboard() {
         // AI Lead Discovery
         if (activeItem === 'discovery') {
             return <LeadDiscovery />;
+        }
+
+        // Lead Lists
+        if (activeItem === 'lead-lists') {
+            return (
+                <LeadListsPage
+                    onNavigateToCampaign={(campaignId) => {
+                        setActiveItem('campaigns');
+                        setSelectedCampaignId(campaignId);
+                        setCampaignView('detail');
+                    }}
+                />
+            );
         }
 
         return null;

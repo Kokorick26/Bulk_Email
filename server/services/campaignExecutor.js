@@ -51,6 +51,151 @@ function replaceVariables(text, data) {
         .replace(/'/g, "'");
 }
 
+// ============ TIMEZONE-AWARE SENDING SYSTEM ============
+
+// Country to timezone mapping for leads without explicit timezone
+const COUNTRY_TO_TIMEZONE = {
+    'usa': 'America/New_York',
+    'us': 'America/New_York',
+    'united states': 'America/New_York',
+    'uk': 'Europe/London',
+    'united kingdom': 'Europe/London',
+    'england': 'Europe/London',
+    'india': 'Asia/Kolkata',
+    'germany': 'Europe/Berlin',
+    'france': 'Europe/Paris',
+    'australia': 'Australia/Sydney',
+    'canada': 'America/Toronto',
+    'japan': 'Asia/Tokyo',
+    'china': 'Asia/Shanghai',
+    'singapore': 'Asia/Singapore',
+    'uae': 'Asia/Dubai',
+    'dubai': 'Asia/Dubai',
+    'brazil': 'America/Sao_Paulo',
+    'mexico': 'America/Mexico_City',
+    'spain': 'Europe/Madrid',
+    'italy': 'Europe/Rome',
+    'netherlands': 'Europe/Amsterdam',
+    'sweden': 'Europe/Stockholm',
+    'norway': 'Europe/Oslo',
+    'denmark': 'Europe/Copenhagen',
+    'switzerland': 'Europe/Zurich',
+    'south korea': 'Asia/Seoul',
+    'korea': 'Asia/Seoul',
+    'new zealand': 'Pacific/Auckland',
+    'israel': 'Asia/Jerusalem',
+    'russia': 'Europe/Moscow',
+    'poland': 'Europe/Warsaw',
+};
+
+// Get the current time in a specific timezone
+function getTimeInTimezone(timezone) {
+    try {
+        const now = new Date();
+        const options = {
+            timeZone: timezone,
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+            weekday: 'long'
+        };
+        const formatter = new Intl.DateTimeFormat('en-US', options);
+        const parts = formatter.formatToParts(now);
+
+        const hour = parts.find(p => p.type === 'hour')?.value || '12';
+        const minute = parts.find(p => p.type === 'minute')?.value || '00';
+        const weekday = parts.find(p => p.type === 'weekday')?.value?.toLowerCase() || 'monday';
+
+        return {
+            time: `${hour}:${minute}`,
+            weekday,
+            hour: parseInt(hour, 10),
+            minute: parseInt(minute, 10)
+        };
+    } catch (error) {
+        console.error(`[Timezone] Invalid timezone: ${timezone}`, error.message);
+        // Fallback to UTC
+        const now = new Date();
+        return {
+            time: `${now.getUTCHours().toString().padStart(2, '0')}:${now.getUTCMinutes().toString().padStart(2, '0')}`,
+            weekday: now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase(),
+            hour: now.getUTCHours(),
+            minute: now.getUTCMinutes()
+        };
+    }
+}
+
+// Check if a lead is within their working hours
+function isLeadWithinWorkingHours(leadData, campaignSchedule) {
+    // Get lead's timezone (from lead data, country inference, or campaign default)
+    let timezone = leadData.timezone;
+
+    if (!timezone && leadData.country) {
+        timezone = COUNTRY_TO_TIMEZONE[leadData.country.toLowerCase()];
+    }
+
+    if (!timezone) {
+        timezone = campaignSchedule?.timezone || 'UTC';
+    }
+
+    // Get current time in lead's timezone
+    const leadTime = getTimeInTimezone(timezone);
+
+    // Get working hours (from lead data or campaign defaults)
+    const workingStart = leadData.workingHoursStart || campaignSchedule?.startTime || '09:00';
+    const workingEnd = leadData.workingHoursEnd || campaignSchedule?.endTime || '18:00';
+    const workingDays = leadData.workingDays || campaignSchedule?.sendDays ||
+        ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+
+    // Check if it's a working day
+    if (!workingDays.includes(leadTime.weekday)) {
+        console.log(`[Timezone] Lead ${leadData.email}: ${leadTime.weekday} is not a working day in ${timezone}`);
+        return false;
+    }
+
+    // Check if current time is within working hours
+    const currentTime = leadTime.time;
+    const isWithin = currentTime >= workingStart && currentTime <= workingEnd;
+
+    if (!isWithin) {
+        console.log(`[Timezone] Lead ${leadData.email}: ${currentTime} ${timezone} is outside working hours (${workingStart}-${workingEnd})`);
+    } else {
+        console.log(`[Timezone] Lead ${leadData.email}: ${currentTime} ${timezone} is WITHIN working hours ✓`);
+    }
+
+    return isWithin;
+}
+
+// Get detailed timezone info for logging
+function getLeadTimezoneInfo(leadData, campaignSchedule) {
+    let timezone = leadData.timezone;
+    let source = 'lead';
+
+    if (!timezone && leadData.country) {
+        timezone = COUNTRY_TO_TIMEZONE[leadData.country.toLowerCase()];
+        source = 'country';
+    }
+
+    if (!timezone) {
+        timezone = campaignSchedule?.timezone || 'UTC';
+        source = 'campaign';
+    }
+
+    const leadTime = getTimeInTimezone(timezone);
+
+    return {
+        timezone,
+        source,
+        localTime: leadTime.time,
+        weekday: leadTime.weekday,
+        workingStart: leadData.workingHoursStart || campaignSchedule?.startTime || '09:00',
+        workingEnd: leadData.workingHoursEnd || campaignSchedule?.endTime || '18:00',
+    };
+}
+
+// ============ END TIMEZONE SYSTEM ============
+
+
 // Get email transporter for a specific SMTP account
 async function getTransporter(smtpAccountId) {
     if (smtpAccountId) {
@@ -254,12 +399,16 @@ async function sendStepEmail(campaign, lead, step, stepIndex, smtpAccountId) {
     try {
         const { transporter, fromEmail, fromName } = await getTransporter(smtpAccountId);
 
+        // Extract lead data from progress
+        const leadEmail = lead.progress?.leadEmail || lead.leadEmail;
+        const leadData = lead.progress?.leadData || lead.leadData || {};
+
         // Personalize content
         let subject = processSpintax(step.subject);
-        subject = replaceVariables(subject, lead.leadData);
+        subject = replaceVariables(subject, leadData);
 
         let body = processSpintax(step.body);
-        body = replaceVariables(body, lead.leadData);
+        body = replaceVariables(body, leadData);
 
         // Convert to HTML
         const html = `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6;color:#202124">${body.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</div>`;
@@ -271,7 +420,7 @@ async function sendStepEmail(campaign, lead, step, stepIndex, smtpAccountId) {
         // Send email
         const info = await transporter.sendMail({
             from: `"${fromName}" <${fromEmail}>`,
-            to: lead.leadEmail,
+            to: leadEmail,
             replyTo: fromEmail,
             subject: subject,
             text: body,
@@ -291,8 +440,8 @@ async function sendStepEmail(campaign, lead, step, stepIndex, smtpAccountId) {
             Item: {
                 id: uuidv4(),
                 campaignId: campaign.id,
-                email: lead.leadEmail,
-                recipientName: lead.leadData.name || lead.leadData.firstName || '',
+                email: leadEmail,
+                recipientName: leadData.name || leadData.firstName || '',
                 status: 'sent',
                 stepIndex,
                 messageId: info.messageId,
@@ -322,11 +471,12 @@ async function sendStepEmail(campaign, lead, step, stepIndex, smtpAccountId) {
             }
         }).promise();
 
-        console.log(`[CampaignExecutor] Sent step ${stepIndex + 1} to ${lead.leadEmail}`);
+        console.log(`[CampaignExecutor] Sent step ${stepIndex + 1} to ${leadEmail}`);
         return true;
 
     } catch (error) {
-        console.error(`[CampaignExecutor] Failed to send to ${lead.leadEmail}:`, error.message);
+        const errorEmail = lead.progress?.leadEmail || lead.leadEmail || 'unknown';
+        console.error(`[CampaignExecutor] Failed to send to ${errorEmail}:`, error.message);
 
         // Log the failure
         try {
@@ -335,7 +485,7 @@ async function sendStepEmail(campaign, lead, step, stepIndex, smtpAccountId) {
                 Item: {
                     id: uuidv4(),
                     campaignId: campaign.id,
-                    email: lead.leadEmail,
+                    email: lead.progress?.leadEmail || lead.leadEmail || 'unknown',
                     status: 'failed',
                     stepIndex,
                     error: error.message,
@@ -463,34 +613,55 @@ export async function executeCampaign(campaignId) {
         const leadsToProcess = await getLeadsNeedingEmails(campaignId, campaign.sequence, options);
         console.log(`[CampaignExecutor] Found ${leadsToProcess.length} leads needing emails`);
 
-        // Check schedule constraints
         const schedule = campaign.schedule;
-        if (schedule) {
-            const now = new Date();
-            const dayName = now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
 
-            if (!schedule.sendDays.includes(dayName)) {
-                console.log('[CampaignExecutor] Not a sending day, skipping');
-                return { success: true, processed: 0, skipped: 'not_sending_day' };
-            }
+        // Check if we should respect individual lead timezones
+        // If leads have timezone data, we'll check each one individually
+        // Otherwise, fall back to campaign schedule
+        const useLeadTimezones = options.useLeadTimezones !== false; // Default: true
 
-            const currentTime = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
-            if (currentTime < schedule.startTime || currentTime > schedule.endTime) {
-                console.log('[CampaignExecutor] Outside sending window, skipping');
-                return { success: true, processed: 0, skipped: 'outside_window' };
-            }
-        }
-
-        // Process leads with rate limiting
+        // Process leads with rate limiting AND timezone awareness
         let sentCount = 0;
         let failedCount = 0;
-        const delayBetweenEmails = schedule?.delayBetweenEmails || 60; // seconds
+        let skippedCount = 0; // Leads skipped due to timezone (not in working hours)
+        const delayBetweenEmails = schedule?.delayBetweenEmails || 600; // 10 minutes default (in seconds)
         const dailyLimit = options.dailyLimit || 100;
 
-        for (const lead of leadsToProcess) {
+        console.log(`[CampaignExecutor] Starting timezone-aware sending (useLeadTimezones: ${useLeadTimezones})`);
+
+        for (let i = 0; i < leadsToProcess.length; i++) {
+            const lead = leadsToProcess[i];
+
             if (sentCount >= dailyLimit) {
                 console.log('[CampaignExecutor] Daily limit reached');
                 break;
+            }
+
+            const leadData = lead.progress.leadData || {};
+
+            // Calculate when this email is scheduled to be sent
+            const scheduledTime = new Date(Date.now() + (sentCount * delayBetweenEmails * 1000));
+            console.log(`[CampaignExecutor] Email #${sentCount + 1}: ${leadData.email} scheduled for ${scheduledTime.toISOString()}`);
+
+            // ======= TIMEZONE CHECK =======
+            // Check if this lead is within their working hours
+            if (useLeadTimezones) {
+                const tzInfo = getLeadTimezoneInfo(leadData, schedule);
+                console.log(`[CampaignExecutor] Lead ${leadData.email}: TZ=${tzInfo.timezone} (${tzInfo.source}), Local Time=${tzInfo.localTime} ${tzInfo.weekday}`);
+
+                if (!isLeadWithinWorkingHours(leadData, schedule)) {
+                    console.log(`[CampaignExecutor] Skipping ${leadData.email} - outside their working hours`);
+                    skippedCount++;
+                    continue; // Skip this lead, will be processed later when in their working hours
+                }
+            }
+            // ======= END TIMEZONE CHECK =======
+
+            // First email sends immediately, subsequent emails wait for delay
+            // This creates: Email 1 = instant, Email 2 = +10min, Email 3 = +20min, etc.
+            if (sentCount > 0 && delayBetweenEmails > 0) {
+                console.log(`[CampaignExecutor] Waiting ${delayBetweenEmails} seconds before sending to ${leadData.email}...`);
+                await new Promise(resolve => setTimeout(resolve, delayBetweenEmails * 1000));
             }
 
             const success = await sendStepEmail(
@@ -503,13 +674,10 @@ export async function executeCampaign(campaignId) {
 
             if (success) {
                 sentCount++;
+                console.log(`[CampaignExecutor] ✓ Email ${sentCount} sent to ${leadData.email}`);
             } else {
                 failedCount++;
-            }
-
-            // Delay between emails
-            if (delayBetweenEmails > 0 && sentCount < leadsToProcess.length) {
-                await new Promise(resolve => setTimeout(resolve, delayBetweenEmails * 1000));
+                console.log(`[CampaignExecutor] ✗ Failed to send to ${leadData.email}`);
             }
         }
 
@@ -526,8 +694,8 @@ export async function executeCampaign(campaignId) {
             }
         }).promise();
 
-        console.log(`[CampaignExecutor] Completed: ${sentCount} sent, ${failedCount} failed`);
-        return { success: true, sent: sentCount, failed: failedCount };
+        console.log(`[CampaignExecutor] Completed: ${sentCount} sent, ${failedCount} failed, ${skippedCount} skipped (outside working hours)`);
+        return { success: true, sent: sentCount, failed: failedCount, skipped: skippedCount };
 
     } catch (error) {
         console.error('[CampaignExecutor] Error:', error);

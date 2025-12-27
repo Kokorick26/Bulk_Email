@@ -12,6 +12,7 @@ const TEMPLATES_TABLE = 'EmailTemplates';
 const SMTP_ACCOUNTS_TABLE = 'SmtpAccounts';
 const NEWSLETTER_TABLE = 'NewsletterSubscribers';
 const LEAD_PROGRESS_TABLE = 'LeadProgress';
+const LEAD_LISTS_TABLE = 'LeadLists';
 
 // Start the campaign scheduler on server startup
 startCampaignScheduler(5); // Check every 5 minutes
@@ -1070,7 +1071,7 @@ router.get('/campaigns/:id', auth, async (req, res) => {
 // Create a new campaign
 router.post('/campaigns', auth, async (req, res) => {
     try {
-        const { name, status } = req.body;
+        const { name, status, leads, totalRecipients, sequence, schedule, options } = req.body;
 
         if (!name) {
             return res.status(400).json({ error: 'Campaign name is required' });
@@ -1080,7 +1081,7 @@ router.post('/campaigns', auth, async (req, res) => {
             id: uuidv4(),
             name,
             status: status || 'draft',
-            totalRecipients: 0,
+            totalRecipients: totalRecipients || (leads ? leads.length : 0),
             sentCount: 0,
             failedCount: 0,
             openCount: 0,
@@ -1089,11 +1090,11 @@ router.post('/campaigns', auth, async (req, res) => {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             createdBy: req.user.userId,
-            // Initialize empty data structures
-            leads: [],
-            sequence: null,
-            schedule: null,
-            options: null
+            // Accept data from request or initialize as empty
+            leads: leads || [],
+            sequence: sequence || null,
+            schedule: schedule || null,
+            options: options || null
         };
 
         await dynamoDB.put({ TableName: CAMPAIGNS_TABLE, Item: campaign }).promise();
@@ -1461,6 +1462,142 @@ router.get('/recipients/contacts', auth, async (req, res) => {
         res.json((data.Items || []).map(c => ({ email: c.email, name: c.name, company: c.company })));
     } catch (err) {
         res.json([]);
+    }
+});
+
+// ============ LEAD LISTS MANAGEMENT ============
+
+// Get all lead lists
+router.get('/lead-lists', auth, async (req, res) => {
+    try {
+        const data = await dynamoDB.scan({ TableName: LEAD_LISTS_TABLE }).promise();
+        const lists = (data.Items || []).sort((a, b) =>
+            new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)
+        );
+        res.json({ lists });
+    } catch (err) {
+        console.error('Error fetching lead lists:', err);
+        if (err.code === 'ResourceNotFoundException') {
+            return res.json({ lists: [] });
+        }
+        res.status(500).json({ error: 'Could not load lead lists' });
+    }
+});
+
+// Create new lead list
+router.post('/lead-lists', auth, async (req, res) => {
+    try {
+        const { name, description, leads, tags } = req.body;
+
+        if (!name) {
+            return res.status(400).json({ error: 'List name is required' });
+        }
+
+        const list = {
+            id: uuidv4(),
+            name,
+            description: description || '',
+            leads: leads || [],
+            tags: tags || [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            userId: req.userId
+        };
+
+        await dynamoDB.put({
+            TableName: LEAD_LISTS_TABLE,
+            Item: list
+        }).promise();
+
+        res.status(201).json({ list });
+    } catch (err) {
+        console.error('Error creating lead list:', err);
+        res.status(500).json({ error: 'Could not create lead list' });
+    }
+});
+
+// Get single lead list
+router.get('/lead-lists/:id', auth, async (req, res) => {
+    try {
+        const result = await dynamoDB.get({
+            TableName: LEAD_LISTS_TABLE,
+            Key: { id: req.params.id }
+        }).promise();
+
+        if (!result.Item) {
+            return res.status(404).json({ error: 'Lead list not found' });
+        }
+
+        res.json({ list: result.Item });
+    } catch (err) {
+        console.error('Error fetching lead list:', err);
+        res.status(500).json({ error: 'Could not fetch lead list' });
+    }
+});
+
+// Update lead list
+router.put('/lead-lists/:id', auth, async (req, res) => {
+    try {
+        const { name, description, leads, tags } = req.body;
+
+        const updateExpression = [];
+        const expressionAttributeValues = {};
+        const expressionAttributeNames = {};
+
+        if (name !== undefined) {
+            updateExpression.push('#name = :name');
+            expressionAttributeValues[':name'] = name;
+            expressionAttributeNames['#name'] = 'name';
+        }
+        if (description !== undefined) {
+            updateExpression.push('description = :description');
+            expressionAttributeValues[':description'] = description;
+        }
+        if (leads !== undefined) {
+            updateExpression.push('leads = :leads');
+            expressionAttributeValues[':leads'] = leads;
+        }
+        if (tags !== undefined) {
+            updateExpression.push('tags = :tags');
+            expressionAttributeValues[':tags'] = tags;
+        }
+
+        updateExpression.push('updatedAt = :updatedAt');
+        expressionAttributeValues[':updatedAt'] = new Date().toISOString();
+
+        const params = {
+            TableName: LEAD_LISTS_TABLE,
+            Key: { id: req.params.id },
+            UpdateExpression: 'SET ' + updateExpression.join(', '),
+            ExpressionAttributeValues: expressionAttributeValues,
+            ReturnValues: 'ALL_NEW'
+        };
+
+        if (Object.keys(expressionAttributeNames).length > 0) {
+            params.ExpressionAttributeNames = expressionAttributeNames;
+        }
+
+        const result = await dynamoDB.update(params).promise();
+
+        res.json({ list: result.Attributes });
+    } catch (err) {
+        console.error('Error updating lead list:', err);
+        res.status(500).json({ error: 'Could not update lead list' });
+    }
+});
+
+// Delete lead list
+router.delete('/lead-lists/:id', auth, async (req, res) => {
+    try {
+        await dynamoDB.delete({
+            TableName: LEAD_LISTS_TABLE,
+            Key: { id: req.params.id }
+        }).promise();
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Error deleting lead list:', err);
+        res.status(500).json({ error: 'Could not delete lead list' });
     }
 });
 

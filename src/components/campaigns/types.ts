@@ -26,7 +26,7 @@ export interface Campaign {
     openRate?: number;
     clickRate?: number;
     replyRate?: number;
-    
+
     // Campaign Settings
     timezone?: string;
     sendWindow?: {
@@ -34,7 +34,7 @@ export interface Campaign {
         end: string;
         days: string[];
     };
-    
+
     // Enhanced Metadata
     tags?: string[];
     priority?: 'low' | 'normal' | 'high';
@@ -47,6 +47,12 @@ export interface Lead {
     firstName?: string;
     lastName?: string;
     company?: string;
+    // Timezone-aware sending fields
+    timezone?: string;              // e.g., "America/New_York", "Europe/London", "Asia/Kolkata"
+    workingHoursStart?: string;     // e.g., "09:00" (24h format)
+    workingHoursEnd?: string;       // e.g., "18:00" (24h format)
+    workingDays?: string[];         // e.g., ["monday", "tuesday", "wednesday", "thursday", "friday"]
+    country?: string;               // For timezone inference if timezone not provided
     status: 'pending' | 'sent' | 'opened' | 'clicked' | 'replied' | 'bounced' | 'unsubscribed';
     customFields: Record<string, string>;
     addedAt: string;
@@ -54,7 +60,7 @@ export interface Lead {
 
 export interface ColumnMapping {
     columnName: string;
-    fieldType: 'email' | 'firstName' | 'lastName' | 'company' | 'custom' | 'ignore';
+    fieldType: 'email' | 'firstName' | 'lastName' | 'company' | 'timezone' | 'country' | 'workingHoursStart' | 'workingHoursEnd' | 'custom' | 'ignore';
     customFieldName?: string;
     samples: string[];
 }

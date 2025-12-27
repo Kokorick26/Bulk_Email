@@ -20,6 +20,7 @@ interface ExtendedOptions extends CampaignOptions {
     sendTextOnly: boolean;
     sendFirstEmailTextOnly: boolean;
     dailyLimit: number;
+    useLeadTimezones: boolean;
 }
 
 const defaultOptions: ExtendedOptions = {
@@ -32,7 +33,8 @@ const defaultOptions: ExtendedOptions = {
     linkTracking: false,
     sendTextOnly: false,
     sendFirstEmailTextOnly: false,
-    dailyLimit: 30
+    dailyLimit: 30,
+    useLeadTimezones: true
 };
 
 interface ToggleButtonGroupProps {
@@ -335,6 +337,37 @@ export function OptionsTab({ campaignId, options, onOptionsUpdate, className }: 
                                 ? 'bg-[#252525] border-gray-700 text-white'
                                 : 'bg-gray-50 border-gray-200 text-gray-900'
                         )}
+                    />
+                </div>
+            </div>
+
+            {/* Timezone-Aware Sending */}
+            <div className={cn(
+                'p-5 rounded-xl border',
+                theme === 'dark' ? 'bg-[#1a1a1a] border-gray-800' : 'bg-white border-gray-200'
+            )}>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h4 className={cn(
+                            'font-medium',
+                            theme === 'dark' ? 'text-white' : 'text-gray-900'
+                        )}>
+                            Timezone-Aware Sending
+                        </h4>
+                        <p className={cn(
+                            'text-sm mt-0.5',
+                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                        )}>
+                            {localOptions.useLeadTimezones
+                                ? 'Only send emails during lead\'s working hours (9am-6pm in their timezone)'
+                                : 'Emails will be sent immediately regardless of recipient\'s timezone'
+                            }
+                        </p>
+                    </div>
+                    <ToggleButtonGroup
+                        value={localOptions.useLeadTimezones}
+                        onChange={(v) => handleUpdate('useLeadTimezones', v)}
+                        theme={theme}
                     />
                 </div>
             </div>

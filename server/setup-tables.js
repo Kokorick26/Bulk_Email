@@ -82,6 +82,22 @@ const tables = [
             },
         ],
     },
+    {
+        TableName: 'LeadLists',
+        KeySchema: [{ AttributeName: 'id', KeyType: 'HASH' }],
+        AttributeDefinitions: [
+            { AttributeName: 'id', AttributeType: 'S' },
+            { AttributeName: 'userId', AttributeType: 'S' },
+        ],
+        BillingMode: 'PAY_PER_REQUEST',
+        GlobalSecondaryIndexes: [
+            {
+                IndexName: 'UserIdIndex',
+                KeySchema: [{ AttributeName: 'userId', KeyType: 'HASH' }],
+                Projection: { ProjectionType: 'ALL' },
+            },
+        ],
+    },
 ];
 
 async function createTable(tableConfig) {

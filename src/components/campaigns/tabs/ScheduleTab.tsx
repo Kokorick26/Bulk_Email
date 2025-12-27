@@ -27,7 +27,7 @@ const defaultSchedule: CampaignSchedule = {
     startTime: '09:00',
     endTime: '18:00',
     maxEmailsPerDay: 100,
-    delayBetweenEmails: 60
+    delayBetweenEmails: 600  // 10 minutes default (in seconds)
 };
 
 const weekDays = [
@@ -364,6 +364,66 @@ export function ScheduleTab({ campaignId, schedule, onScheduleUpdate, className 
                                 </span>
                             </label>
                         ))}
+                    </div>
+                </div>
+
+                {/* Delay Between Emails */}
+                <div className={cn(
+                    'p-6 rounded-xl border',
+                    theme === 'dark' ? 'bg-[#1a1a1a] border-gray-800' : 'bg-white border-gray-200'
+                )}>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h3 className={cn(
+                                'text-sm font-medium mb-1',
+                                theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                            )}>
+                                Delay Between Emails
+                            </h3>
+                            <p className={cn(
+                                'text-xs',
+                                theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                            )}>
+                                Time to wait between sending each email (helps with deliverability)
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <input
+                                type="number"
+                                min="1"
+                                max="60"
+                                value={Math.round((localSchedule.delayBetweenEmails || 600) / 60)}
+                                onChange={(e) => handleUpdate({
+                                    delayBetweenEmails: Math.max(60, Math.min(3600, parseInt(e.target.value) * 60 || 600))
+                                })}
+                                className={cn(
+                                    'w-20 px-4 py-2.5 rounded-lg border text-center',
+                                    theme === 'dark'
+                                        ? 'bg-[#252525] border-gray-700 text-white'
+                                        : 'bg-gray-50 border-gray-200 text-gray-900'
+                                )}
+                            />
+                            <span className={cn(
+                                'text-sm',
+                                theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                            )}>
+                                minutes
+                            </span>
+                        </div>
+                    </div>
+                    <div className={cn(
+                        'mt-4 p-3 rounded-lg',
+                        theme === 'dark' ? 'bg-blue-500/10' : 'bg-blue-50'
+                    )}>
+                        <p className={cn(
+                            'text-xs flex items-center gap-2',
+                            theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
+                        )}>
+                            <Clock className="w-4 h-4" />
+                            <span>
+                                At {Math.round((localSchedule.delayBetweenEmails || 600) / 60)} min delay, you can send up to {Math.floor(60 / Math.round((localSchedule.delayBetweenEmails || 600) / 60)) > 0 ? Math.floor(60 / Math.round((localSchedule.delayBetweenEmails || 600) / 60)) : '< 1'} emails/hour
+                            </span>
+                        </p>
                     </div>
                 </div>
 
