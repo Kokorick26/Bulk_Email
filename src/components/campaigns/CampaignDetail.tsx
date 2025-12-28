@@ -1,18 +1,20 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
-    ChevronLeft, Play, Pause, MoreHorizontal, Loader2
+    ChevronLeft, Play, Pause, MoreHorizontal, Loader2,
+    BarChart2, Users, List, Calendar, Settings, History
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useTheme } from '../../lib/ThemeContext';
 import { Button } from '../ui/Button';
+import { ScrollArea } from '../ui/ScrollArea';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '../ui/DropdownMenu';
-import { LeadsTab, SequencesTab, ScheduleTab, OptionsTab, AnalyticsTab } from './tabs';
+import { LeadsTab, SequencesTab, ScheduleTab, OptionsTab, AnalyticsTab, HistoryTab } from './tabs';
 import type { Campaign, CampaignTab, Lead, Sequence, CampaignSchedule, CampaignOptions } from './types';
 
 interface AIContext {
@@ -30,12 +32,13 @@ interface CampaignDetailProps {
     className?: string;
 }
 
-const tabs: { id: CampaignTab; label: string }[] = [
-    { id: 'analytics', label: 'Analytics' },
-    { id: 'leads', label: 'Leads' },
-    { id: 'sequences', label: 'Sequences' },
-    { id: 'schedule', label: 'Schedule' },
-    { id: 'options', label: 'Options' },
+const tabs: { id: CampaignTab; label: string; icon: any }[] = [
+    { id: 'analytics', label: 'Analytics', icon: BarChart2 },
+    { id: 'leads', label: 'Leads', icon: Users },
+    { id: 'sequences', label: 'Sequences', icon: List },
+    { id: 'schedule', label: 'Schedule', icon: Calendar },
+    { id: 'options', label: 'Options', icon: Settings },
+    { id: 'history', label: 'Email History', icon: History },
 ];
 
 export function CampaignDetail({ campaignId, onBack, onContextChange, className }: CampaignDetailProps) {
@@ -223,7 +226,7 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-[400px]">
+            <div className="flex items-center justify-center h-full">
                 <Loader2 className={cn(
                     'w-8 h-8 animate-spin',
                     theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
@@ -233,148 +236,179 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
     }
 
     return (
-        <div className={cn('min-h-[calc(100vh-100px)]', className)}>
-            {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-4">
+        <div className={cn('flex flex-1 h-full overflow-hidden', className)}>
+            {/* Sidebar Navigation */}
+            <div className={cn(
+                'w-64 flex-shrink-0 flex flex-col border-r',
+                theme === 'dark' ? 'bg-[#1a1a1a] border-gray-800' : 'bg-gray-50 border-gray-200'
+            )}>
+                {/* Back Link */}
+                <div className={cn(
+                    'p-4 border-b',
+                    theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
+                )}>
                     <button
                         onClick={onBack}
                         className={cn(
-                            'flex items-center gap-1 text-sm font-medium transition-colors',
+                            'flex items-center gap-2 text-sm font-medium transition-colors w-full px-2 py-1.5 rounded-lg',
                             theme === 'dark'
-                                ? 'text-gray-400 hover:text-white'
-                                : 'text-gray-600 hover:text-gray-900'
+                                ? 'text-gray-400 hover:text-white hover:bg-gray-800'
+                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'
                         )}
                     >
                         <ChevronLeft className="w-4 h-4" />
+                        Back to Campaigns
                     </button>
-                    <h1 className={cn(
-                        'text-xl font-semibold',
-                        theme === 'dark' ? 'text-white' : 'text-gray-900'
-                    )}>
-                        {campaign?.name || 'Campaign'}
-                    </h1>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    {campaign?.status === 'active' ? (
-                        <Button
-                            onClick={handlePauseCampaign}
-                            variant="outline"
-                            className={cn(
-                                'gap-2',
-                                theme === 'dark'
-                                    ? 'border-gray-700 text-gray-300 hover:bg-gray-800'
-                                    : 'border-gray-300 text-gray-700 hover:bg-gray-100'
-                            )}
-                        >
-                            <Pause className="w-4 h-4" />
-                            Pause campaign
-                        </Button>
-                    ) : (
-                        <Button
-                            onClick={handleResumeCampaign}
-                            className={cn(
-                                'gap-2',
-                                theme === 'dark'
-                                    ? 'bg-blue-600 hover:bg-blue-500 text-white'
-                                    : 'bg-blue-600 hover:bg-blue-700 text-white'
-                            )}
-                        >
-                            <Play className="w-4 h-4" />
-                            Resume campaign
-                        </Button>
-                    )}
-
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <button className={cn(
-                                'p-2 rounded-lg border transition-colors',
-                                theme === 'dark'
-                                    ? 'border-gray-700 text-gray-400 hover:bg-gray-800'
-                                    : 'border-gray-300 text-gray-500 hover:bg-gray-100'
-                            )}>
-                                <MoreHorizontal className="w-5 h-5" />
-                            </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem>Duplicate Campaign</DropdownMenuItem>
-                            <DropdownMenuItem>Export Data</DropdownMenuItem>
-                            <DropdownMenuItem className="text-red-500">Delete Campaign</DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </div>
-            </div>
-
-            {/* Tabs */}
-            <div className={cn(
-                'border-b mb-6',
-                theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
-            )}>
-                <div className="flex gap-6">
+                {/* Navigation Items */}
+                <div className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
                     {tabs.map((tab) => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={cn(
-                                'relative pb-3 text-sm font-medium transition-colors',
+                                'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-left',
                                 activeTab === tab.id
-                                    ? theme === 'dark' ? 'text-white' : 'text-gray-900'
-                                    : theme === 'dark' ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'
+                                    ? theme === 'dark'
+                                        ? 'bg-blue-500/20 text-blue-400'
+                                        : 'bg-blue-50 text-blue-600'
+                                    : theme === 'dark'
+                                        ? 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
+                                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                             )}
                         >
+                            <tab.icon className={cn(
+                                "w-4 h-4",
+                                activeTab === tab.id
+                                    ? "opacity-100"
+                                    : "opacity-70 group-hover:opacity-100"
+                            )} />
                             {tab.label}
-                            {activeTab === tab.id && (
-                                <motion.div
-                                    layoutId="activeTab"
-                                    className={cn(
-                                        'absolute bottom-0 left-0 right-0 h-0.5',
-                                        theme === 'dark' ? 'bg-blue-500' : 'bg-blue-600'
-                                    )}
-                                />
-                            )}
                         </button>
                     ))}
                 </div>
             </div>
 
-            {/* Tab Content */}
-            <div className="mt-6">
-                {activeTab === 'analytics' && (
-                    <AnalyticsTab
-                        campaign={campaign!}
-                        leads={leads}
-                    />
-                )}
-                {activeTab === 'leads' && (
-                    <LeadsTab
-                        campaignId={campaignId}
-                        leads={leads}
-                        onLeadsUpdate={handleLeadsUpdate}
-                    />
-                )}
-                {activeTab === 'sequences' && (
-                    <SequencesTab
-                        campaignId={campaignId}
-                        sequence={sequence}
-                        onSequenceUpdate={setSequence}
-                        leads={leads}
-                    />
-                )}
-                {activeTab === 'schedule' && (
-                    <ScheduleTab
-                        campaignId={campaignId}
-                        schedule={schedule}
-                        onScheduleUpdate={setSchedule}
-                    />
-                )}
-                {activeTab === 'options' && (
-                    <OptionsTab
-                        campaignId={campaignId}
-                        options={options}
-                        onOptionsUpdate={setOptions}
-                    />
-                )}
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background">
+                {/* Header Actions */}
+                <div className={cn(
+                    'flex items-center justify-between px-6 py-4 border-b flex-shrink-0',
+                    theme === 'dark' ? 'border-gray-800 bg-[#0c0c10]' : 'border-gray-200 bg-white'
+                )}>
+                    <div>
+                        <h1 className={cn(
+                            'text-xl font-semibold',
+                            theme === 'dark' ? 'text-white' : 'text-gray-900'
+                        )}>
+                            {campaign?.name || 'Campaign'}
+                        </h1>
+                        <p className={cn(
+                            'text-sm mt-1',
+                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                        )}>
+                            {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} View
+                        </p>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        {campaign?.status === 'active' ? (
+                            <Button
+                                onClick={handlePauseCampaign}
+                                variant="outline"
+                                size="sm"
+                                className={cn(
+                                    'gap-2',
+                                    theme === 'dark'
+                                        ? 'border-gray-700 text-gray-300 hover:bg-gray-800'
+                                        : 'border-gray-300 text-gray-700 hover:bg-gray-100'
+                                )}
+                            >
+                                <Pause className="w-4 h-4" />
+                                Pause
+                            </Button>
+                        ) : (
+                            <Button
+                                onClick={handleResumeCampaign}
+                                size="sm"
+                                className={cn(
+                                    'gap-2',
+                                    theme === 'dark'
+                                        ? 'bg-blue-600 hover:bg-blue-500 text-white'
+                                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                                )}
+                            >
+                                <Play className="w-4 h-4" />
+                                Resume
+                            </Button>
+                        )}
+
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <button className={cn(
+                                    'p-2 rounded-lg border transition-colors',
+                                    theme === 'dark'
+                                        ? 'border-gray-700 text-gray-400 hover:bg-gray-800'
+                                        : 'border-gray-300 text-gray-500 hover:bg-gray-100'
+                                )}>
+                                    <MoreHorizontal className="w-5 h-5" />
+                                </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem>Duplicate Campaign</DropdownMenuItem>
+                                <DropdownMenuItem>Export Data</DropdownMenuItem>
+                                <DropdownMenuItem className="text-red-500">Delete Campaign</DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                </div>
+
+                {/* Content */}
+                <ScrollArea className="flex-1">
+                    <div className="p-6">
+                        {activeTab === 'analytics' && (
+                            <AnalyticsTab
+                                campaign={campaign!}
+                                leads={leads}
+                            />
+                        )}
+                        {activeTab === 'leads' && (
+                            <LeadsTab
+                                campaignId={campaignId}
+                                leads={leads}
+                                onLeadsUpdate={handleLeadsUpdate}
+                            />
+                        )}
+                        {activeTab === 'sequences' && (
+                            <SequencesTab
+                                campaignId={campaignId}
+                                sequence={sequence}
+                                onSequenceUpdate={setSequence}
+                                leads={leads}
+                            />
+                        )}
+                        {activeTab === 'schedule' && (
+                            <ScheduleTab
+                                campaignId={campaignId}
+                                schedule={schedule}
+                                onScheduleUpdate={setSchedule}
+                            />
+                        )}
+                        {activeTab === 'options' && (
+                            <OptionsTab
+                                campaignId={campaignId}
+                                options={options}
+                                onOptionsUpdate={setOptions}
+                            />
+                        )}
+                        {activeTab === 'history' && (
+                            <HistoryTab
+                                campaignId={campaignId}
+                            />
+                        )}
+                    </div>
+                </ScrollArea>
             </div>
         </div>
     );

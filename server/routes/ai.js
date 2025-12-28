@@ -1112,6 +1112,7 @@ router.post('/confirm-send', auth, async (req, res) => {
         const smtpUser = process.env.SMTP_USER;
         const smtpPass = process.env.SMTP_PASS;
         const smtpFrom = process.env.SMTP_FROM || smtpUser;
+        const smtpFromName = process.env.SMTP_FROM_NAME || smtpUser?.split('@')[0] || 'Support';
 
         if (!smtpHost || !smtpUser || !smtpPass) {
             return res.status(400).json({
@@ -1139,7 +1140,7 @@ router.post('/confirm-send', auth, async (req, res) => {
             try {
                 // Actually send the email
                 await transporter.sendMail({
-                    from: `"BulkMail" <${smtpFrom}>`,
+                    from: `"${smtpFromName}" <${smtpFrom}>`,
                     to: recipient.email,
                     subject: email.subject,
                     text: email.body.replace(/<[^>]*>/g, ''),
@@ -1234,7 +1235,7 @@ router.post('/confirm-send', auth, async (req, res) => {
 
                 try {
                     await transporter.sendMail({
-                        from: `"BulkMail" <${smtpFrom}>`,
+                        from: `"${smtpFromName}" <${smtpFrom}>`,
                         to: r.email,
                         subject: sanitizeContent(personalizedSubject),
                         text: sanitizeContent(personalizedBody.replace(/<[^>]*>/g, '')),
@@ -1329,7 +1330,7 @@ router.post('/confirm-send', auth, async (req, res) => {
 
                 try {
                     await transporter.sendMail({
-                        from: `"BulkMail" <${smtpFrom}>`,
+                        from: `"${smtpFromName}" <${smtpFrom}>`,
                         to: emailData.email,
                         subject: sanitizeContent(emailData.subject),
                         text: sanitizeContent(emailData.body.replace(/<[^>]*>/g, '')),

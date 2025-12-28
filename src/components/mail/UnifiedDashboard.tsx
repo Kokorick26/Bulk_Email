@@ -487,38 +487,32 @@ export default function UnifiedDashboard() {
             }
 
             if (campaignView === 'detail' && selectedCampaignId) {
-                return (
-                    <ScrollArea className="flex-1">
-                        <div className="px-8 py-6">
-                            <CampaignDetail
-                                campaignId={selectedCampaignId}
-                                onBack={() => {
-                                    setCampaignView('list');
-                                    setSelectedCampaignId(null);
-                                }}
-                                onContextChange={(ctx: typeof aiContext) => setAiContext(ctx)}
-                            />
-                        </div>
-                    </ScrollArea>
-                );
+                if (campaignView === 'detail' && selectedCampaignId) {
+                    return (
+                        <CampaignDetail
+                            campaignId={selectedCampaignId}
+                            onBack={() => {
+                                setCampaignView('list');
+                                setSelectedCampaignId(null);
+                            }}
+                            onContextChange={(ctx: typeof aiContext) => setAiContext(ctx)}
+                        />
+                    );
+                }
             }
 
             // Default: List view
             return (
-                <ScrollArea className="flex-1">
-                    <div className="px-8 py-6">
-                        <CampaignsList
-                            campaigns={organizedCampaigns}
-                            loading={loading}
-                            onCreateNew={() => setCampaignView('create')}
-                            onViewCampaign={(id: string) => {
-                                setSelectedCampaignId(id);
-                                setCampaignView('detail');
-                            }}
-                            onDeleteCampaign={handleDeleteCampaign}
-                        />
-                    </div>
-                </ScrollArea>
+                <CampaignsList
+                    campaigns={organizedCampaigns}
+                    loading={loading}
+                    onCreateNew={() => setCampaignView('create')}
+                    onViewCampaign={(id: string) => {
+                        setSelectedCampaignId(id);
+                        setCampaignView('detail');
+                    }}
+                    onDeleteCampaign={handleDeleteCampaign}
+                />
             );
         }
 

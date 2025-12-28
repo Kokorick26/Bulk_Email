@@ -253,6 +253,83 @@ router.post('/smtp-accounts/test-connection', auth, async (req, res) => {
     }
 });
 
+// ============ USER SETTINGS ============
+
+const USERS_TABLE = 'BulkEmailUsers';
+
+// Get user settings
+router.get('/settings', auth, async (req, res) => {
+    // Default settings to return
+    const defaultSettings = {
+        maxEmailsPerAccountPerDay: 15,  // Default: 15 emails per account per day to avoid spam
+        defaultThrottling: 4,
+        trackOpens: true,
+        trackClicks: true,
+        autoRetry: true
+    };
+
+    try {
+        // userId comes from JWT, fallback to email for admin user
+        const userId = req.user.userId || req.user.email;
+
+        const userData = await dynamoDB.get({
+            TableName: USERS_TABLE,
+            Key: { id: userId }
+        }).promise();
+
+        const userSettings = userData.Item?.settings || {};
+        res.json({ ...defaultSettings, ...userSettings });
+    } catch (err) {
+        // If user doesn't exist in table or any error, just return defaults
+        console.log('Could not fetch user settings, using defaults:', err.message);
+        res.json(defaultSettings);
+    }
+});
+
+// Update user settings
+router.put('/settings', auth, async (req, res) => {
+    try {
+        // userId comes from JWT, fallback to email for admin user
+        const userId = req.user.userId || req.user.email;
+        const settings = req.body;
+
+        // Validate daily limit (1-50 range to avoid spam issues)
+        if (settings.maxEmailsPerAccountPerDay !== undefined) {
+            settings.maxEmailsPerAccountPerDay = Math.max(1, Math.min(50, parseInt(settings.maxEmailsPerAccountPerDay) || 15));
+        }
+
+        // Try to get existing user first
+        let existingUser = {};
+        try {
+            const userData = await dynamoDB.get({
+                TableName: USERS_TABLE,
+                Key: { id: userId }
+            }).promise();
+            existingUser = userData.Item || {};
+        } catch (e) {
+            // User doesn't exist, that's okay
+        }
+
+        // Use put to create or update the user settings
+        await dynamoDB.put({
+            TableName: USERS_TABLE,
+            Item: {
+                ...existingUser,
+                id: userId,
+                email: req.user.email,
+                settings: settings,
+                updatedAt: new Date().toISOString(),
+                createdAt: existingUser.createdAt || new Date().toISOString()
+            }
+        }).promise();
+
+        res.json({ message: 'Settings updated successfully', settings });
+    } catch (err) {
+        console.error('Error updating user settings:', err);
+        res.status(500).json({ error: 'Could not update settings' });
+    }
+});
+
 // ============ GET TRANSPORTER ============
 
 // Get transporter for a specific account or default/env

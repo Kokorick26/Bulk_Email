@@ -55,6 +55,9 @@ export function SettingsPage() {
         trackClicks: true,
         autoRetry: true,
 
+        // Account Limits
+        maxEmailsPerAccountPerDay: 15,
+
         // Security
         twoFactorEnabled: false,
         sessionTimeout: 30,
@@ -72,9 +75,30 @@ export function SettingsPage() {
 
     const handleSave = async () => {
         setSaving(true);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        localStorage.setItem('bulkmail-settings', JSON.stringify(settings));
-        toast.success('Settings saved successfully');
+        try {
+            const token = localStorage.getItem('bulkEmailToken');
+            const res = await fetch('/api/bulk-email/settings', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify(settings)
+            });
+
+            if (res.ok) {
+                // Also save to localStorage for offline access
+                localStorage.setItem('bulkmail-settings', JSON.stringify(settings));
+                toast.success('Settings saved successfully');
+            } else {
+                toast.error('Failed to save settings to server');
+            }
+        } catch (err) {
+            console.error('Failed to save settings:', err);
+            // Fallback to localStorage only
+            localStorage.setItem('bulkmail-settings', JSON.stringify(settings));
+            toast.success('Settings saved locally');
+        }
         setSaving(false);
     };
 
@@ -96,15 +120,32 @@ export function SettingsPage() {
         }
     }, []);
 
-    useEffect(() => {
-        const saved = localStorage.getItem('bulkmail-settings');
-        if (saved) {
-            try {
-                setSettings(prev => ({ ...prev, ...JSON.parse(saved) }));
-            } catch { }
+    const fetchUserSettings = useCallback(async () => {
+        try {
+            const token = localStorage.getItem('bulkEmailToken');
+            const res = await fetch('/api/bulk-email/settings', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const serverSettings = await res.json();
+                setSettings(prev => ({ ...prev, ...serverSettings }));
+            }
+        } catch (err) {
+            console.error('Failed to fetch user settings:', err);
+            // Fall back to localStorage
+            const saved = localStorage.getItem('bulkmail-settings');
+            if (saved) {
+                try {
+                    setSettings(prev => ({ ...prev, ...JSON.parse(saved) }));
+                } catch { }
+            }
         }
+    }, []);
+
+    useEffect(() => {
+        fetchUserSettings();
         fetchSmtpAccounts();
-    }, [fetchSmtpAccounts]);
+    }, [fetchSmtpAccounts, fetchUserSettings]);
 
     const handleConfigureImap = (account: SmtpAccount) => {
         setSelectedAccount(account);
@@ -491,6 +532,38 @@ export function SettingsPage() {
                                                 onToggle={() => updateSetting('autoRetry', !settings.autoRetry)}
                                             />
                                         </SettingRow>
+                                    </CardContent>
+                                </Card>
+
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Account Limits</CardTitle>
+                                        <CardDescription>Control daily sending limits per email account to avoid spam detection</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div>
+                                            <label className="block text-sm font-medium text-foreground mb-2">
+                                                Max emails per account per day
+                                            </label>
+                                            <div className="flex items-center gap-3">
+                                                <Input
+                                                    type="number"
+                                                    min="1"
+                                                    max="50"
+                                                    value={settings.maxEmailsPerAccountPerDay}
+                                                    onChange={(e) => updateSetting('maxEmailsPerAccountPerDay', parseInt(e.target.value) || 15)}
+                                                    className="w-24"
+                                                />
+                                                <span className="text-sm text-muted-foreground">emails/day</span>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground mt-2">
+                                                Each email account will send at most this many emails per day.
+                                                If a campaign has more leads, it will automatically continue over multiple days.
+                                            </p>
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                <strong>Recommended:</strong> 10-20 emails/day per account to maintain good deliverability
+                                            </p>
+                                        </div>
                                     </CardContent>
                                 </Card>
 

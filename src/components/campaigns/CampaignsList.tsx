@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Plus, Search, Filter, ChevronDown, MoreHorizontal,
@@ -75,6 +75,12 @@ export function CampaignsList({
                 default: return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
             }
         });
+
+    useEffect(() => {
+        if (!selectedCampaign && filteredCampaigns.length > 0) {
+            setSelectedCampaign(filteredCampaigns[0]);
+        }
+    }, [filteredCampaigns, selectedCampaign]);
 
     const formatDate = (dateStr: string) => {
         const date = new Date(dateStr);

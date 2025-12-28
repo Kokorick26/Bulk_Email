@@ -3,3 +3,4 @@ export { SequencesTab } from './SequencesTab';
 export { ScheduleTab } from './ScheduleTab';
 export { OptionsTab } from './OptionsTab';
 export { AnalyticsTab } from './AnalyticsTab';
+export { HistoryTab } from './HistoryTab';

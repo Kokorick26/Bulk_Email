@@ -7,7 +7,7 @@ import { Target, Sparkles, Search, CheckCircle2, Mail, TrendingUp, Users, Calend
 // ============================================
 export function BentoCard({
     children,
-    className,
+    className,  
     ...props
 }: { children: React.ReactNode; className?: string } & React.HTMLAttributes<HTMLDivElement>) {
     return (

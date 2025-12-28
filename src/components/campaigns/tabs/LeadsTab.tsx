@@ -1,9 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Upload, FileSpreadsheet, X, Check, AlertCircle,
     Users, Loader2, Trash2, Eye, ChevronDown, Ban,
-    Mail, User, Building, Hash, Clock, Plus, Edit3, FolderOpen
+    Mail, User, Building, Hash, Clock, Plus, Edit3, FolderOpen, ExternalLink
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { useTheme } from '../../../lib/ThemeContext';
@@ -12,6 +12,22 @@ import { ScrollArea } from '../../ui/ScrollArea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../ui/Table';
 import { LeadBuilder } from '../LeadBuilder';
 import type { Lead, ColumnMapping } from '../types';
+
+// Email log entry from the backend
+interface EmailLog {
+    id: string;
+    campaignId: string;
+    email: string;
+    recipientName?: string;
+    status: 'sent' | 'failed' | 'opened' | 'clicked' | 'replied';
+    sentAt: string;
+    subject?: string;
+    htmlContent?: string;
+    textContent?: string;
+    messageId?: string;
+    stepIndex?: number;
+    error?: string;
+}
 
 interface LeadsTabProps {
     campaignId: string;
@@ -83,6 +99,202 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
     const [showLeadListsModal, setShowLeadListsModal] = useState(false);
     const [leadLists, setLeadLists] = useState<Array<{ id: string; name: string; leads: Lead[]; description?: string }>>([]);
     const [loadingLeadLists, setLoadingLeadLists] = useState(false);
+
+    // SMTP Accounts for sending account selection
+    interface SmtpAccount {
+        id: string;
+        name: string;
+        fromEmail: string;
+    }
+    const [smtpAccounts, setSmtpAccounts] = useState<SmtpAccount[]>([]);
+
+    // Email logs state for viewing sent emails
+    const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
+    const [showEmailPreview, setShowEmailPreview] = useState(false);
+    const [selectedEmailLog, setSelectedEmailLog] = useState<EmailLog | null>(null);
+    const [loadingLogs, setLoadingLogs] = useState(false);
+
+    // Scheduled email preview/edit state
+    const [showScheduledPreview, setShowScheduledPreview] = useState(false);
+    const [selectedScheduledLead, setSelectedScheduledLead] = useState<Lead | null>(null);
+    const [editableSubject, setEditableSubject] = useState('');
+    const [editableBody, setEditableBody] = useState('');
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [savingCustomEmail, setSavingCustomEmail] = useState(false);
+    const [campaignSequence, setCampaignSequence] = useState<{ steps?: Array<{ subject?: string; body?: string; variants?: Array<{ subject?: string; body?: string }> }> } | null>(null);
+
+    // Fetch SMTP accounts on mount
+    const fetchSmtpAccounts = useCallback(async () => {
+        try {
+            const token = localStorage.getItem('bulkEmailToken');
+            const res = await fetch('/api/bulk-email/smtp-accounts', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setSmtpAccounts(data);
+            }
+        } catch (err) {
+            console.error('Failed to fetch SMTP accounts:', err);
+        }
+    }, []);
+
+    // Fetch email logs for this campaign
+    const fetchEmailLogs = useCallback(async () => {
+        if (!campaignId) return;
+        setLoadingLogs(true);
+        try {
+            const token = localStorage.getItem('bulkEmailToken');
+            const res = await fetch(`/api/bulk-email/campaigns/${campaignId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setEmailLogs(data.logs || []);
+            }
+        } catch (err) {
+            console.error('Failed to fetch email logs:', err);
+        } finally {
+            setLoadingLogs(false);
+        }
+    }, [campaignId]);
+
+    // Fetch campaign sequence for email preview
+    const fetchCampaignSequence = useCallback(async () => {
+        if (!campaignId) return;
+        try {
+            const token = localStorage.getItem('bulkEmailToken');
+            const res = await fetch(`/api/bulk-email/campaigns/${campaignId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setCampaignSequence(data.sequence || null);
+            }
+        } catch (err) {
+            console.error('Failed to fetch campaign sequence:', err);
+        }
+    }, [campaignId]);
+
+    useEffect(() => {
+        fetchSmtpAccounts();
+        fetchEmailLogs();
+        fetchCampaignSequence();
+    }, [fetchSmtpAccounts, fetchEmailLogs, fetchCampaignSequence]);
+
+    // Personalize email content with lead data
+    const personalizeContent = (content: string, lead: Lead): string => {
+        if (!content) return '';
+        let personalized = content;
+
+        // Replace common variables
+        personalized = personalized.replace(/\{\{firstName\}\}/gi, lead.firstName || '');
+        personalized = personalized.replace(/\{\{lastName\}\}/gi, lead.lastName || '');
+        personalized = personalized.replace(/\{\{email\}\}/gi, lead.email || '');
+        personalized = personalized.replace(/\{\{company\}\}/gi, lead.company || '');
+        personalized = personalized.replace(/\{\{name\}\}/gi,
+            lead.firstName ? `${lead.firstName} ${lead.lastName || ''}`.trim() : lead.email.split('@')[0]
+        );
+
+        // Replace any other {{variable}} patterns with lead data
+        const variablePattern = /\{\{(\w+)\}\}/g;
+        personalized = personalized.replace(variablePattern, (match, key) => {
+            return (lead as any)[key] || match;
+        });
+
+        return personalized;
+    };
+
+    // Open scheduled email preview
+    const openScheduledEmailPreview = (lead: Lead) => {
+        setSelectedScheduledLead(lead);
+
+        // Get the first step of the sequence (for pending leads, they're at step 0)
+        const step = campaignSequence?.steps?.[0];
+        if (step) {
+            // Use the first variant or the main step content
+            const variant = step.variants?.[0] || step;
+            const subject = personalizeContent(variant.subject || step.subject || '', lead);
+            const body = personalizeContent(variant.body || step.body || '', lead);
+            setEditableSubject(subject);
+            setEditableBody(body);
+        } else {
+            setEditableSubject('');
+            setEditableBody('');
+        }
+
+        setIsEditMode(false);
+        setShowScheduledPreview(true);
+    };
+
+    // Save custom email for a lead
+    const saveCustomEmail = async () => {
+        if (!selectedScheduledLead) return;
+        setSavingCustomEmail(true);
+
+        try {
+            // Update the lead with custom email content
+            const updatedLeads = leads.map(l => {
+                if (l.id === selectedScheduledLead.id) {
+                    return {
+                        ...l,
+                        customSubject: editableSubject,
+                        customBody: editableBody
+                    };
+                }
+                return l;
+            });
+
+            // Save to backend
+            const token = localStorage.getItem('bulkEmailToken');
+            await fetch(`/api/bulk-email/campaigns/${campaignId}/leads`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ leads: updatedLeads })
+            });
+
+            onLeadsUpdate(updatedLeads);
+            setIsEditMode(false);
+            setShowScheduledPreview(false);
+            setSelectedScheduledLead(null);
+        } catch (err) {
+            console.error('Failed to save custom email:', err);
+        } finally {
+            setSavingCustomEmail(false);
+        }
+    };
+
+    // Get email logs for a specific lead
+    const getLogsForLead = (leadEmail: string) => {
+        return emailLogs.filter(log => log.email.toLowerCase() === leadEmail.toLowerCase())
+            .sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
+    };
+
+    // Format sent timestamp
+    const formatSentTime = (sentAt: string): string => {
+        const date = new Date(sentAt);
+        const now = new Date();
+        const diff = now.getTime() - date.getTime();
+        const diffMins = Math.floor(diff / (1000 * 60));
+        const diffHours = Math.floor(diff / (1000 * 60 * 60));
+        const diffDays = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        if (diffHours < 24) return `${diffHours}h ago`;
+        if (diffDays < 7) return `${diffDays}d ago`;
+
+        return date.toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+    };
 
     // Fetch lead lists
     const fetchLeadLists = async () => {
@@ -627,6 +839,44 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
         onLeadsUpdate(updatedLeads);
     };
 
+    // Handler for changing a lead's sending account
+    const handleLeadAccountChange = async (leadId: string, accountId: string) => {
+        const updatedLeads = leads.map(lead =>
+            lead.id === leadId ? { ...lead, sendingAccountId: accountId } : lead
+        );
+
+        // Save to backend
+        try {
+            const token = localStorage.getItem('bulkEmailToken');
+            await fetch(`/api/bulk-email/campaigns/${campaignId}/leads`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ leads: updatedLeads })
+            });
+        } catch (err) {
+            console.error('Error updating lead account:', err);
+        }
+
+        onLeadsUpdate(updatedLeads);
+    };
+
+    // Helper to get scheduled time for a lead based on its position
+    const getScheduledTime = (pendingIndex: number, delayMinutes: number = 10): Date => {
+        return new Date(Date.now() + (pendingIndex * delayMinutes * 60 * 1000));
+    };
+
+    // Helper to format time in user's locale
+    const formatTime = (date: Date): string => {
+        return date.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+    };
+
     // If no leads, show empty state with upload
     if (leads.length === 0) {
         return (
@@ -940,74 +1190,201 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                     </div>
                 </div>
 
-                {/* Schedule Preview Card */}
-                {leads.filter(l => l.status === 'pending').length > 0 && (
-                    <div className={cn(
-                        'p-4 rounded-xl border',
-                        theme === 'dark' ? 'bg-blue-500/10 border-blue-500/20' : 'bg-blue-50 border-blue-100'
-                    )}>
-                        <div className="flex items-center gap-2 mb-3">
-                            <Clock className={cn(
-                                'w-4 h-4',
-                                theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
-                            )} />
-                            <h4 className={cn(
-                                'text-sm font-medium',
-                                theme === 'dark' ? 'text-blue-300' : 'text-blue-700'
+                {/* Schedule Preview Card - Grouped by Sending Account */}
+                {leads.filter(l => l.status === 'pending').length > 0 && smtpAccounts.length > 0 && (() => {
+                    // Group pending leads by sending account
+                    const pendingLeads = leads.filter(l => l.status === 'pending');
+                    const groupedByAccount: Record<string, { account: typeof smtpAccounts[0]; leads: typeof pendingLeads }> = {};
+
+                    pendingLeads.forEach((lead, index) => {
+                        // Determine which account this lead will use
+                        const accountId = lead.sendingAccountId || smtpAccounts[index % smtpAccounts.length]?.id;
+                        const account = smtpAccounts.find(a => a.id === accountId) || smtpAccounts[0];
+
+                        if (account) {
+                            if (!groupedByAccount[account.id]) {
+                                groupedByAccount[account.id] = { account, leads: [] };
+                            }
+                            groupedByAccount[account.id].leads.push(lead);
+                        }
+                    });
+
+                    return (
+                        <div className={cn(
+                            'rounded-xl border overflow-hidden',
+                            theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
+                        )}>
+                            {/* Header */}
+                            <div className={cn(
+                                'px-4 py-3 border-b flex items-center justify-between',
+                                theme === 'dark' ? 'bg-blue-500/10 border-gray-800' : 'bg-blue-50 border-blue-100'
                             )}>
-                                Email Schedule Preview
-                            </h4>
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                            {leads.filter(l => l.status === 'pending').slice(0, 6).map((lead, index) => {
-                                const sendTime = new Date(Date.now() + (index * 10 * 60 * 1000)); // 10 min intervals
-                                return (
+                                <div className="flex items-center gap-2">
+                                    <Clock className={cn(
+                                        'w-4 h-4',
+                                        theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
+                                    )} />
+                                    <h4 className={cn(
+                                        'text-sm font-semibold',
+                                        theme === 'dark' ? 'text-blue-300' : 'text-blue-700'
+                                    )}>
+                                        Scheduled Emails by Sending Account
+                                    </h4>
+                                </div>
+                                <span className={cn(
+                                    'px-2 py-0.5 rounded-full text-xs font-medium',
+                                    theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-600'
+                                )}>
+                                    {pendingLeads.length} emails pending
+                                </span>
+                            </div>
+
+                            {/* Accounts Grid */}
+                            <div className={cn(
+                                'p-4 grid gap-4',
+                                Object.keys(groupedByAccount).length === 1 ? 'grid-cols-1' :
+                                    Object.keys(groupedByAccount).length === 2 ? 'grid-cols-1 md:grid-cols-2' :
+                                        'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
+                            )}>
+                                {Object.values(groupedByAccount).map(({ account, leads: accountLeads }) => (
                                     <div
-                                        key={lead.id}
+                                        key={account.id}
                                         className={cn(
-                                            'p-2 rounded-lg text-center',
-                                            theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-white'
+                                            'rounded-lg border overflow-hidden',
+                                            theme === 'dark' ? 'border-gray-800 bg-[#1a1a1a]' : 'border-gray-200 bg-white'
                                         )}
                                     >
-                                        <p className={cn(
-                                            'text-xs font-medium truncate',
-                                            theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                                        {/* Account Header */}
+                                        <div className={cn(
+                                            'px-4 py-3 border-b flex items-center justify-between',
+                                            theme === 'dark' ? 'border-gray-800 bg-gradient-to-r from-blue-500/10 to-transparent' : 'border-gray-100 bg-gradient-to-r from-blue-50 to-transparent'
                                         )}>
-                                            {lead.firstName || lead.email.split('@')[0]}
-                                        </p>
-                                        <p className={cn(
-                                            'text-xs',
-                                            index === 0
-                                                ? 'text-emerald-500 font-medium'
-                                                : theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                                        )}>
-                                            {index === 0 ? 'Now' : `+${index * 10}min`}
-                                        </p>
+                                            <div className="flex items-center gap-2">
+                                                <div className={cn(
+                                                    'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold',
+                                                    theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-600'
+                                                )}>
+                                                    {account.fromEmail.charAt(0).toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <p className={cn(
+                                                        'text-sm font-medium',
+                                                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                                                    )}>
+                                                        {account.name || account.fromEmail.split('@')[0]}
+                                                    </p>
+                                                    <p className={cn(
+                                                        'text-xs',
+                                                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                                    )}>
+                                                        {account.fromEmail}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <span className={cn(
+                                                'px-2 py-1 rounded-lg text-xs font-semibold',
+                                                theme === 'dark' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-600'
+                                            )}>
+                                                {accountLeads.length} {accountLeads.length === 1 ? 'email' : 'emails'}
+                                            </span>
+                                        </div>
+
+                                        {/* Leads List */}
+                                        <div className="max-h-[200px] overflow-y-auto">
+                                            {accountLeads.slice(0, 10).map((lead, idx) => {
+                                                const globalIndex = pendingLeads.findIndex(l => l.id === lead.id);
+                                                const sendTime = getScheduledTime(globalIndex);
+                                                return (
+                                                    <div
+                                                        key={lead.id}
+                                                        onClick={() => openScheduledEmailPreview(lead)}
+                                                        className={cn(
+                                                            'px-4 py-2 flex items-center justify-between border-b last:border-b-0 cursor-pointer group transition-all',
+                                                            theme === 'dark' ? 'border-gray-800 hover:bg-blue-500/10' : 'border-gray-100 hover:bg-blue-50'
+                                                        )}
+                                                    >
+                                                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                            <span className={cn(
+                                                                'text-xs font-mono w-5 flex-shrink-0',
+                                                                theme === 'dark' ? 'text-gray-600' : 'text-gray-400'
+                                                            )}>
+                                                                {idx + 1}
+                                                            </span>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className={cn(
+                                                                    'text-sm truncate',
+                                                                    theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                                                                )}>
+                                                                    {lead.firstName ? `${lead.firstName} ${lead.lastName || ''}`.trim() : lead.email.split('@')[0]}
+                                                                </p>
+                                                                <p className={cn(
+                                                                    'text-xs truncate',
+                                                                    theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                                                )}>
+                                                                    {lead.email}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                                                            <div className="flex flex-col items-end">
+                                                                <span className={cn(
+                                                                    'text-xs font-medium',
+                                                                    globalIndex === 0
+                                                                        ? 'text-emerald-500'
+                                                                        : theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
+                                                                )}>
+                                                                    {globalIndex === 0 ? '🚀 Now' : formatTime(sendTime)}
+                                                                </span>
+                                                                {lead.timezone && (
+                                                                    <span className={cn(
+                                                                        'text-xs',
+                                                                        theme === 'dark' ? 'text-gray-600' : 'text-gray-400'
+                                                                    )}>
+                                                                        {lead.timezone.split('/').pop()?.replace('_', ' ')}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <Eye className={cn(
+                                                                'w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity',
+                                                                theme === 'dark' ? 'text-blue-400' : 'text-blue-500'
+                                                            )} />
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                            {accountLeads.length > 10 && (
+                                                <div className={cn(
+                                                    'px-4 py-2 text-center',
+                                                    theme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'
+                                                )}>
+                                                    <span className={cn(
+                                                        'text-xs',
+                                                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                                    )}>
+                                                        +{accountLeads.length - 10} more emails scheduled
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                );
-                            })}
-                            {leads.filter(l => l.status === 'pending').length > 6 && (
-                                <div className={cn(
-                                    'p-2 rounded-lg text-center flex items-center justify-center',
-                                    theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-white'
+                                ))}
+                            </div>
+
+                            {/* Footer Note */}
+                            <div className={cn(
+                                'px-4 py-2 border-t',
+                                theme === 'dark' ? 'border-gray-800 bg-[#0c0c0c]' : 'border-gray-100 bg-gray-50'
+                            )}>
+                                <p className={cn(
+                                    'text-xs',
+                                    theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                                 )}>
-                                    <p className={cn(
-                                        'text-xs',
-                                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                                    )}>
-                                        +{leads.filter(l => l.status === 'pending').length - 6} more
-                                    </p>
-                                </div>
-                            )}
+                                    💡 First email sends instantly, then every 10 minutes. Emails are distributed across accounts for better deliverability. Leads outside their working hours will be scheduled for later.
+                                </p>
+                            </div>
                         </div>
-                        <p className={cn(
-                            'text-xs mt-3',
-                            theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                        )}>
-                            First email sends instantly, then every 10 minutes. Leads outside their working hours will be scheduled for later.
-                        </p>
-                    </div>
-                )}
+                    );
+                })()}
 
                 <div className={cn(
                     'rounded-xl border overflow-hidden',
@@ -1015,17 +1392,19 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                 )}>
                     <ScrollArea className="h-[400px]">
                         <Table>
-                            <TableHeader>
+                            <TableHeader className="sticky top-0 z-10">
                                 <TableRow className={cn(
                                     theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'
                                 )}>
-                                    <TableHead>#</TableHead>
-                                    <TableHead>Email</TableHead>
-                                    <TableHead>Name</TableHead>
-                                    <TableHead>Company</TableHead>
-                                    <TableHead>Scheduled</TableHead>
-                                    <TableHead>Timezone</TableHead>
-                                    <TableHead>Status</TableHead>
+                                    <TableHead className={theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'}>#</TableHead>
+                                    <TableHead className={theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'}>Email</TableHead>
+                                    <TableHead className={theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'}>Name</TableHead>
+                                    <TableHead className={theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'}>Company</TableHead>
+                                    <TableHead className={theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'}>Sent / Scheduled</TableHead>
+                                    <TableHead className={theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'}>Sending Account</TableHead>
+                                    <TableHead className={theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'}>Timezone</TableHead>
+                                    <TableHead className={theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'}>Status</TableHead>
+                                    <TableHead className={theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'}>Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -1034,6 +1413,8 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                                     const pendingLeads = leads.filter(l => l.status === 'pending');
                                     const pendingIndex = pendingLeads.findIndex(l => l.id === lead.id);
                                     const isPending = lead.status === 'pending';
+                                    const leadLogs = getLogsForLead(lead.email);
+                                    const latestLog = leadLogs[0]; // Most recent email sent
 
                                     return (
                                         <TableRow key={lead.id} className={cn(
@@ -1062,20 +1443,88 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                                             </TableCell>
                                             <TableCell>
                                                 {isPending ? (
-                                                    <span className={cn(
-                                                        'text-xs font-medium',
-                                                        pendingIndex === 0
-                                                            ? 'text-emerald-500'
-                                                            : theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
-                                                    )}>
-                                                        {pendingIndex === 0 ? '🚀 Now' : `⏱ +${pendingIndex * 10}min`}
-                                                    </span>
+                                                    <div className="flex flex-col">
+                                                        <span className={cn(
+                                                            'text-xs font-medium',
+                                                            pendingIndex === 0
+                                                                ? 'text-emerald-500'
+                                                                : theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
+                                                        )}>
+                                                            {pendingIndex === 0 ? '🚀 Now' : formatTime(getScheduledTime(pendingIndex))}
+                                                        </span>
+                                                        {pendingIndex > 0 && (
+                                                            <span className={cn(
+                                                                'text-xs',
+                                                                theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                                            )}>
+                                                                +{pendingIndex * 10}min
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                ) : latestLog ? (
+                                                    <div className="flex flex-col">
+                                                        <span className={cn(
+                                                            'text-xs font-medium',
+                                                            latestLog.status === 'sent' ? 'text-emerald-500' :
+                                                                latestLog.status === 'failed' ? 'text-red-400' :
+                                                                    theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                                                        )}>
+                                                            ✓ {formatSentTime(latestLog.sentAt)}
+                                                        </span>
+                                                        {leadLogs.length > 1 && (
+                                                            <span className={cn(
+                                                                'text-xs',
+                                                                theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                                            )}>
+                                                                {leadLogs.length} emails sent
+                                                            </span>
+                                                        )}
+                                                        <span className={cn(
+                                                            'text-xs',
+                                                            theme === 'dark' ? 'text-gray-600' : 'text-gray-400'
+                                                        )}>
+                                                            {new Date(latestLog.sentAt).toLocaleTimeString('en-US', {
+                                                                hour: '2-digit',
+                                                                minute: '2-digit',
+                                                                hour12: true
+                                                            })}
+                                                        </span>
+                                                    </div>
                                                 ) : (
                                                     <span className={cn(
                                                         'text-xs',
-                                                        lead.status === 'sent' ? 'text-gray-400' : 'text-gray-500'
+                                                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                                                     )}>
-                                                        {lead.status === 'sent' ? '✓ Sent' : '-'}
+                                                        -
+                                                    </span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell>
+                                                {isPending && smtpAccounts.length > 0 ? (
+                                                    <select
+                                                        value={lead.sendingAccountId || smtpAccounts[pendingIndex % smtpAccounts.length]?.id || ''}
+                                                        onChange={(e) => handleLeadAccountChange(lead.id, e.target.value)}
+                                                        className={cn(
+                                                            'w-full px-2 py-1 rounded text-xs border appearance-none cursor-pointer',
+                                                            theme === 'dark'
+                                                                ? 'bg-[#252525] border-gray-700 text-white'
+                                                                : 'bg-white border-gray-200 text-gray-900'
+                                                        )}
+                                                    >
+                                                        {smtpAccounts.map(account => (
+                                                            <option key={account.id} value={account.id}>
+                                                                {account.fromEmail}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                ) : (
+                                                    <span className={cn(
+                                                        'text-xs',
+                                                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                                    )}>
+                                                        {lead.sendingAccountId
+                                                            ? smtpAccounts.find(a => a.id === lead.sendingAccountId)?.fromEmail || 'Auto'
+                                                            : 'Auto'}
                                                     </span>
                                                 )}
                                             </TableCell>
@@ -1107,9 +1556,9 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                                                 ) : (
                                                     <span className={cn(
                                                         'text-xs',
-                                                        theme === 'dark' ? 'text-gray-600' : 'text-gray-300'
+                                                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                                                     )}>
-                                                        Default
+                                                        {Intl.DateTimeFormat().resolvedOptions().timeZone.split('/').pop()?.replace('_', ' ') || 'Local'}
                                                     </span>
                                                 )}
                                             </TableCell>
@@ -1126,7 +1575,34 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                                                     {lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}
                                                 </span>
                                             </TableCell>
+                                            <TableCell>
+                                                {leadLogs.length > 0 ? (
+                                                    <button
+                                                        onClick={() => {
+                                                            setSelectedEmailLog(latestLog);
+                                                            setShowEmailPreview(true);
+                                                        }}
+                                                        className={cn(
+                                                            'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all',
+                                                            theme === 'dark'
+                                                                ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30'
+                                                                : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+                                                        )}
+                                                    >
+                                                        <Eye className="w-3.5 h-3.5" />
+                                                        Preview
+                                                    </button>
+                                                ) : (
+                                                    <span className={cn(
+                                                        'text-xs',
+                                                        theme === 'dark' ? 'text-gray-600' : 'text-gray-400'
+                                                    )}>
+                                                        -
+                                                    </span>
+                                                )}
+                                            </TableCell>
                                         </TableRow>
+
                                     );
                                 })}
                             </TableBody>
@@ -1228,6 +1704,561 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                                 >
                                     Cancel
                                 </Button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Email Preview Modal */}
+            <AnimatePresence>
+                {showEmailPreview && selectedEmailLog && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <div
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                            onClick={() => {
+                                setShowEmailPreview(false);
+                                setSelectedEmailLog(null);
+                            }}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className={cn(
+                                'relative w-full max-w-2xl max-h-[85vh] rounded-xl shadow-2xl overflow-hidden flex flex-col',
+                                theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-white'
+                            )}
+                        >
+                            {/* Modal Header */}
+                            <div className={cn(
+                                'flex items-center justify-between px-6 py-4 border-b flex-shrink-0',
+                                theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
+                            )}>
+                                <div className="flex items-center gap-3">
+                                    <div className={cn(
+                                        'p-2 rounded-lg',
+                                        theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-100'
+                                    )}>
+                                        <Mail className={cn(
+                                            'w-5 h-5',
+                                            theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
+                                        )} />
+                                    </div>
+                                    <div>
+                                        <h3 className={cn(
+                                            'text-lg font-semibold',
+                                            theme === 'dark' ? 'text-white' : 'text-gray-900'
+                                        )}>
+                                            Email Preview
+                                        </h3>
+                                        <p className={cn(
+                                            'text-xs',
+                                            theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                        )}>
+                                            Sent to {selectedEmailLog.email}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setShowEmailPreview(false);
+                                        setSelectedEmailLog(null);
+                                    }}
+                                    className={cn(
+                                        'p-2 rounded-lg transition-colors',
+                                        theme === 'dark' ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'
+                                    )}
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            {/* Email Metadata */}
+                            <div className={cn(
+                                'px-6 py-4 space-y-3 border-b flex-shrink-0',
+                                theme === 'dark' ? 'bg-[#151515] border-gray-800' : 'bg-gray-50 border-gray-200'
+                            )}>
+                                {/* Subject */}
+                                <div className="flex items-start gap-3">
+                                    <span className={cn(
+                                        'text-xs font-medium w-16 pt-0.5 flex-shrink-0',
+                                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                    )}>Subject:</span>
+                                    <span className={cn(
+                                        'text-sm font-medium',
+                                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                                    )}>
+                                        {selectedEmailLog.subject || '(No subject)'}
+                                    </span>
+                                </div>
+
+                                {/* To */}
+                                <div className="flex items-center gap-3">
+                                    <span className={cn(
+                                        'text-xs font-medium w-16 flex-shrink-0',
+                                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                    )}>To:</span>
+                                    <span className={cn(
+                                        'text-sm',
+                                        theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                                    )}>
+                                        {selectedEmailLog.recipientName
+                                            ? `${selectedEmailLog.recipientName} <${selectedEmailLog.email}>`
+                                            : selectedEmailLog.email}
+                                    </span>
+                                </div>
+
+                                {/* Sent Time */}
+                                <div className="flex items-center gap-3">
+                                    <span className={cn(
+                                        'text-xs font-medium w-16 flex-shrink-0',
+                                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                    )}>Sent:</span>
+                                    <span className={cn(
+                                        'text-sm',
+                                        theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                                    )}>
+                                        {new Date(selectedEmailLog.sentAt).toLocaleString('en-US', {
+                                            weekday: 'short',
+                                            month: 'short',
+                                            day: 'numeric',
+                                            year: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            hour12: true
+                                        })}
+                                    </span>
+                                </div>
+
+                                {/* Status */}
+                                <div className="flex items-center gap-3">
+                                    <span className={cn(
+                                        'text-xs font-medium w-16 flex-shrink-0',
+                                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                    )}>Status:</span>
+                                    <span className={cn(
+                                        'px-2 py-0.5 rounded-full text-xs font-medium',
+                                        selectedEmailLog.status === 'sent' && 'bg-emerald-500/20 text-emerald-400',
+                                        selectedEmailLog.status === 'failed' && 'bg-red-500/20 text-red-400',
+                                        selectedEmailLog.status === 'opened' && 'bg-blue-500/20 text-blue-400',
+                                        selectedEmailLog.status === 'clicked' && 'bg-purple-500/20 text-purple-400',
+                                        selectedEmailLog.status === 'replied' && 'bg-amber-500/20 text-amber-400'
+                                    )}>
+                                        {selectedEmailLog.status.charAt(0).toUpperCase() + selectedEmailLog.status.slice(1)}
+                                    </span>
+                                    {selectedEmailLog.stepIndex !== undefined && (
+                                        <span className={cn(
+                                            'text-xs',
+                                            theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                        )}>
+                                            (Step {selectedEmailLog.stepIndex + 1})
+                                        </span>
+                                    )}
+                                </div>
+
+                                {/* Error (if failed) */}
+                                {selectedEmailLog.error && (
+                                    <div className="flex items-start gap-3">
+                                        <span className={cn(
+                                            'text-xs font-medium w-16 pt-0.5 flex-shrink-0',
+                                            'text-red-400'
+                                        )}>Error:</span>
+                                        <span className="text-sm text-red-400">
+                                            {selectedEmailLog.error}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Email Content */}
+                            <div className="flex-1 overflow-y-auto">
+                                {selectedEmailLog.htmlContent ? (
+                                    <div
+                                        className={cn(
+                                            'p-6',
+                                            theme === 'dark' ? 'bg-[#202020]' : 'bg-white'
+                                        )}
+                                        dangerouslySetInnerHTML={{ __html: selectedEmailLog.htmlContent }}
+                                    />
+                                ) : selectedEmailLog.textContent ? (
+                                    <pre className={cn(
+                                        'p-6 whitespace-pre-wrap font-sans text-sm leading-relaxed',
+                                        theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                                    )}>
+                                        {selectedEmailLog.textContent}
+                                    </pre>
+                                ) : (
+                                    <div className={cn(
+                                        'flex items-center justify-center py-16',
+                                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                    )}>
+                                        <p className="text-sm">No email content available</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Modal Footer */}
+                            <div className={cn(
+                                'flex items-center justify-between px-6 py-4 border-t flex-shrink-0',
+                                theme === 'dark' ? 'border-gray-800 bg-[#1a1a1a]' : 'border-gray-200 bg-gray-50'
+                            )}>
+                                <div className="flex items-center gap-2">
+                                    {/* Show all emails for this lead */}
+                                    {getLogsForLead(selectedEmailLog.email).length > 1 && (
+                                        <div className="flex items-center gap-2">
+                                            <span className={cn(
+                                                'text-xs',
+                                                theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                            )}>
+                                                {getLogsForLead(selectedEmailLog.email).length} emails sent to this lead
+                                            </span>
+                                            <div className="flex gap-1">
+                                                {getLogsForLead(selectedEmailLog.email).slice(0, 5).map((log, idx) => (
+                                                    <button
+                                                        key={log.id}
+                                                        onClick={() => setSelectedEmailLog(log)}
+                                                        className={cn(
+                                                            'w-6 h-6 rounded text-xs font-medium transition-all',
+                                                            log.id === selectedEmailLog.id
+                                                                ? theme === 'dark'
+                                                                    ? 'bg-blue-500 text-white'
+                                                                    : 'bg-blue-600 text-white'
+                                                                : theme === 'dark'
+                                                                    ? 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                                                                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                                                        )}
+                                                    >
+                                                        {idx + 1}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => {
+                                        setShowEmailPreview(false);
+                                        setSelectedEmailLog(null);
+                                    }}
+                                >
+                                    Close
+                                </Button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Scheduled Email Preview/Edit Modal */}
+            <AnimatePresence>
+                {showScheduledPreview && selectedScheduledLead && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <div
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                            onClick={() => {
+                                if (!isEditMode) {
+                                    setShowScheduledPreview(false);
+                                    setSelectedScheduledLead(null);
+                                }
+                            }}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className={cn(
+                                'relative w-full max-w-3xl max-h-[90vh] rounded-xl shadow-2xl overflow-hidden flex flex-col',
+                                theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-white'
+                            )}
+                        >
+                            {/* Modal Header */}
+                            <div className={cn(
+                                'flex items-center justify-between px-6 py-4 border-b flex-shrink-0',
+                                theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
+                            )}>
+                                <div className="flex items-center gap-3">
+                                    <div className={cn(
+                                        'p-2 rounded-lg',
+                                        isEditMode
+                                            ? theme === 'dark' ? 'bg-amber-500/20' : 'bg-amber-100'
+                                            : theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-100'
+                                    )}>
+                                        {isEditMode ? (
+                                            <Edit3 className={cn(
+                                                'w-5 h-5',
+                                                theme === 'dark' ? 'text-amber-400' : 'text-amber-600'
+                                            )} />
+                                        ) : (
+                                            <Eye className={cn(
+                                                'w-5 h-5',
+                                                theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
+                                            )} />
+                                        )}
+                                    </div>
+                                    <div>
+                                        <h3 className={cn(
+                                            'text-lg font-semibold',
+                                            theme === 'dark' ? 'text-white' : 'text-gray-900'
+                                        )}>
+                                            {isEditMode ? 'Edit Email' : 'Email Preview'}
+                                        </h3>
+                                        <p className={cn(
+                                            'text-xs',
+                                            theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                        )}>
+                                            Scheduled for {selectedScheduledLead.firstName || selectedScheduledLead.email.split('@')[0]}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    {!isEditMode && (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setIsEditMode(true)}
+                                            className={cn(
+                                                'gap-2',
+                                                theme === 'dark'
+                                                    ? 'border-gray-700 text-gray-300 hover:bg-gray-800'
+                                                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                                            )}
+                                        >
+                                            <Edit3 className="w-4 h-4" />
+                                            Edit
+                                        </Button>
+                                    )}
+                                    <button
+                                        onClick={() => {
+                                            setShowScheduledPreview(false);
+                                            setSelectedScheduledLead(null);
+                                            setIsEditMode(false);
+                                        }}
+                                        className={cn(
+                                            'p-2 rounded-lg transition-colors',
+                                            theme === 'dark' ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'
+                                        )}
+                                    >
+                                        <X className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Recipient Info */}
+                            <div className={cn(
+                                'px-6 py-3 border-b flex-shrink-0',
+                                theme === 'dark' ? 'bg-[#151515] border-gray-800' : 'bg-gray-50 border-gray-200'
+                            )}>
+                                <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-2">
+                                        <span className={cn(
+                                            'text-xs font-medium',
+                                            theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                        )}>To:</span>
+                                        <span className={cn(
+                                            'text-sm font-medium',
+                                            theme === 'dark' ? 'text-white' : 'text-gray-900'
+                                        )}>
+                                            {selectedScheduledLead.firstName
+                                                ? `${selectedScheduledLead.firstName} ${selectedScheduledLead.lastName || ''} <${selectedScheduledLead.email}>`
+                                                : selectedScheduledLead.email}
+                                        </span>
+                                    </div>
+                                    {selectedScheduledLead.company && (
+                                        <div className="flex items-center gap-2">
+                                            <span className={cn(
+                                                'text-xs font-medium',
+                                                theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                            )}>Company:</span>
+                                            <span className={cn(
+                                                'text-sm',
+                                                theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                                            )}>
+                                                {selectedScheduledLead.company}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Email Content */}
+                            <div className="flex-1 overflow-y-auto">
+                                {isEditMode ? (
+                                    <div className="p-6 space-y-4">
+                                        {/* Subject Input */}
+                                        <div>
+                                            <label className={cn(
+                                                'block text-sm font-medium mb-2',
+                                                theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                                            )}>
+                                                Subject
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={editableSubject}
+                                                onChange={(e) => setEditableSubject(e.target.value)}
+                                                className={cn(
+                                                    'w-full px-4 py-3 rounded-lg border text-sm',
+                                                    theme === 'dark'
+                                                        ? 'bg-[#252525] border-gray-700 text-white placeholder:text-gray-500 focus:border-blue-500'
+                                                        : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-blue-500'
+                                                )}
+                                                placeholder="Email subject..."
+                                            />
+                                        </div>
+
+                                        {/* Body Input */}
+                                        <div>
+                                            <label className={cn(
+                                                'block text-sm font-medium mb-2',
+                                                theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                                            )}>
+                                                Body
+                                            </label>
+                                            <textarea
+                                                value={editableBody}
+                                                onChange={(e) => setEditableBody(e.target.value)}
+                                                rows={12}
+                                                className={cn(
+                                                    'w-full px-4 py-3 rounded-lg border text-sm resize-none',
+                                                    theme === 'dark'
+                                                        ? 'bg-[#252525] border-gray-700 text-white placeholder:text-gray-500 focus:border-blue-500'
+                                                        : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-blue-500'
+                                                )}
+                                                placeholder="Email body..."
+                                            />
+                                        </div>
+
+                                        <p className={cn(
+                                            'text-xs',
+                                            theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                        )}>
+                                            💡 This custom content will be saved for this lead only. Variables like {'{{firstName}}'} have already been replaced.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="p-6">
+                                        {/* Subject Preview */}
+                                        <div className={cn(
+                                            'mb-4 p-4 rounded-lg border',
+                                            theme === 'dark' ? 'bg-[#252525] border-gray-700' : 'bg-gray-50 border-gray-200'
+                                        )}>
+                                            <p className={cn(
+                                                'text-xs font-medium mb-1',
+                                                theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                            )}>Subject</p>
+                                            <p className={cn(
+                                                'text-base font-medium',
+                                                theme === 'dark' ? 'text-white' : 'text-gray-900'
+                                            )}>
+                                                {editableSubject || '(No subject)'}
+                                            </p>
+                                        </div>
+
+                                        {/* Body Preview */}
+                                        <div className={cn(
+                                            'rounded-lg border p-4',
+                                            theme === 'dark' ? 'bg-[#252525] border-gray-700' : 'bg-white border-gray-200'
+                                        )}>
+                                            <p className={cn(
+                                                'text-xs font-medium mb-3',
+                                                theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                            )}>Body</p>
+                                            {editableBody ? (
+                                                <div
+                                                    className={cn(
+                                                        'prose prose-sm max-w-none',
+                                                        theme === 'dark' ? 'prose-invert' : ''
+                                                    )}
+                                                    dangerouslySetInnerHTML={{
+                                                        __html: editableBody
+                                                            .replace(/\n\n/g, '</p><p>')
+                                                            .replace(/\n/g, '<br>')
+                                                    }}
+                                                />
+                                            ) : (
+                                                <p className={cn(
+                                                    'text-sm italic',
+                                                    theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                                )}>
+                                                    No email body configured. Please add content in the Sequences tab.
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Modal Footer */}
+                            <div className={cn(
+                                'flex items-center justify-between px-6 py-4 border-t flex-shrink-0',
+                                theme === 'dark' ? 'border-gray-800 bg-[#1a1a1a]' : 'border-gray-200 bg-gray-50'
+                            )}>
+                                <div className="flex items-center gap-2">
+                                    {(selectedScheduledLead as any).customSubject && !isEditMode && (
+                                        <span className={cn(
+                                            'px-2 py-1 rounded text-xs font-medium',
+                                            theme === 'dark' ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-100 text-amber-600'
+                                        )}>
+                                            Custom email saved
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    {isEditMode && (
+                                        <>
+                                            <Button
+                                                variant="ghost"
+                                                onClick={() => {
+                                                    setIsEditMode(false);
+                                                    // Reset to original content
+                                                    const step = campaignSequence?.steps?.[0];
+                                                    if (step) {
+                                                        const variant = step.variants?.[0] || step;
+                                                        setEditableSubject(personalizeContent(variant.subject || step.subject || '', selectedScheduledLead));
+                                                        setEditableBody(personalizeContent(variant.body || step.body || '', selectedScheduledLead));
+                                                    }
+                                                }}
+                                            >
+                                                Cancel
+                                            </Button>
+                                            <Button
+                                                onClick={saveCustomEmail}
+                                                disabled={savingCustomEmail}
+                                                className={cn(
+                                                    'gap-2',
+                                                    theme === 'dark'
+                                                        ? 'bg-blue-600 hover:bg-blue-700'
+                                                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                                                )}
+                                            >
+                                                {savingCustomEmail ? (
+                                                    <>
+                                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                                        Saving...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Check className="w-4 h-4" />
+                                                        Save Changes
+                                                    </>
+                                                )}
+                                            </Button>
+                                        </>
+                                    )}
+                                    {!isEditMode && (
+                                        <Button
+                                            variant="ghost"
+                                            onClick={() => {
+                                                setShowScheduledPreview(false);
+                                                setSelectedScheduledLead(null);
+                                            }}
+                                        >
+                                            Close
+                                        </Button>
+                                    )}
+                                </div>
                             </div>
                         </motion.div>
                     </div>

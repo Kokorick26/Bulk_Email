@@ -56,6 +56,9 @@ export interface Lead {
     status: 'pending' | 'sent' | 'opened' | 'clicked' | 'replied' | 'bounced' | 'unsubscribed';
     customFields: Record<string, string>;
     addedAt: string;
+    // Sending account assignment
+    sendingAccountId?: string;      // Which SMTP account will send this email
+    scheduledTime?: string;         // ISO string of when email is scheduled to be sent
 }
 
 export interface ColumnMapping {
@@ -106,7 +109,7 @@ export interface CampaignOptions {
     smtpAccountId?: string;
 }
 
-export type CampaignTab = 'analytics' | 'leads' | 'sequences' | 'schedule' | 'options';
+export type CampaignTab = 'analytics' | 'leads' | 'sequences' | 'schedule' | 'options' | 'history';
 
 export interface CampaignFilter {
     status: 'all' | Campaign['status'];

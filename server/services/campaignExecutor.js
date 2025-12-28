@@ -20,6 +20,7 @@ const CAMPAIGNS_TABLE = 'EmailCampaigns';
 const EMAIL_LOGS_TABLE = 'EmailLogs';
 const SMTP_ACCOUNTS_TABLE = 'SmtpAccounts';
 const LEAD_PROGRESS_TABLE = 'LeadProgress'; // Tracks each lead's progress in campaign
+const USERS_TABLE = 'BulkEmailUsers';
 
 // Process Spintax syntax {option1|option2|option3}
 function processSpintax(text) {
@@ -237,7 +238,7 @@ async function getTransporter(smtpAccountId) {
     return {
         transporter,
         fromEmail: process.env.SMTP_FROM || process.env.SMTP_USER,
-        fromName: process.env.SMTP_FROM_NAME || 'BulkMail'
+        fromName: process.env.SMTP_FROM_NAME || process.env.SMTP_USER?.split('@')[0] || 'Support'
     };
 }
 
@@ -500,9 +501,9 @@ async function sendStepEmail(campaign, lead, step, stepIndex, smtpAccountId) {
     }
 }
 
-// Check all leads for replies
-async function checkCampaignReplies(campaign, smtpAccount) {
-    if (!campaign.options?.stopOnReply) return;
+// Check all leads for replies (always track replies for analytics)
+async function checkCampaignReplies(campaign, smtpAccount, stopOnReply = true) {
+    // Always check for replies to track them, stopOnReply controls whether to stop the sequence
 
     try {
         const data = await dynamoDB.scan({
@@ -536,7 +537,8 @@ async function checkCampaignReplies(campaign, smtpAccount) {
                     ExpressionAttributeNames: { '#status': 'status' },
                     ExpressionAttributeValues: {
                         ':hasReplied': true,
-                        ':status': 'replied',
+                        // Only mark as 'replied' (stopping sequence) if stopOnReply is enabled
+                        ':status': stopOnReply ? 'replied' : 'in_progress',
                         ':updatedAt': new Date().toISOString()
                     }
                 }).promise();
@@ -610,15 +612,38 @@ export async function executeCampaign(campaignId) {
 
         // If no accounts found or intelligentRouting disabled, fall back to single account
         const useIntelligentRouting = options.useIntelligentRouting !== false && allSmtpAccounts.length > 1;
+
+        // Fetch user settings for email limits
+        let userSettings = {
+            maxEmailsPerAccountPerDay: 15  // Default: 15 emails per account per day to avoid spam
+        };
+
+        try {
+            const userData = await dynamoDB.get({
+                TableName: USERS_TABLE,
+                Key: { id: userId }
+            }).promise();
+
+            if (userData.Item?.settings?.maxEmailsPerAccountPerDay) {
+                userSettings.maxEmailsPerAccountPerDay = userData.Item.settings.maxEmailsPerAccountPerDay;
+                console.log(`[CampaignExecutor] Using user settings: ${userSettings.maxEmailsPerAccountPerDay} emails per account per day`);
+            }
+        } catch (err) {
+            console.log('[CampaignExecutor] Could not fetch user settings, using defaults');
+        }
+
+        // For intelligent routing: daily limit is the key constraint
+        // Per-campaign limit = daily limit since campaigns continue across multiple days
+        const accountDailyLimit = options.maxDailyPerAccount || userSettings.maxEmailsPerAccountPerDay;
         const routingConfig = {
-            maxEmailsPerAccountPerCampaign: options.maxEmailsPerAccount || 15,
-            maxEmailsPerAccountPerDay: options.maxDailyPerAccount || 50,
+            maxEmailsPerAccountPerCampaign: accountDailyLimit,  // Same as daily limit - campaigns span days
+            maxEmailsPerAccountPerDay: accountDailyLimit,
             rotationStrategy: options.rotationStrategy || 'round-robin'
         };
 
         if (useIntelligentRouting) {
             console.log(`[CampaignExecutor] 🔄 Intelligent Routing ENABLED with ${allSmtpAccounts.length} accounts`);
-            console.log(`[CampaignExecutor] Max ${routingConfig.maxEmailsPerAccountPerCampaign} emails per account per campaign`);
+            console.log(`[CampaignExecutor] Max ${routingConfig.maxEmailsPerAccountPerDay} emails per account per day`);
 
             // Show distribution calculation
             const distribution = calculateDistribution(
@@ -628,7 +653,7 @@ export async function executeCampaign(campaignId) {
             );
             console.log(`[CampaignExecutor] Distribution: ${JSON.stringify(distribution)}`);
         } else {
-            console.log(`[CampaignExecutor] Using single SMTP account (${options.smtpAccountId || 'default'})`);
+            console.log(`[CampaignExecutor] Using single SMTP account (${options.smtpAccountId || 'default'}) with ${accountDailyLimit} emails/day limit`);
         }
         // ========== END ROUTING SETUP ==========
 
@@ -646,9 +671,9 @@ export async function executeCampaign(campaignId) {
             smtpAccount = accountData.Item;
         }
 
-        // Check for replies before sending new emails
-        if (smtpAccount && options.stopOnReply) {
-            await checkCampaignReplies(campaign, smtpAccount);
+        // Check for replies before sending new emails (always check for analytics)
+        if (smtpAccount) {
+            await checkCampaignReplies(campaign, smtpAccount, options.stopOnReply);
         }
 
         // Get leads that need emails

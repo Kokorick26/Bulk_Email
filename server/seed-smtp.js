@@ -11,24 +11,24 @@ AWS.config.update({
 const dynamoDB = new AWS.DynamoDB.DocumentClient();
 const SMTP_ACCOUNTS_TABLE = 'SmtpAccounts';
 
-// Default SMTP/IMAP configuration from environment variables
-const defaultAccount = {
+// Bhawesh Bhaskar SMTP/IMAP configuration (hardcoded - not relying on env)
+const bhaweshAccount = {
     id: uuidv4(),
-    name: process.env.SMTP_FROM_NAME || 'Bhawesh Bhaskar',
-    host: process.env.SMTP_HOST || 'smtppro.zoho.eu',
-    port: Number(process.env.SMTP_PORT) || 465,
-    username: process.env.SMTP_USER || 'bhawesh.bhaskar@kokorick.uk',
-    password: process.env.SMTP_PASS || '',
-    fromEmail: process.env.SMTP_FROM || process.env.SMTP_USER || 'bhawesh.bhaskar@kokorick.uk',
-    fromName: process.env.SMTP_FROM_NAME || 'Bhawesh Bhaskar',
+    name: 'Bhawesh Bhaskar',
+    host: 'smtppro.zoho.eu',
+    port: 465,
+    username: 'bhawesh.bhaskar@kokorick.uk',
+    password: 'R79daS7xJXFe',
+    fromEmail: 'bhawesh.bhaskar@kokorick.uk',
+    fromName: 'Bhawesh Bhaskar',
     isDefault: true,
-    isSystem: false, // Not a system account anymore - fully editable
+    isSystem: false,
     // IMAP Configuration
-    imapConfigured: !!(process.env.IMAP_HOST && process.env.IMAP_USER),
-    imapHost: process.env.IMAP_HOST || 'imappro.zoho.eu',
-    imapPort: Number(process.env.IMAP_PORT) || 993,
-    imapUser: process.env.IMAP_USER || process.env.SMTP_USER || 'bhawesh.bhaskar@kokorick.uk',
-    imapPassword: process.env.IMAP_PASS || process.env.SMTP_PASS || '',
+    imapConfigured: true,
+    imapHost: 'imappro.zoho.eu',
+    imapPort: 993,
+    imapUser: 'bhawesh.bhaskar@kokorick.uk',
+    imapPassword: 'R79daS7xJXFe',
     imapTls: true,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),

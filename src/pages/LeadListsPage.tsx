@@ -595,6 +595,12 @@ export function LeadListsPage({ onNavigateToCampaign }: LeadListsPageProps) {
         list.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
+    useEffect(() => {
+        if (!selectedList && filteredLists.length > 0) {
+            setSelectedList(filteredLists[0]);
+        }
+    }, [filteredLists, selectedList]);
+
     return (
         <div className="flex flex-1 min-h-0">
             {/* Sidebar - List of Lead Lists */}
