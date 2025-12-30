@@ -9,7 +9,7 @@ const HeroTerminal = () => {
 
     useEffect(() => {
         // Typing Animation Sequence
-        let timer: NodeJS.Timeout;
+        let timer: ReturnType<typeof setInterval>;
 
         const startTyping = () => {
             let i = 0;

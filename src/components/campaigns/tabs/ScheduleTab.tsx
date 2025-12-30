@@ -1,74 +1,52 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import {
-    Clock, Calendar, Globe, Plus, ChevronDown
+    Clock, Calendar, Globe, Save, Check, AlertCircle,
+    ChevronDown, Sun, Moon, Zap, ArrowRight
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { useTheme } from '../../../lib/ThemeContext';
 import { Button } from '../../ui/Button';
-import type { CampaignSchedule } from '../types';
+import type { Campaign } from '../types';
 
 interface ScheduleTabProps {
     campaignId: string;
-    schedule: CampaignSchedule | null;
-    onScheduleUpdate: (schedule: CampaignSchedule) => void;
+    schedule: Campaign['schedule'];
+    onScheduleUpdate: (schedule: Campaign['schedule']) => void;
     className?: string;
 }
 
-interface ScheduleItem {
-    id: string;
-    name: string;
-    isActive: boolean;
-}
-
-const defaultSchedule: CampaignSchedule = {
-    timezone: 'America/New_York',
-    sendDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
-    startTime: '09:00',
-    endTime: '18:00',
-    maxEmailsPerDay: 100,
-    delayBetweenEmails: 600  // 10 minutes default (in seconds)
-};
-
-const weekDays = [
-    { id: 'monday', label: 'Monday' },
-    { id: 'tuesday', label: 'Tuesday' },
-    { id: 'wednesday', label: 'Wednesday' },
-    { id: 'thursday', label: 'Thursday' },
-    { id: 'friday', label: 'Friday' },
-    { id: 'saturday', label: 'Saturday' },
-    { id: 'sunday', label: 'Sunday' },
-] as const;
-
-const commonTimezones = [
-    { label: 'Eastern Time (US & Canada) (UTC-05:00)', value: 'America/New_York' },
-    { label: 'Central Time (US & Canada) (UTC-06:00)', value: 'America/Chicago' },
-    { label: 'Mountain Time (US & Canada) (UTC-07:00)', value: 'America/Denver' },
-    { label: 'Pacific Time (US & Canada) (UTC-08:00)', value: 'America/Los_Angeles' },
-    { label: 'UTC', value: 'UTC' },
-    { label: 'London (GMT/BST)', value: 'Europe/London' },
-    { label: 'Paris (CET/CEST)', value: 'Europe/Paris' },
-    { label: 'India Standard Time (UTC+05:30)', value: 'Asia/Kolkata' },
-    { label: 'Singapore (SGT)', value: 'Asia/Singapore' },
-    { label: 'Tokyo (JST)', value: 'Asia/Tokyo' },
-    { label: 'Sydney (AEST)', value: 'Australia/Sydney' },
+const DAYS = [
+    { id: 'monday', label: 'Mon' },
+    { id: 'tuesday', label: 'Tue' },
+    { id: 'wednesday', label: 'Wed' },
+    { id: 'thursday', label: 'Thu' },
+    { id: 'friday', label: 'Fri' },
+    { id: 'saturday', label: 'Sat' },
+    { id: 'sunday', label: 'Sun' }
 ];
 
-const timeOptions = [
-    '12:00 AM', '1:00 AM', '2:00 AM', '3:00 AM', '4:00 AM', '5:00 AM',
-    '6:00 AM', '7:00 AM', '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM',
-    '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM',
-    '6:00 PM', '7:00 PM', '8:00 PM', '9:00 PM', '10:00 PM', '11:00 PM',
+const TIMEZONES = [
+    'UTC',
+    'America/New_York',
+    'America/Los_Angeles',
+    'America/Chicago',
+    'Europe/London',
+    'Europe/Paris',
+    'Asia/Dubai',
+    'Asia/Singapore',
+    'Asia/Tokyo',
+    'Australia/Sydney'
 ];
 
 export function ScheduleTab({ campaignId, schedule, onScheduleUpdate, className }: ScheduleTabProps) {
     const { theme } = useTheme();
-    const [localSchedule, setLocalSchedule] = useState<CampaignSchedule>(schedule || defaultSchedule);
-    const [scheduleName, setScheduleName] = useState('New schedule');
-    const [schedules, setSchedules] = useState<ScheduleItem[]>([
-        { id: '1', name: 'New schedule', isActive: true }
-    ]);
-    const [activeScheduleId, setActiveScheduleId] = useState('1');
+    const [localSchedule, setLocalSchedule] = useState(schedule || {
+        timezone: 'UTC',
+        days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+        startTime: '09:00',
+        endTime: '17:00'
+    });
+    const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         if (schedule) {
@@ -76,21 +54,8 @@ export function ScheduleTab({ campaignId, schedule, onScheduleUpdate, className 
         }
     }, [schedule]);
 
-    const handleUpdate = (updates: Partial<CampaignSchedule>) => {
-        setLocalSchedule(prev => ({ ...prev, ...updates }));
-    };
-
-    const handleToggleDay = (day: typeof weekDays[number]['id']) => {
-        setLocalSchedule(prev => ({
-            ...prev,
-            sendDays: prev.sendDays.includes(day)
-                ? prev.sendDays.filter(d => d !== day)
-                : [...prev.sendDays, day]
-        }));
-    };
-
     const handleSave = async () => {
-        // Save to backend
+        setIsSaving(true);
         try {
             const token = localStorage.getItem('bulkEmailToken');
             await fetch(`/api/bulk-email/campaigns/${campaignId}/schedule`, {
@@ -101,345 +66,269 @@ export function ScheduleTab({ campaignId, schedule, onScheduleUpdate, className 
                 },
                 body: JSON.stringify({ schedule: localSchedule })
             });
+            onScheduleUpdate(localSchedule);
         } catch (err) {
             console.error('Error saving schedule:', err);
+        } finally {
+            setIsSaving(false);
         }
-
-        onScheduleUpdate(localSchedule);
     };
 
-    const handleAddSchedule = () => {
-        const newSchedule: ScheduleItem = {
-            id: Date.now().toString(),
-            name: 'New schedule',
-            isActive: false
-        };
-        setSchedules(prev => [...prev, newSchedule]);
-    };
+    const toggleDay = (dayId: string) => {
+        const currentDays = localSchedule?.days || [];
+        const newDays = currentDays.includes(dayId)
+            ? currentDays.filter((d: string) => d !== dayId)
+            : [...currentDays, dayId];
 
-    const convertTo12Hour = (time24: string) => {
-        const [hours, minutes] = time24.split(':').map(Number);
-        const period = hours >= 12 ? 'PM' : 'AM';
-        const hours12 = hours % 12 || 12;
-        return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
+        setLocalSchedule((prev: any) => ({ ...prev, days: newDays }));
     };
 
     return (
-        <div className={cn('flex gap-6', className)}>
-            {/* Left Sidebar */}
-            <div className="w-72 flex-shrink-0 space-y-4">
-                {/* Start/End */}
-                <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                        <Calendar className={cn('w-4 h-4', theme === 'dark' ? 'text-gray-400' : 'text-gray-500')} />
-                        <span className={cn('text-sm', theme === 'dark' ? 'text-gray-400' : 'text-gray-600')}>Start</span>
-                        <span className="text-sm text-blue-500 cursor-pointer hover:underline">Now</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Calendar className={cn('w-4 h-4', theme === 'dark' ? 'text-gray-400' : 'text-gray-500')} />
-                        <span className={cn('text-sm', theme === 'dark' ? 'text-gray-400' : 'text-gray-600')}>End</span>
-                        <span className="text-sm text-blue-500 cursor-pointer hover:underline">No end date</span>
-                    </div>
-                </div>
-
-                {/* Schedule List */}
-                <div className="space-y-2">
-                    {schedules.map((sched) => (
-                        <button
-                            key={sched.id}
-                            onClick={() => setActiveScheduleId(sched.id)}
-                            className={cn(
-                                'w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-left',
-                                activeScheduleId === sched.id
-                                    ? theme === 'dark'
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-blue-600 text-white'
-                                    : theme === 'dark'
-                                        ? 'bg-[#1a1a1a] text-gray-300 hover:bg-[#252525]'
-                                        : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
-                            )}
-                        >
-                            <Calendar className="w-4 h-4" />
-                            <span className="text-sm font-medium">{sched.name}</span>
-                        </button>
-                    ))}
-                </div>
-
-                {/* Add Schedule Button */}
-                <button
-                    onClick={handleAddSchedule}
-                    className={cn(
-                        'w-full py-2.5 rounded-lg border text-sm font-medium transition-colors',
-                        theme === 'dark'
-                            ? 'border-gray-700 text-gray-400 hover:bg-[#252525]'
-                            : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-                    )}
-                >
-                    Add schedule
-                </button>
-            </div>
-
-            {/* Right Panel - Schedule Form */}
-            <div className="flex-1 space-y-6">
-                {/* Schedule Name */}
-                <div className={cn(
-                    'p-6 rounded-xl border',
-                    theme === 'dark' ? 'bg-[#1a1a1a] border-gray-800' : 'bg-white border-gray-200'
-                )}>
-                    <label className={cn(
-                        'block text-sm font-medium mb-2',
-                        theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+        <div className={cn(
+            'max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700',
+            className
+        )}>
+            {/* Header Area */}
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-12 border-b border-dashed pb-8" style={{ borderColor: theme === 'dark' ? '#252a33' : '#e5e7eb' }}>
+                <div className="space-y-1 text-center md:text-left">
+                    <h2 className={cn(
+                        'text-4xl font-[Syne] font-bold tracking-tight',
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
                     )}>
-                        Schedule Name
-                    </label>
-                    <input
-                        type="text"
-                        value={scheduleName}
-                        onChange={(e) => setScheduleName(e.target.value)}
-                        className={cn(
-                            'w-full px-4 py-3 rounded-lg border focus:outline-none focus:ring-2',
-                            theme === 'dark'
-                                ? 'bg-[#252525] border-gray-700 text-white focus:ring-blue-500/30'
-                                : 'bg-gray-50 border-gray-200 text-gray-900 focus:ring-blue-500/30'
-                        )}
-                    />
-                </div>
-
-                {/* Timing */}
-                <div className={cn(
-                    'p-6 rounded-xl border',
-                    theme === 'dark' ? 'bg-[#1a1a1a] border-gray-800' : 'bg-white border-gray-200'
-                )}>
-                    <h3 className={cn(
-                        'text-sm font-medium mb-4',
-                        theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                        Campaign <span className="text-[#d97757]">Rhythm</span>
+                    </h2>
+                    <p className={cn(
+                        'text-sm font-light leading-relaxed opacity-60',
+                        theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                     )}>
-                        Timing
-                    </h3>
-
-                    <div className="grid grid-cols-3 gap-4">
-                        {/* From Time */}
-                        <div>
-                            <label className={cn(
-                                'block text-xs mb-2',
-                                theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                            )}>
-                                From
-                            </label>
-                            <div className="relative">
-                                <select
-                                    value={convertTo12Hour(localSchedule.startTime)}
-                                    onChange={(e) => {
-                                        // Convert 12-hour back to 24-hour
-                                        const [time, period] = e.target.value.split(' ');
-                                        const [hours, minutes] = time.split(':').map(Number);
-                                        let hours24 = hours;
-                                        if (period === 'PM' && hours !== 12) hours24 += 12;
-                                        if (period === 'AM' && hours === 12) hours24 = 0;
-                                        handleUpdate({ startTime: `${hours24.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}` });
-                                    }}
-                                    className={cn(
-                                        'w-full px-4 py-3 pr-10 rounded-lg border appearance-none cursor-pointer',
-                                        theme === 'dark'
-                                            ? 'bg-[#252525] border-gray-700 text-white'
-                                            : 'bg-gray-50 border-gray-200 text-gray-900'
-                                    )}
-                                >
-                                    {timeOptions.map(time => (
-                                        <option key={time} value={time}>{time}</option>
-                                    ))}
-                                </select>
-                                <ChevronDown className={cn(
-                                    'absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none',
-                                    theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                                )} />
-                            </div>
-                        </div>
-
-                        {/* To Time */}
-                        <div>
-                            <label className={cn(
-                                'block text-xs mb-2',
-                                theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                            )}>
-                                To
-                            </label>
-                            <div className="relative">
-                                <select
-                                    value={convertTo12Hour(localSchedule.endTime)}
-                                    onChange={(e) => {
-                                        const [time, period] = e.target.value.split(' ');
-                                        const [hours, minutes] = time.split(':').map(Number);
-                                        let hours24 = hours;
-                                        if (period === 'PM' && hours !== 12) hours24 += 12;
-                                        if (period === 'AM' && hours === 12) hours24 = 0;
-                                        handleUpdate({ endTime: `${hours24.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}` });
-                                    }}
-                                    className={cn(
-                                        'w-full px-4 py-3 pr-10 rounded-lg border appearance-none cursor-pointer',
-                                        theme === 'dark'
-                                            ? 'bg-[#252525] border-gray-700 text-white'
-                                            : 'bg-gray-50 border-gray-200 text-gray-900'
-                                    )}
-                                >
-                                    {timeOptions.map(time => (
-                                        <option key={time} value={time}>{time}</option>
-                                    ))}
-                                </select>
-                                <ChevronDown className={cn(
-                                    'absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none',
-                                    theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                                )} />
-                            </div>
-                        </div>
-
-                        {/* Timezone */}
-                        <div>
-                            <label className={cn(
-                                'block text-xs mb-2',
-                                theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                            )}>
-                                Timezone
-                            </label>
-                            <div className="relative">
-                                <select
-                                    value={localSchedule.timezone}
-                                    onChange={(e) => handleUpdate({ timezone: e.target.value })}
-                                    className={cn(
-                                        'w-full px-4 py-3 pr-10 rounded-lg border appearance-none cursor-pointer text-sm',
-                                        theme === 'dark'
-                                            ? 'bg-[#252525] border-gray-700 text-white'
-                                            : 'bg-gray-50 border-gray-200 text-gray-900'
-                                    )}
-                                >
-                                    {commonTimezones.map(tz => (
-                                        <option key={tz.value} value={tz.value}>{tz.label}</option>
-                                    ))}
-                                </select>
-                                <ChevronDown className={cn(
-                                    'absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none',
-                                    theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                                )} />
-                            </div>
-                        </div>
-                    </div>
+                        Define precisely when your audience hears from you.
+                    </p>
                 </div>
 
-                {/* Days */}
-                <div className={cn(
-                    'p-6 rounded-xl border',
-                    theme === 'dark' ? 'bg-[#1a1a1a] border-gray-800' : 'bg-white border-gray-200'
-                )}>
-                    <h3 className={cn(
-                        'text-sm font-medium mb-4',
-                        theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                    )}>
-                        Days
-                    </h3>
-
-                    <div className="flex flex-wrap gap-4">
-                        {weekDays.map((day) => (
-                            <label
-                                key={day.id}
-                                className="flex items-center gap-2 cursor-pointer"
-                            >
-                                <input
-                                    type="checkbox"
-                                    checked={localSchedule.sendDays.includes(day.id)}
-                                    onChange={() => handleToggleDay(day.id)}
-                                    className={cn(
-                                        'w-4 h-4 rounded border-2 cursor-pointer',
-                                        theme === 'dark'
-                                            ? 'border-gray-600 bg-transparent checked:bg-blue-600 checked:border-blue-600'
-                                            : 'border-gray-300 bg-white checked:bg-blue-600 checked:border-blue-600'
-                                    )}
-                                />
-                                <span className={cn(
-                                    'text-sm',
-                                    localSchedule.sendDays.includes(day.id)
-                                        ? theme === 'dark' ? 'text-white' : 'text-gray-900'
-                                        : theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                                )}>
-                                    {day.label}
-                                </span>
-                            </label>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Delay Between Emails */}
-                <div className={cn(
-                    'p-6 rounded-xl border',
-                    theme === 'dark' ? 'bg-[#1a1a1a] border-gray-800' : 'bg-white border-gray-200'
-                )}>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h3 className={cn(
-                                'text-sm font-medium mb-1',
-                                theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                            )}>
-                                Delay Between Emails
-                            </h3>
-                            <p className={cn(
-                                'text-xs',
-                                theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                            )}>
-                                Time to wait between sending each email (helps with deliverability)
-                            </p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <input
-                                type="number"
-                                min="1"
-                                max="60"
-                                value={Math.round((localSchedule.delayBetweenEmails || 600) / 60)}
-                                onChange={(e) => handleUpdate({
-                                    delayBetweenEmails: Math.max(60, Math.min(3600, parseInt(e.target.value) * 60 || 600))
-                                })}
-                                className={cn(
-                                    'w-20 px-4 py-2.5 rounded-lg border text-center',
-                                    theme === 'dark'
-                                        ? 'bg-[#252525] border-gray-700 text-white'
-                                        : 'bg-gray-50 border-gray-200 text-gray-900'
-                                )}
-                            />
-                            <span className={cn(
-                                'text-sm',
-                                theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                            )}>
-                                minutes
-                            </span>
-                        </div>
-                    </div>
-                    <div className={cn(
-                        'mt-4 p-3 rounded-lg',
-                        theme === 'dark' ? 'bg-blue-500/10' : 'bg-blue-50'
-                    )}>
-                        <p className={cn(
-                            'text-xs flex items-center gap-2',
-                            theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
-                        )}>
-                            <Clock className="w-4 h-4" />
-                            <span>
-                                At {Math.round((localSchedule.delayBetweenEmails || 600) / 60)} min delay, you can send up to {Math.floor(60 / Math.round((localSchedule.delayBetweenEmails || 600) / 60)) > 0 ? Math.floor(60 / Math.round((localSchedule.delayBetweenEmails || 600) / 60)) : '< 1'} emails/hour
-                            </span>
-                        </p>
-                    </div>
-                </div>
-
-                {/* Save Button */}
                 <Button
                     onClick={handleSave}
+                    disabled={isSaving}
                     className={cn(
-                        'px-6',
+                        'h-12 px-8 rounded-xl font-[Syne] font-bold transition-all duration-300 shadow-lg shadow-[#d97757]/10',
                         theme === 'dark'
-                            ? 'bg-blue-600 hover:bg-blue-500 text-white'
-                            : 'bg-blue-600 hover:bg-blue-700 text-white'
+                            ? 'bg-[#d97757] hover:bg-[#c46144] text-white'
+                            : 'bg-blue-600 text-white'
                     )}
                 >
-                    Save
+                    {isSaving ? (
+                        <>
+                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                            Synchronizing...
+                        </>
+                    ) : (
+                        <>
+                            <Save className="w-4 h-4 mr-2" />
+                            Save Schedule
+                        </>
+                    )}
                 </Button>
             </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                {/* Main Schedule Card */}
+                <div className={cn(
+                    'lg:col-span-8 p-8 rounded-3xl border relative overflow-hidden group',
+                    theme === 'dark'
+                        ? 'bg-[#12151a] border-[#252a33]'
+                        : 'bg-white border-gray-100 shadow-xl'
+                )}>
+                    {/* Background Pattern */}
+                    <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#d97757_1px,transparent_1px)] [background-size:24px_24px]" />
+
+                    <div className="relative space-y-10">
+                        {/* Time Window Section */}
+                        <div className="space-y-6">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className={cn(
+                                    'p-2 rounded-lg',
+                                    theme === 'dark' ? 'bg-[#1a1e25] text-[#d97757]' : 'bg-orange-50 text-orange-600'
+                                )}>
+                                    <Clock className="w-5 h-5" />
+                                </div>
+                                <h3 className="font-[Syne] text-lg font-bold uppercase tracking-widest opacity-90">
+                                    Active Hours
+                                </h3>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row items-center gap-6 p-6 rounded-2xl border bg-opacity-50 transition-all hover:border-[#d97757]/50"
+                                style={{
+                                    backgroundColor: theme === 'dark' ? 'rgba(26, 30, 37, 0.5)' : 'rgba(249, 250, 251, 0.5)',
+                                    borderColor: theme === 'dark' ? '#252a33' : '#e5e7eb'
+                                }}
+                            >
+                                <div className="flex-1 w-full space-y-2">
+                                    <label className="text-xs uppercase tracking-widest font-semibold opacity-60 ml-1">Start Time</label>
+                                    <div className="relative">
+                                        <input
+                                            type="time"
+                                            value={localSchedule?.startTime || '09:00'}
+                                            onChange={(e) => setLocalSchedule((prev: any) => ({ ...prev, startTime: e.target.value }))}
+                                            className={cn(
+                                                'w-full px-6 py-4 rounded-xl text-xl font-mono font-medium outline-none transition-all',
+                                                theme === 'dark'
+                                                    ? 'bg-[#0a0c0f] border border-[#252a33] focus:border-[#d97757] text-white'
+                                                    : 'bg-white border border-gray-200 focus:border-blue-500 text-gray-900'
+                                            )}
+                                        />
+                                        <Sun className={cn(
+                                            'absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 opacity-40',
+                                            theme === 'dark' ? 'text-yellow-400' : 'text-orange-400'
+                                        )} />
+                                    </div>
+                                </div>
+
+                                <div className="hidden sm:block pt-6">
+                                    <ArrowRight className="w-6 h-6 opacity-30" />
+                                </div>
+
+                                <div className="flex-1 w-full space-y-2">
+                                    <label className="text-xs uppercase tracking-widest font-semibold opacity-60 ml-1">End Time</label>
+                                    <div className="relative">
+                                        <input
+                                            type="time"
+                                            value={localSchedule?.endTime || '17:00'}
+                                            onChange={(e) => setLocalSchedule((prev: any) => ({ ...prev, endTime: e.target.value }))}
+                                            className={cn(
+                                                'w-full px-6 py-4 rounded-xl text-xl font-mono font-medium outline-none transition-all',
+                                                theme === 'dark'
+                                                    ? 'bg-[#0a0c0f] border border-[#252a33] focus:border-[#d97757] text-white'
+                                                    : 'bg-white border border-gray-200 focus:border-blue-500 text-gray-900'
+                                            )}
+                                        />
+                                        <Moon className={cn(
+                                            'absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 opacity-40',
+                                            theme === 'dark' ? 'text-blue-400' : 'text-indigo-400'
+                                        )} />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Days Selection Section */}
+                        <div className="space-y-6">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className={cn(
+                                    'p-2 rounded-lg',
+                                    theme === 'dark' ? 'bg-[#1a1e25] text-[#d97757]' : 'bg-orange-50 text-orange-600'
+                                )}>
+                                    <Calendar className="w-5 h-5" />
+                                </div>
+                                <h3 className="font-[Syne] text-lg font-bold uppercase tracking-widest opacity-90">
+                                    Sending Days
+                                </h3>
+                            </div>
+
+                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                                {DAYS.map(day => {
+                                    const isSelected = localSchedule?.days?.includes(day.id);
+                                    return (
+                                        <button
+                                            key={day.id}
+                                            onClick={() => toggleDay(day.id)}
+                                            className={cn(
+                                                'relative h-14 rounded-xl font-[Syne] font-bold text-sm transition-all duration-300 overflow-hidden group/day',
+                                                isSelected
+                                                    ? theme === 'dark'
+                                                        ? 'bg-[#d97757] text-white shadow-[0_0_20px_rgba(217,119,87,0.3)]'
+                                                        : 'bg-blue-600 text-white shadow-lg'
+                                                    : theme === 'dark'
+                                                        ? 'bg-[#1a1e25] text-gray-500 hover:bg-[#252a33] hover:text-gray-300'
+                                                        : 'bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+                                            )}
+                                        >
+                                            <span className="relative z-10">{day.label}</span>
+                                            {isSelected && (
+                                                <div className="absolute inset-0 bg-gradient-to-tr from-black/10 to-transparent" />
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Sidebar Card (Timezone & Info) */}
+                <div className="lg:col-span-4 space-y-6">
+                    {/* Timezone Card */}
+                    <div className={cn(
+                        'p-6 rounded-3xl border',
+                        theme === 'dark' ? 'bg-[#0a0c0f] border-[#252a33]' : 'bg-white border-gray-100 shadow-lg'
+                    )}>
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className={cn(
+                                'p-2 rounded-lg',
+                                theme === 'dark' ? 'bg-[#1a1e25] text-[#d97757]' : 'bg-orange-50 text-orange-600'
+                            )}>
+                                <Globe className="w-5 h-5" />
+                            </div>
+                            <h3 className="font-[Syne] text-lg font-bold uppercase tracking-widest opacity-90">
+                                Timezone
+                            </h3>
+                        </div>
+
+                        <div className="relative group">
+                            <select
+                                value={localSchedule?.timezone || 'UTC'}
+                                onChange={(e) => setLocalSchedule((prev: any) => ({ ...prev, timezone: e.target.value }))}
+                                className={cn(
+                                    'w-full appearance-none px-5 py-4 rounded-xl text-sm font-medium outline-none transition-all cursor-pointer',
+                                    theme === 'dark'
+                                        ? 'bg-[#1a1e25] border border-[#252a33] text-white focus:border-[#d97757]'
+                                        : 'bg-gray-50 border border-gray-200 text-gray-900 focus:border-blue-500'
+                                )}
+                            >
+                                {TIMEZONES.map(tz => (
+                                    <option key={tz} value={tz}>{tz.replace('_', ' ')}</option>
+                                ))}
+                            </select>
+                            <ChevronDown className={cn(
+                                'absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none transition-transform group-hover:translate-y-0.5',
+                                theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                            )} />
+                        </div>
+
+                        <div className={cn(
+                            'mt-6 p-4 rounded-xl text-xs leading-relaxed flex gap-3',
+                            theme === 'dark' ? 'bg-[#1a1e25]/50 text-gray-400' : 'bg-blue-50 text-blue-700'
+                        )}>
+                            <Zap className="w-4 h-4 flex-shrink-0 mt-0.5 opacity-70" />
+                            <p>
+                                Sending times are adjusted to this timezone. We recommend matching your prospect's primary location.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Stats / Info */}
+                    <div className={cn(
+                        'p-6 rounded-3xl border flex items-center justify-between',
+                        theme === 'dark' ? 'bg-[#12151a] border-[#252a33]' : 'bg-white border-gray-100 shadow-md'
+                    )}>
+                        <div>
+                            <p className="text-xs uppercase tracking-widest opacity-50 font-bold mb-1">Total Hours</p>
+                            <p className={cn(
+                                'text-2xl font-[Syne] font-bold',
+                                theme === 'dark' ? 'text-white' : 'text-gray-900'
+                            )}>
+                                {parseInt(localSchedule.endTime) - parseInt(localSchedule.startTime)}h / day
+                            </p>
+                        </div>
+                        <div className={cn(
+                            'w-12 h-12 rounded-full flex items-center justify-center border-2',
+                            theme === 'dark' ? 'border-[#3a424f] text-[#d97757]' : 'border-gray-200 text-blue-600'
+                        )}>
+                            <Clock className="w-5 h-5" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
         </div>
     );
 }

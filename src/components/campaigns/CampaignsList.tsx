@@ -125,7 +125,7 @@ export function CampaignsList({
                             className={cn(
                                 'p-2 rounded-lg transition-colors',
                                 theme === 'dark'
-                                    ? 'bg-blue-600 text-white hover:bg-blue-500'
+                                    ? 'bg-[var(--terracotta)] text-white hover:bg-[var(--terracotta-dark)]'
                                     : 'bg-blue-600 text-white hover:bg-blue-700'
                             )}
                         >
@@ -193,10 +193,10 @@ export function CampaignsList({
                                             'w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors group',
                                             selectedCampaign?.id === campaign.id
                                                 ? theme === 'dark'
-                                                    ? 'bg-blue-500/20 text-blue-400'
+                                                    ? 'bg-[var(--terracotta)]/10 text-[var(--terracotta)]'
                                                     : 'bg-blue-50 text-blue-600'
                                                 : theme === 'dark'
-                                                    ? 'hover:bg-gray-800 text-gray-300'
+                                                    ? 'hover:bg-white/5 text-[var(--text-secondary)]'
                                                     : 'hover:bg-gray-100 text-gray-700'
                                         )}
                                     >
@@ -322,7 +322,12 @@ export function CampaignsList({
                                 <Button
                                     size="sm"
                                     onClick={() => handleViewDetails(selectedCampaign)}
-                                    className="gap-2 bg-blue-600 hover:bg-blue-500 text-white"
+                                    className={cn(
+                                        'gap-2',
+                                        theme === 'dark'
+                                            ? 'bg-[var(--terracotta)] hover:bg-[var(--terracotta-dark)] text-white'
+                                            : 'bg-blue-600 hover:bg-blue-500 text-white'
+                                    )}
                                 >
                                     <Eye className="w-4 h-4" />
                                     View Details
@@ -548,7 +553,12 @@ export function CampaignsList({
                                 <div className="mt-6 pt-6 border-t border-gray-800">
                                     <Button
                                         onClick={() => handleViewDetails(selectedCampaign)}
-                                        className="w-full gap-2 bg-blue-600 hover:bg-blue-500 text-white"
+                                        className={cn(
+                                            'w-full gap-2',
+                                            theme === 'dark'
+                                                ? 'bg-[var(--terracotta)] hover:bg-[var(--terracotta-dark)] text-white'
+                                                : 'bg-blue-600 hover:bg-blue-500 text-white'
+                                        )}
                                     >
                                         <Eye className="w-4 h-4" />
                                         View Full Campaign Details
@@ -583,7 +593,12 @@ export function CampaignsList({
                         </p>
                         <Button
                             onClick={onCreateNew}
-                            className="gap-2 bg-blue-600 hover:bg-blue-500 text-white"
+                            className={cn(
+                                'gap-2',
+                                theme === 'dark'
+                                    ? 'bg-[var(--terracotta)] hover:bg-[var(--terracotta-dark)] text-white'
+                                    : 'bg-blue-600 hover:bg-blue-500 text-white'
+                            )}
                         >
                             <Plus className="w-4 h-4" />
                             Create New Campaign

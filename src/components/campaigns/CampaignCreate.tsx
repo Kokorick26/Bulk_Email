@@ -109,7 +109,7 @@ export function CampaignCreate({ onBack, onComplete, className }: CampaignCreate
                         className={cn(
                             'w-full px-4 py-4 text-lg font-medium rounded-lg border-0 border-b-2 focus:outline-none transition-all',
                             theme === 'dark'
-                                ? 'bg-transparent text-white border-blue-500 placeholder:text-gray-500'
+                                ? 'bg-transparent text-white border-[var(--terracotta)] placeholder:text-gray-500'
                                 : 'bg-transparent text-gray-900 border-blue-500 placeholder:text-gray-400'
                         )}
                     />
@@ -122,7 +122,7 @@ export function CampaignCreate({ onBack, onComplete, className }: CampaignCreate
                         className={cn(
                             'px-6 py-2.5 text-sm font-medium rounded-lg transition-colors',
                             theme === 'dark'
-                                ? 'text-blue-400 hover:text-blue-300'
+                                ? 'text-[var(--terracotta)] hover:text-[var(--terracotta-light)]'
                                 : 'text-blue-600 hover:text-blue-700'
                         )}
                     >
@@ -134,7 +134,7 @@ export function CampaignCreate({ onBack, onComplete, className }: CampaignCreate
                         className={cn(
                             'gap-2 px-6',
                             theme === 'dark'
-                                ? 'bg-blue-600 hover:bg-blue-500 text-white'
+                                ? 'bg-[var(--terracotta)] hover:bg-[var(--terracotta-dark)] text-white'
                                 : 'bg-blue-600 hover:bg-blue-700 text-white'
                         )}
                     >
@@ -157,7 +157,7 @@ export function CampaignCreate({ onBack, onComplete, className }: CampaignCreate
             <div className="fixed bottom-0 left-0 right-0 h-32 pointer-events-none overflow-hidden">
                 <div className={cn(
                     'absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] rounded-full blur-3xl opacity-10',
-                    theme === 'dark' ? 'bg-blue-500' : 'bg-blue-400'
+                    theme === 'dark' ? 'bg-[var(--terracotta)]' : 'bg-blue-400'
                 )} />
             </div>
         </div>

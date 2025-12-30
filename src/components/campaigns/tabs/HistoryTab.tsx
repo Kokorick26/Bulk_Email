@@ -126,99 +126,103 @@ export function HistoryTab({ campaignId, className }: HistoryTabProps) {
     }
 
     return (
-        <div className={cn('space-y-6', className)}>
-            {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className={cn('max-w-6xl mx-auto space-y-6', className)}>
+            {/* System Status Bar */}
+            <div className={cn(
+                'grid grid-cols-2 lg:grid-cols-6 gap-px border rounded-2xl overflow-hidden',
+                theme === 'dark' ? 'bg-[#252a33] border-[#252a33]' : 'bg-gray-200 border-gray-200'
+            )}>
                 {[
-                    { label: 'Total Sent', count: stats.total, color: 'blue' },
-                    { label: 'Delivered', count: stats.sent, color: 'emerald' },
-                    { label: 'Failed', count: stats.failed, color: 'red' },
-                    { label: 'Opened', count: stats.opened, color: 'blue' },
-                    { label: 'Clicked', count: stats.clicked, color: 'purple' },
-                    { label: 'Replied', count: stats.replied, color: 'amber' },
+                    { label: 'Total Sent', count: stats.total, color: 'text-blue-400' },
+                    { label: 'Delivered', count: stats.sent, color: 'text-emerald-400' },
+                    { label: 'Failed', count: stats.failed, color: 'text-red-400' },
+                    { label: 'Opened', count: stats.opened, color: 'text-blue-300' },
+                    { label: 'Clicked', count: stats.clicked, color: 'text-purple-400' },
+                    { label: 'Replied', count: stats.replied, color: 'text-amber-400' },
                 ].map((stat) => (
                     <div
                         key={stat.label}
                         className={cn(
-                            'p-4 rounded-xl border',
-                            theme === 'dark' ? 'bg-[#1a1a1a] border-gray-800' : 'bg-white border-gray-200'
+                            'p-4 flex flex-col items-center justify-center gap-1',
+                            theme === 'dark' ? 'bg-[#12151a]' : 'bg-white'
                         )}
                     >
                         <p className={cn(
-                            'text-xs font-medium',
-                            theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                            'text-[10px] font-bold uppercase tracking-widest opacity-60',
+                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                         )}>{stat.label}</p>
                         <p className={cn(
-                            'text-2xl font-bold mt-1',
-                            `text-${stat.color}-500`
+                            'text-2xl font-[Syne] font-bold',
+                            theme === 'dark' ? stat.color : stat.color.replace('400', '600').replace('300', '500')
                         )}>{stat.count}</p>
                     </div>
                 ))}
             </div>
 
-            {/* Filters */}
-            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-                {/* Search */}
-                <div className="relative flex-1 max-w-sm">
+            {/* Command Bar */}
+            <div className={cn(
+                'flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between p-2 rounded-xl border',
+                theme === 'dark' ? 'bg-[#12151a] border-[#252a33]' : 'bg-white border-gray-100 shadow-sm'
+            )}>
+                {/* Search Console */}
+                <div className="relative flex-1 w-full sm:max-w-md group">
                     <Search className={cn(
-                        'absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4',
-                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                        'absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors',
+                        theme === 'dark' ? 'text-gray-600 group-hover:text-[#d97757]' : 'text-gray-400 group-hover:text-[#d97757]'
                     )} />
                     <input
                         type="text"
-                        placeholder="Search by email or subject..."
+                        placeholder="Filter log stream..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className={cn(
-                            'w-full pl-10 pr-4 py-2 rounded-lg border text-sm',
+                            'w-full pl-11 pr-4 py-3 rounded-lg border-none text-sm font-mono focus:ring-1 focus:ring-[#d97757] transition-all',
                             theme === 'dark'
-                                ? 'bg-[#1a1a1a] border-gray-800 text-white placeholder:text-gray-500'
-                                : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400'
+                                ? 'bg-[#1a1e25] text-white placeholder:text-gray-600'
+                                : 'bg-gray-50 text-gray-900 placeholder:text-gray-400'
                         )}
                     />
                 </div>
 
-                <div className="flex items-center gap-3">
-                    {/* Status Filter */}
-                    <div className="flex items-center gap-1 p-1 rounded-lg border"
-                        style={{
-                            background: theme === 'dark' ? '#1a1a1a' : '#f9fafb',
-                            borderColor: theme === 'dark' ? '#374151' : '#e5e7eb'
-                        }}>
-                        {(['all', 'sent', 'failed', 'opened', 'clicked', 'replied'] as const).map((status) => (
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                    {/* Status Toggles */}
+                    <div className={cn(
+                        'flex items-center gap-1 p-1 rounded-lg border overflow-x-auto',
+                        theme === 'dark' ? 'bg-[#1a1e25] border-[#252a33]' : 'bg-gray-50 border-gray-100'
+                    )}>
+                        {(['all', 'sent', 'failed', 'opened', 'clicked'] as const).map((status) => (
                             <button
                                 key={status}
-                                onClick={() => setStatusFilter(status)}
+                                onClick={() => setStatusFilter(status as any)}
                                 className={cn(
-                                    'px-3 py-1.5 rounded-md text-xs font-medium transition-all',
+                                    'px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all whitespace-nowrap',
                                     statusFilter === status
                                         ? theme === 'dark'
-                                            ? 'bg-blue-500/20 text-blue-400'
-                                            : 'bg-blue-100 text-blue-600'
+                                            ? 'bg-[#d97757] text-white shadow-lg'
+                                            : 'bg-blue-600 text-white shadow-md'
                                         : theme === 'dark'
-                                            ? 'text-gray-400 hover:text-gray-200'
-                                            : 'text-gray-500 hover:text-gray-700'
+                                            ? 'text-gray-500 hover:text-gray-300'
+                                            : 'text-gray-400 hover:text-gray-600'
                                 )}
                             >
-                                {status.charAt(0).toUpperCase() + status.slice(1)}
+                                {status}
                             </button>
                         ))}
                     </div>
 
                     {/* Refresh */}
                     <Button
-                        variant="outline"
-                        size="sm"
+                        variant="ghost"
+                        size="icon"
                         onClick={fetchEmailLogs}
                         className={cn(
-                            'gap-2',
+                            'h-10 w-10 rounded-full',
                             theme === 'dark'
-                                ? 'border-gray-700 text-gray-300 hover:bg-gray-800'
-                                : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                                ? 'text-gray-400 hover:text-white hover:bg-[#252a33]'
+                                : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
                         )}
                     >
                         <RefreshCw className="w-4 h-4" />
-                        Refresh
                     </Button>
                 </div>
             </div>
@@ -250,22 +254,23 @@ export function HistoryTab({ campaignId, className }: HistoryTabProps) {
                 </div>
             ) : (
                 <div className={cn(
-                    'rounded-xl border overflow-hidden',
-                    theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
+                    'rounded-2xl border overflow-hidden',
+                    theme === 'dark' ? 'bg-[#0a0c0f] border-[#252a33]' : 'bg-white border-gray-200'
                 )}>
                     <ScrollArea className="h-[500px]">
                         <Table>
-                            <TableHeader className="sticky top-0 z-10">
+                            <TableHeader className="sticky top-0 z-10 backdrop-blur-md">
                                 <TableRow className={cn(
-                                    theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'
+                                    'border-b',
+                                    theme === 'dark' ? 'bg-[#12151a]/90 border-[#252a33] hover:bg-[#12151a]/90' : 'bg-gray-50/90 border-gray-100'
                                 )}>
-                                    <TableHead className={theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'}>#</TableHead>
-                                    <TableHead className={theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'}>Recipient</TableHead>
-                                    <TableHead className={theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'}>Subject</TableHead>
-                                    <TableHead className={theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'}>Sent At</TableHead>
-                                    <TableHead className={theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'}>Step</TableHead>
-                                    <TableHead className={theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'}>Status</TableHead>
-                                    <TableHead className={theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'}>Actions</TableHead>
+                                    <TableHead className={cn('w-16 text-center font-mono text-[10px] uppercase tracking-wider', theme === 'dark' ? 'text-gray-500' : 'text-gray-400')}>#</TableHead>
+                                    <TableHead className={cn('font-mono text-[10px] uppercase tracking-wider', theme === 'dark' ? 'text-gray-500' : 'text-gray-400')}>Recipient Node</TableHead>
+                                    <TableHead className={cn('font-mono text-[10px] uppercase tracking-wider', theme === 'dark' ? 'text-gray-500' : 'text-gray-400')}>Packet Payload</TableHead>
+                                    <TableHead className={cn('font-mono text-[10px] uppercase tracking-wider w-32', theme === 'dark' ? 'text-gray-500' : 'text-gray-400')}>Timestamp</TableHead>
+                                    <TableHead className={cn('font-mono text-[10px] uppercase tracking-wider w-20', theme === 'dark' ? 'text-gray-500' : 'text-gray-400')}>Step</TableHead>
+                                    <TableHead className={cn('font-mono text-[10px] uppercase tracking-wider w-32', theme === 'dark' ? 'text-gray-500' : 'text-gray-400')}>State</TableHead>
+                                    <TableHead className={cn('font-mono text-[10px] uppercase tracking-wider w-20 text-right', theme === 'dark' ? 'text-gray-500' : 'text-gray-400')}>Inspect</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Mail, Lock, Loader2, Eye, EyeOff, ArrowRight, Zap, Shield, Globe } from 'lucide-react';
+import { Mail, Lock, Loader2, Eye, EyeOff, ArrowRight, Zap, Shield, Globe, Bot, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface LoginProps {
@@ -45,12 +45,13 @@ export default function Login({ onLogin }: LoginProps) {
     };
 
     return (
-        <div className="min-h-screen bg-black flex">
+        <div className="min-h-screen bg-[var(--slate-deep)] flex" style={{ fontFamily: 'DM Sans, sans-serif' }}>
             {/* Left - Branding */}
-            <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden dot-grid">
-                {/* Subtle gradient orbs */}
-                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-white/[0.02] rounded-full blur-3xl" />
-                <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-white/[0.02] rounded-full blur-3xl" />
+            <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
+                {/* Background Effects */}
+                <div className="absolute inset-0 dot-grid-dark opacity-30" />
+                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[var(--terracotta)]/10 rounded-full blur-[100px]" />
+                <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-[var(--gold)]/5 rounded-full blur-[100px]" />
 
                 <div className="relative z-10 flex flex-col justify-center px-16 max-w-xl">
                     <motion.div
@@ -60,41 +61,55 @@ export default function Login({ onLogin }: LoginProps) {
                     >
                         {/* Logo */}
                         <div className="flex items-center gap-4 mb-12">
-                            <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center">
-                                <Mail className="w-6 h-6 text-black" />
+                            <div className="relative">
+                                <div className="absolute inset-0 bg-[var(--terracotta)] blur-lg opacity-40" />
+                                <div className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-[var(--terracotta)] to-[var(--terracotta-dark)] flex items-center justify-center shadow-lg ring-1 ring-white/10">
+                                    <Bot className="w-6 h-6 text-white" />
+                                </div>
                             </div>
-                            <span className="text-2xl font-semibold text-white tracking-tight">Bulk Email</span>
+                            <span className="text-2xl font-bold text-white tracking-tight" style={{ fontFamily: 'Syne, sans-serif' }}>
+                                Kokorick <span className="text-[var(--text-muted)] font-normal">AI</span>
+                            </span>
                         </div>
 
                         {/* Headline */}
-                        <h1 className="text-5xl font-semibold text-white leading-tight mb-6 tracking-tight">
-                            Email delivery<br />
-                            made simple.
+                        <h1 className="text-5xl font-bold text-white leading-tight mb-6 tracking-tight" style={{ fontFamily: 'Syne, sans-serif' }}>
+                            Cold email<br />
+                            <span className="text-gradient-terracotta">made simple.</span>
                         </h1>
 
-                        <p className="text-lg text-white/50 mb-12 leading-relaxed">
-                            The most reliable way to send bulk emails to your audience.
-                            Beautiful, fast, and enterprise-ready.
+                        <p className="text-lg text-[var(--text-secondary)] mb-12 leading-relaxed">
+                            The most reliable way to scale your outreach. Beautiful, fast, and enterprise-ready.
                         </p>
 
                         {/* Features */}
                         <div className="space-y-4">
                             {[
-                                { icon: Zap, text: 'Lightning fast delivery' },
-                                { icon: Shield, text: 'Enterprise security' },
-                                { icon: Globe, text: 'Global infrastructure' },
+                                { icon: Zap, text: 'Lightning fast delivery', color: 'terracotta' },
+                                { icon: Shield, text: 'Enterprise security', color: 'gold' },
+                                { icon: Globe, text: 'Global infrastructure', color: 'sage' },
                             ].map((feature, i) => (
                                 <motion.div
                                     key={i}
                                     initial={{ opacity: 0, x: -20 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     transition={{ delay: 0.4 + i * 0.1 }}
-                                    className="flex items-center gap-4"
+                                    className="flex items-center gap-4 group"
                                 >
-                                    <div className="w-10 h-10 rounded-lg bg-white/[0.05] border border-white/[0.08] flex items-center justify-center">
-                                        <feature.icon className="w-5 h-5 text-white/70" />
+                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center border transition-colors ${feature.color === 'terracotta'
+                                        ? 'bg-[var(--terracotta)]/10 border-[var(--terracotta)]/20'
+                                        : feature.color === 'gold'
+                                            ? 'bg-[var(--gold)]/10 border-[var(--gold)]/20'
+                                            : 'bg-[var(--sage)]/10 border-[var(--sage)]/20'
+                                        }`}>
+                                        <feature.icon className={`w-5 h-5 ${feature.color === 'terracotta'
+                                            ? 'text-[var(--terracotta)]'
+                                            : feature.color === 'gold'
+                                                ? 'text-[var(--gold)]'
+                                                : 'text-[var(--sage)]'
+                                            }`} />
                                     </div>
-                                    <span className="text-white/70">{feature.text}</span>
+                                    <span className="text-[var(--text-secondary)]">{feature.text}</span>
                                 </motion.div>
                             ))}
                         </div>
@@ -115,47 +130,49 @@ export default function Login({ onLogin }: LoginProps) {
                 >
                     {/* Mobile Logo */}
                     <div className="lg:hidden flex items-center justify-center gap-3 mb-12">
-                        <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center">
-                            <Mail className="w-5 h-5 text-black" />
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--terracotta)] to-[var(--terracotta-dark)] flex items-center justify-center ring-1 ring-white/10">
+                            <Bot className="w-5 h-5 text-white" />
                         </div>
-                        <span className="text-xl font-semibold text-white">Bulk Email</span>
+                        <span className="text-xl font-bold text-white" style={{ fontFamily: 'Syne, sans-serif' }}>
+                            Kokorick AI
+                        </span>
                     </div>
 
                     {/* Form */}
                     <div className="space-y-8">
                         <div className="text-center lg:text-left">
-                            <h2 className="text-2xl font-semibold text-white mb-2">Welcome back</h2>
-                            <p className="text-white/50">Sign in to your account</p>
+                            <h2 className="text-2xl font-bold text-white mb-2" style={{ fontFamily: 'Syne, sans-serif' }}>Welcome back</h2>
+                            <p className="text-[var(--text-muted)]">Sign in to your account</p>
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-5">
                             <div className="space-y-2">
-                                <label className="text-sm text-white/50 block">Email</label>
+                                <label className="text-sm text-[var(--text-muted)] block">Email</label>
                                 <div className="relative">
                                     <input
                                         type="email"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                         placeholder="you@example.com"
-                                        className="input"
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:ring-2 focus:ring-[var(--terracotta)]/50 focus:border-[var(--terracotta)] transition-all placeholder:text-[var(--text-muted)]"
                                     />
                                 </div>
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm text-white/50 block">Password</label>
+                                <label className="text-sm text-[var(--text-muted)] block">Password</label>
                                 <div className="relative">
                                     <input
                                         type={showPassword ? 'text' : 'password'}
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         placeholder="••••••••"
-                                        className="input pr-12"
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 pr-12 text-white focus:outline-none focus:ring-2 focus:ring-[var(--terracotta)]/50 focus:border-[var(--terracotta)] transition-all placeholder:text-[var(--text-muted)]"
                                     />
                                     <button
                                         type="button"
                                         onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-white transition-colors"
                                     >
                                         {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                     </button>
@@ -165,7 +182,7 @@ export default function Login({ onLogin }: LoginProps) {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full flex items-center justify-center gap-2 bg-white text-black font-medium py-3.5 rounded-lg transition-all hover:bg-white/90 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[var(--terracotta)] to-[var(--terracotta-dark)] text-white font-semibold py-3.5 rounded-xl transition-all hover:opacity-90 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[var(--terracotta)]/20"
                             >
                                 {loading ? (
                                     <Loader2 className="w-5 h-5 animate-spin" />
@@ -179,10 +196,10 @@ export default function Login({ onLogin }: LoginProps) {
                         </form>
 
                         {/* Demo credentials */}
-                        <div className="pt-6 border-t border-white/[0.08]">
-                            <p className="text-sm text-white/30 text-center mb-3">Demo credentials</p>
+                        <div className="pt-6 border-t border-white/5">
+                            <p className="text-sm text-[var(--text-muted)] text-center mb-3">Demo credentials</p>
                             <div className="flex justify-center">
-                                <code className="text-sm text-white/50 bg-white/[0.03] px-4 py-2 rounded-lg border border-white/[0.05]">
+                                <code className="text-sm text-[var(--text-secondary)] bg-white/5 px-4 py-2 rounded-xl border border-white/5 font-mono">
                                     admin@example.com / admin123
                                 </code>
                             </div>
@@ -190,8 +207,8 @@ export default function Login({ onLogin }: LoginProps) {
                     </div>
 
                     {/* Footer */}
-                    <p className="text-center text-white/20 text-sm mt-12">
-                        Built by Kokorick
+                    <p className="text-center text-[var(--text-muted)] text-sm mt-12">
+                        Built with ❤️ by Kokorick
                     </p>
                 </motion.div>
             </div>

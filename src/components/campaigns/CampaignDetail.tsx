@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
     ChevronLeft, Play, Pause, MoreHorizontal, Loader2,
-    BarChart2, Users, List, Calendar, Settings, History
+    BarChart2, Users, List, Calendar, Settings, History, Server
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useTheme } from '../../lib/ThemeContext';
@@ -14,7 +14,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '../ui/DropdownMenu';
-import { LeadsTab, SequencesTab, ScheduleTab, OptionsTab, AnalyticsTab, HistoryTab } from './tabs';
+import { LeadsTab, SequencesTab, ScheduleTab, OptionsTab, AnalyticsTab, AccountsTab, HistoryTab } from './tabs';
 import type { Campaign, CampaignTab, Lead, Sequence, CampaignSchedule, CampaignOptions } from './types';
 
 interface AIContext {
@@ -38,6 +38,7 @@ const tabs: { id: CampaignTab; label: string; icon: any }[] = [
     { id: 'sequences', label: 'Sequences', icon: List },
     { id: 'schedule', label: 'Schedule', icon: Calendar },
     { id: 'options', label: 'Options', icon: Settings },
+    { id: 'accounts', label: 'Accounts', icon: Server },
     { id: 'history', label: 'Email History', icon: History },
 ];
 
@@ -50,8 +51,8 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
     const [campaign, setCampaign] = useState<Campaign | null>(null);
     const [leads, setLeads] = useState<Lead[]>([]);
     const [sequence, setSequence] = useState<Sequence | null>(null);
-    const [schedule, setSchedule] = useState<CampaignSchedule | null>(null);
-    const [options, setOptions] = useState<CampaignOptions | null>(null);
+    const [schedule, setSchedule] = useState<CampaignSchedule | undefined>(undefined);
+    const [options, setOptions] = useState<CampaignOptions | undefined>(undefined);
 
     // Update AI context when leads or sequence changes
     useEffect(() => {
@@ -240,19 +241,19 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
             {/* Sidebar Navigation */}
             <div className={cn(
                 'w-64 flex-shrink-0 flex flex-col border-r',
-                theme === 'dark' ? 'bg-[#1a1a1a] border-gray-800' : 'bg-gray-50 border-gray-200'
+                theme === 'dark' ? 'bg-[var(--slate-rich)] border-white/5' : 'bg-gray-50 border-gray-200'
             )}>
                 {/* Back Link */}
                 <div className={cn(
                     'p-4 border-b',
-                    theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
+                    theme === 'dark' ? 'border-white/5' : 'border-gray-200'
                 )}>
                     <button
                         onClick={onBack}
                         className={cn(
                             'flex items-center gap-2 text-sm font-medium transition-colors w-full px-2 py-1.5 rounded-lg',
                             theme === 'dark'
-                                ? 'text-gray-400 hover:text-white hover:bg-gray-800'
+                                ? 'text-[var(--text-muted)] hover:text-white hover:bg-white/5'
                                 : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'
                         )}
                     >
@@ -271,10 +272,10 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
                                 'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-left',
                                 activeTab === tab.id
                                     ? theme === 'dark'
-                                        ? 'bg-blue-500/20 text-blue-400'
+                                        ? 'bg-[var(--terracotta)]/10 text-[var(--terracotta)]'
                                         : 'bg-blue-50 text-blue-600'
                                     : theme === 'dark'
-                                        ? 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
+                                        ? 'text-[var(--text-muted)] hover:bg-white/5 hover:text-[var(--text-secondary)]'
                                         : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                             )}
                         >
@@ -295,7 +296,7 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
                 {/* Header Actions */}
                 <div className={cn(
                     'flex items-center justify-between px-6 py-4 border-b flex-shrink-0',
-                    theme === 'dark' ? 'border-gray-800 bg-[#0c0c10]' : 'border-gray-200 bg-white'
+                    theme === 'dark' ? 'border-white/5 bg-[var(--slate-deep)]' : 'border-gray-200 bg-white'
                 )}>
                     <div>
                         <h1 className={cn(
@@ -335,7 +336,7 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
                                 className={cn(
                                     'gap-2',
                                     theme === 'dark'
-                                        ? 'bg-blue-600 hover:bg-blue-500 text-white'
+                                        ? 'bg-[var(--terracotta)] hover:bg-[var(--terracotta-dark)] text-white'
                                         : 'bg-blue-600 hover:bg-blue-700 text-white'
                                 )}
                             >
@@ -400,6 +401,14 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
                                 campaignId={campaignId}
                                 options={options}
                                 onOptionsUpdate={setOptions}
+                            />
+                        )}
+                        {activeTab === 'accounts' && (
+                            <AccountsTab
+                                campaignId={campaignId}
+                                leads={leads}
+                                sequence={sequence}
+                                onLeadsUpdate={handleLeadsUpdate}
                             />
                         )}
                         {activeTab === 'history' && (

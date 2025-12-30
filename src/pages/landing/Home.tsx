@@ -1,345 +1,594 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import { useRef } from 'react';
 import {
-    Zap, BarChart3, ChevronRight, Users, CheckCircle2, Search, Mail,
-    Bot, Sparkles, Target, Clock, Shield, Globe, ArrowRight, Play,
-    MessageSquare, Database, Workflow, Settings, Star, Check, Cpu,
-    TrendingUp, Send, Layers, Lock, Cloud, Rocket, InboxIcon, Server,
-    FileText, RefreshCw, PieChart, Bell, MoreHorizontal, Plus
+    ArrowUpRight, ArrowRight, Play, Target, Sparkles, Inbox,
+    TrendingUp, Zap, Server, Users, Shield, Clock, Check,
+    Mail, BarChart3, Search, Bot, ChevronRight, Layers,
+    LineChart, MessageSquare, Globe, Lock, Cpu
 } from 'lucide-react';
 import { DashboardMockup } from '../../components/landing/DashboardMockup';
-import { BentoCard, LeadDiscoveryMockup, InboxMockup, CampaignStatsMockup, PersonalizationMockup } from '../../components/landing/BentoCard';
 import TestimonialsSection from '../../components/landing/TestimonialsSection';
 import LogoMarquee from '../../components/landing/LogoMarquee';
 
+// Animation variants
+const staggerContainer = {
+    hidden: { opacity: 0 },
+    visible: {
+        opacity: 1,
+        transition: {
+            staggerChildren: 0.1,
+            delayChildren: 0.2
+        }
+    }
+};
 
+const fadeUp = {
+    hidden: { opacity: 0, y: 30 },
+    visible: {
+        opacity: 1,
+        y: 0,
+        transition: {
+            duration: 0.8,
+            ease: "easeOut" as const
+        }
+    }
+};
+
+const fadeIn = {
+    hidden: { opacity: 0 },
+    visible: {
+        opacity: 1,
+        transition: { duration: 0.6 }
+    }
+};
+
+const scaleIn = {
+    hidden: { opacity: 0, scale: 0.95 },
+    visible: {
+        opacity: 1,
+        scale: 1,
+        transition: { duration: 1, ease: "easeOut" as const }
+    }
+};
+
+
+// Feature data - Bento Grid
+const bentoFeatures = [
+    {
+        title: "AI-Powered Lead Discovery",
+        description: "Our intelligence engine scans 160M+ verified profiles to surface your ideal prospects based on tech stack, hiring patterns, and funding signals.",
+        icon: Search,
+        span: "col-span-2 row-span-2",
+        variant: "primary"
+    },
+    {
+        title: "Smart Personalization",
+        description: "Generate unique opening lines that reference recent news and company updates.",
+        icon: Sparkles,
+        span: "col-span-1",
+        variant: "secondary"
+    },
+    {
+        title: "Unified Inbox",
+        description: "All replies, one place. Never miss a hot lead.",
+        icon: Inbox,
+        span: "col-span-1",
+        variant: "accent"
+    },
+    {
+        title: "Campaign Analytics",
+        description: "Track opens, clicks, replies in real-time. Understand what resonates.",
+        icon: LineChart,
+        span: "col-span-1",
+        variant: "secondary"
+    },
+    {
+        title: "Multi-Account Scaling",
+        description: "Connect unlimited email accounts. Scale without limits.",
+        icon: Layers,
+        span: "col-span-1",
+        variant: "dark"
+    }
+];
+
+// Process steps
+const steps = [
+    {
+        number: "01",
+        title: "Connect Your Accounts",
+        description: "Link unlimited email accounts. Our AI automatically warms them up to ensure maximum deliverability across all your outreach.",
+        icon: Server,
+        detail: "99% Deliverability"
+    },
+    {
+        number: "02",
+        title: "Discover Your Leads",
+        description: "Use our Lead Discovery Engine to find verified contacts from a database of 160M+ professionals matching your ideal customer profile.",
+        icon: Search,
+        detail: "AI-Powered"
+    },
+    {
+        number: "03",
+        title: "Launch & Close",
+        description: "Launch hyper-personalized campaigns. Manage all replies in one unified inbox and book meetings on autopilot.",
+        icon: Zap,
+        detail: "Fully Automated"
+    }
+];
+
+// Stats data
+const stats = [
+    { value: "10K+", label: "Active Users", description: "Trusted by sales teams globally" },
+    { value: "50M+", label: "Emails Sent", description: "Powered by our infrastructure" },
+    { value: "99%", label: "Deliverability", description: "Industry-leading inbox placement" }
+];
+
+// Value props for comparison
+const valueProps = [
+    { icon: Users, title: "Unlimited Accounts", description: "No per-inbox pricing ever" },
+    { icon: Shield, title: "Enterprise Security", description: "SOC 2 compliant infrastructure" },
+    { icon: Clock, title: "5-Minute Setup", description: "Get started in under 5 minutes" },
+    { icon: Globe, title: "Global Reach", description: "Reach prospects anywhere" }
+];
 
 export default function Home() {
+    const heroRef = useRef(null);
+    const { scrollYProgress } = useScroll({
+        target: heroRef,
+        offset: ["start start", "end start"]
+    });
+    const heroY = useTransform(scrollYProgress, [0, 1], [0, 150]);
+    const heroOpacity = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
+
     return (
-        <div className="min-h-screen bg-white text-slate-900 selection:bg-violet-100 selection:text-violet-900 overflow-x-hidden">
+        <div className="min-h-screen bg-[var(--slate-deep)] text-[var(--text-primary)] overflow-x-hidden">
 
-            {/* ==================== HERO SECTION (Requested Style) ==================== */}
-            <div className="relative min-h-screen overflow-hidden bg-black flex flex-col justify-center">
-                {/* Gradient background with grain effect */}
-                <div className="absolute inset-0 bg-black z-0">
-                    <div className="flex flex-col items-end absolute -right-60 -top-10 blur-xl z-0 opacity-50">
-                        <div className="h-[20rem] rounded-full w-[60rem] z-1 bg-gradient-to-b blur-[6rem] from-purple-600 to-sky-600" />
-                        <div className="h-[20rem] rounded-full w-[90rem] z-1 bg-gradient-to-b blur-[6rem] from-pink-900 to-yellow-400" />
-                        <div className="h-[20rem] rounded-full w-[60rem] z-1 bg-gradient-to-b blur-[6rem] from-yellow-600 to-sky-500" />
-                    </div>
-                    {/* Noise texture overlay */}
-                    <div className="absolute inset-0 z-0 opacity-[0.15] pointer-events-none mix-blend-overlay" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }} />
+            {/* ═══════════════════════════════════════════════════════════════
+                HERO SECTION - Bold Editorial Style
+            ═══════════════════════════════════════════════════════════════ */}
+            <section ref={heroRef} className="relative min-h-screen flex flex-col justify-center pt-24 pb-20 overflow-hidden">
+                {/* Background Effects */}
+                <div className="absolute inset-0">
+                    {/* Gradient Orbs */}
+                    <div className="absolute top-20 left-1/4 w-[600px] h-[600px] bg-[var(--terracotta)]/10 rounded-full blur-[150px] animate-pulse-subtle" />
+                    <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-[var(--gold)]/5 rounded-full blur-[120px]" />
+
+                    {/* Grid Pattern */}
+                    <div className="absolute inset-0 dot-grid-dark opacity-40" />
+
+                    {/* Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[var(--slate-deep)]/50 to-[var(--slate-deep)]" />
                 </div>
 
-                <div className="relative z-10 pt-32 pb-20 px-4 text-center">
-                    {/* Badge */}
+                {/* Main Content */}
+                <motion.div
+                    style={{ y: heroY, opacity: heroOpacity }}
+                    className="container-editorial relative z-10"
+                >
                     <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="mx-auto mb-8 flex max-w-fit items-center justify-center space-x-2 rounded-full bg-white/10 px-4 py-2 backdrop-blur-sm border border-white/10 cursor-pointer hover:bg-white/15 transition-colors"
+                        variants={staggerContainer}
+                        initial="hidden"
+                        animate="visible"
+                        className="max-w-5xl mx-auto"
                     >
-                        <span className="text-sm font-medium text-white">
-                            Join the revolution today!
-                        </span>
-                        <ArrowRight className="h-4 w-4 text-white" />
-                    </motion.div>
+                        {/* Top Badge */}
+                        <motion.div variants={fadeUp} className="flex justify-center mb-8">
+                            <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full border border-white/10 bg-white/5 backdrop-blur-sm">
+                                <span className="flex items-center gap-1.5 text-[var(--terracotta)] text-sm font-semibold">
+                                    <span className="w-2 h-2 rounded-full bg-[var(--terracotta)] animate-pulse" />
+                                    New
+                                </span>
+                                <span className="text-sm text-[var(--text-secondary)]">
+                                    AI-Powered Email Outreach Platform
+                                </span>
+                                <ChevronRight className="w-4 h-4 text-[var(--text-muted)]" />
+                            </div>
+                        </motion.div>
 
-                    <motion.h1
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 }}
-                        className="mx-auto max-w-5xl text-5xl md:text-7xl font-bold tracking-tighter text-white leading-[1.1]"
-                    >
-                        Unbeatable Scalability for<br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-violet-400 to-fuchsia-400 drop-shadow-[0_0_30px_rgba(139,92,246,0.3)]">Cold Email Outreach</span>
-                    </motion.h1>
+                        {/* Main Headline */}
+                        <motion.h1
+                            variants={fadeUp}
+                            className="text-center mb-8"
+                        >
+                            <span className="block text-display text-white leading-[1.05]">
+                                Scale Your Outreach.
+                            </span>
+                            <span className="block text-display leading-[1.05]">
+                                <span className="text-gradient-terracotta">Close More Deals.</span>
+                            </span>
+                        </motion.h1>
 
-                    <motion.p
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                        className="mx-auto mt-8 max-w-2xl text-lg text-zinc-400 leading-relaxed"
-                    >
-                        Delivering unmatched email campaigns every day at unbeatable rates. Our AI-driven platform redefines cost-effectiveness. Connect unlimited accounts today.
-                    </motion.p>
+                        {/* Subheadline */}
+                        <motion.p
+                            variants={fadeUp}
+                            className="text-center text-xl md:text-2xl text-[var(--text-secondary)] max-w-3xl mx-auto mb-12 leading-relaxed font-light"
+                        >
+                            The AI-powered cold email platform that discovers leads, personalizes at scale, and delivers unmatched results—all at a fraction of the cost.
+                        </motion.p>
 
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 }}
-                        className="mt-10 flex flex-col items-center justify-center space-y-4 sm:flex-row sm:space-x-4 sm:space-y-0"
-                    >
-                        <Link to="/signup">
-                            <button className="h-12 rounded-full bg-white px-8 text-base font-bold text-black hover:bg-white/90 hover:scale-[1.02] transition-all">
-                                Start Your 7 Day Free Trial
+                        {/* CTA Buttons */}
+                        <motion.div
+                            variants={fadeUp}
+                            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
+                        >
+                            <Link to="/signup">
+                                <button className="btn-terracotta text-base px-8 py-4 group">
+                                    Start Free Trial
+                                    <ArrowUpRight className="w-5 h-5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                                </button>
+                            </Link>
+                            <button className="btn-glass text-base px-8 py-4 group">
+                                <Play className="w-5 h-5 fill-current" />
+                                Watch Demo
                             </button>
-                        </Link>
-                        <button className="h-12 rounded-full border border-gray-600 px-8 text-base font-medium text-white hover:bg-white/10 transition-all flex items-center gap-2">
-                            <Play className="w-4 h-4 fill-white text-white" /> Watch Demo
-                        </button>
-                    </motion.div>
+                        </motion.div>
 
-                    <motion.div
-                        initial={{ opacity: 0, y: 60 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.5, duration: 0.8 }}
-                        className="relative mx-auto mt-20 w-full max-w-6xl"
-                    >
-                        <div className="absolute inset-0 rounded-3xl shadow-lg bg-white/20 blur-[5rem] opacity-30 pointer-events-none" />
-                        <DashboardMockup />
+                        {/* Stats Row */}
+                        <motion.div
+                            variants={fadeUp}
+                            className="flex flex-wrap justify-center gap-12 lg:gap-20"
+                        >
+                            {stats.map((stat, i) => (
+                                <div key={i} className="text-center group">
+                                    <div className="text-4xl md:text-5xl font-bold text-white mb-1" style={{ fontFamily: 'Syne, sans-serif' }}>
+                                        {stat.value}
+                                    </div>
+                                    <div className="text-sm text-[var(--terracotta)] font-semibold uppercase tracking-wider mb-1">
+                                        {stat.label}
+                                    </div>
+                                    <div className="text-xs text-[var(--text-muted)]">
+                                        {stat.description}
+                                    </div>
+                                </div>
+                            ))}
+                        </motion.div>
                     </motion.div>
-                </div>
-            </div>
+                </motion.div>
 
-            {/* ==================== INTEGRATIONS MARQUEE ==================== */}
+                {/* Dashboard Preview */}
+                <motion.div
+                    initial={{ opacity: 0, y: 60 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.6, duration: 1, ease: [0.25, 0.4, 0.25, 1] }}
+                    className="container-editorial mt-16 relative z-10"
+                >
+                    <div className="relative max-w-6xl mx-auto">
+                        {/* Glow Effect */}
+                        <div className="absolute -inset-8 bg-gradient-to-b from-[var(--terracotta)]/10 via-[var(--terracotta)]/5 to-transparent rounded-3xl blur-3xl" />
+
+                        {/* Dashboard Container */}
+                        <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl shadow-black/50">
+                            <DashboardMockup />
+                        </div>
+
+                        {/* Floating Badge */}
+                        <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--slate-rich)] border border-white/10 shadow-xl">
+                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                            <span className="text-sm text-[var(--text-secondary)]">Live Dashboard Preview</span>
+                        </div>
+                    </div>
+                </motion.div>
+
+                {/* Scroll Indicator */}
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 1.5 }}
+                    className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3"
+                >
+                    <span className="text-xs text-[var(--text-muted)] uppercase tracking-widest font-medium">Scroll</span>
+                    <div className="w-px h-10 bg-gradient-to-b from-[var(--terracotta)] to-transparent" />
+                </motion.div>
+            </section>
+
+            {/* Logo Marquee */}
             <LogoMarquee />
 
-            {/* ==================== HOW IT WORKS ==================== */}
-            <section className="py-32 px-6 bg-black relative">
-                <div className="max-w-5xl mx-auto relative z-10">
-                    {/* Header */}
-                    <div className="text-center mb-20">
-                        <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 tracking-tight">
-                            From prospect to meeting<br />in three steps.
+            {/* ═══════════════════════════════════════════════════════════════
+                HOW IT WORKS - Editorial Steps
+            ═══════════════════════════════════════════════════════════════ */}
+            <section className="py-32 relative overflow-hidden">
+                {/* Background */}
+                <div className="absolute inset-0 bg-[var(--slate-rich)]" />
+                <div className="absolute inset-0 dot-grid-dark opacity-30" />
+
+                <div className="container-editorial relative z-10">
+                    {/* Section Header */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 30 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.7 }}
+                        className="max-w-3xl mb-20"
+                    >
+                        <span className="text-label text-[var(--terracotta)] block mb-4">
+                            How It Works
+                        </span>
+                        <h2 className="text-display-sm text-white mb-6">
+                            From prospect to meeting in three steps.
                         </h2>
-                        <p className="text-lg text-zinc-500 max-w-xl mx-auto">
-                            We've simplified the complex world of cold email into a streamlined workflow.
+                        <p className="text-lg text-[var(--text-secondary)] leading-relaxed">
+                            We've distilled the complex world of cold email into a streamlined, AI-powered workflow that actually works.
                         </p>
-                    </div>
+                    </motion.div>
 
                     {/* Steps Grid */}
-                    <div className="grid md:grid-cols-3 gap-8 md:gap-12">
-                        {/* Step 1 */}
-                        <div className="text-center group">
-                            <div className="relative inline-block mb-6">
-                                <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-white/10 flex items-center justify-center transition-all duration-300 group-hover:border-violet-500/50 group-hover:bg-zinc-900/80">
-                                    <Server className="w-7 h-7 text-violet-400" />
-                                </div>
-                                <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-violet-600 text-white text-xs font-bold flex items-center justify-center shadow-lg">1</span>
-                            </div>
-                            <h3 className="text-lg font-semibold text-white mb-3">Connect & Scale</h3>
-                            <p className="text-sm text-zinc-500 leading-relaxed max-w-xs mx-auto">
-                                Link unlimited email accounts. Our AI automatically warms them up to ensure 99% deliverability.
-                            </p>
-                        </div>
+                    <div className="grid lg:grid-cols-3 gap-6">
+                        {steps.map((step, i) => (
+                            <motion.div
+                                key={step.number}
+                                initial={{ opacity: 0, y: 40 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: i * 0.15, duration: 0.6 }}
+                                className="group relative"
+                            >
+                                <div className="card-glass p-8 h-full hover:border-[var(--terracotta)]/30 transition-all duration-300">
+                                    {/* Step Header */}
+                                    <div className="flex items-start justify-between mb-8">
+                                        <span className="text-6xl font-bold text-[var(--terracotta)]/30" style={{ fontFamily: 'Syne, sans-serif' }}>
+                                            {step.number}
+                                        </span>
+                                        <div className="w-14 h-14 rounded-xl bg-[var(--terracotta)]/10 border border-[var(--terracotta)]/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                            <step.icon className="w-7 h-7 text-[var(--terracotta)]" />
+                                        </div>
+                                    </div>
 
-                        {/* Step 2 */}
-                        <div className="text-center group">
-                            <div className="relative inline-block mb-6">
-                                <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-white/10 flex items-center justify-center transition-all duration-300 group-hover:border-blue-500/50 group-hover:bg-zinc-900/80">
-                                    <Target className="w-7 h-7 text-blue-400" />
-                                </div>
-                                <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center shadow-lg">2</span>
-                            </div>
-                            <h3 className="text-lg font-semibold text-white mb-3">Find Leads</h3>
-                            <p className="text-sm text-zinc-500 leading-relaxed max-w-xs mx-auto">
-                                Use our Lead Discovery Engine to find verified contacts from a database of 160M+ B2B professionals.
-                            </p>
-                        </div>
+                                    {/* Content */}
+                                    <h3 className="text-xl font-semibold text-white mb-3" style={{ fontFamily: 'Syne, sans-serif' }}>
+                                        {step.title}
+                                    </h3>
+                                    <p className="text-[var(--text-secondary)] leading-relaxed mb-6">
+                                        {step.description}
+                                    </p>
 
-                        {/* Step 3 */}
-                        <div className="text-center group">
-                            <div className="relative inline-block mb-6">
-                                <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-white/10 flex items-center justify-center transition-all duration-300 group-hover:border-emerald-500/50 group-hover:bg-zinc-900/80">
-                                    <Rocket className="w-7 h-7 text-emerald-400" />
+                                    {/* Detail Badge */}
+                                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--terracotta)]/10 border border-[var(--terracotta)]/20">
+                                        <Check className="w-4 h-4 text-[var(--terracotta)]" />
+                                        <span className="text-sm font-medium text-[var(--terracotta)]">{step.detail}</span>
+                                    </div>
                                 </div>
-                                <span className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center shadow-lg">3</span>
-                            </div>
-                            <h3 className="text-lg font-semibold text-white mb-3">Launch & Close</h3>
-                            <p className="text-sm text-zinc-500 leading-relaxed max-w-xs mx-auto">
-                                Launch personalized campaigns. Manage replies in one Unified Inbox and book meetings on autopilot.
-                            </p>
-                        </div>
+
+                                {/* Connector Line */}
+                                {i < steps.length - 1 && (
+                                    <div className="hidden lg:block absolute top-1/2 -right-3 w-6 h-px bg-gradient-to-r from-[var(--terracotta)]/50 to-transparent" />
+                                )}
+                            </motion.div>
+                        ))}
                     </div>
                 </div>
             </section>
 
-            {/* ==================== FEATURES BENTO GRID ==================== */}
-            <section className="py-32 px-6 bg-black relative overflow-hidden">
-                <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+            {/* ═══════════════════════════════════════════════════════════════
+                FEATURES - Bento Grid
+            ═══════════════════════════════════════════════════════════════ */}
+            <section className="py-32 relative overflow-hidden">
+                <div className="absolute inset-0 bg-[var(--slate-deep)]" />
 
-                {/* Subtle BG Elements */}
-                <div className="absolute right-0 bottom-0 w-[500px] h-[500px] bg-blue-900/10 blur-[120px] pointer-events-none" />
-
-                <div className="max-w-7xl mx-auto mb-20 text-center relative z-10">
-                    <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 tracking-tight">
-                        Powerful features to simplify<br />your outreach
-                    </h2>
-                    <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-                        Everything you need to scale your outbound sales process, built right into one intuitive platform.
-                    </p>
-                </div>
-
-                <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
-                    {/* Feature 1 - AI Lead Discovery */}
-                    <BentoCard className="md:col-span-1">
-                        <div className="w-10 h-10 rounded-xl bg-violet-500/20 flex items-center justify-center mb-4 ring-1 ring-violet-500/30">
-                            <Target className="w-5 h-5 text-violet-400" />
-                        </div>
-                        <h3 className="text-lg font-semibold text-white mb-2">AI Lead Discovery</h3>
-                        <p className="text-sm text-zinc-400 leading-relaxed">
-                            Our AI scans 160M+ verified profiles to find your perfect customers based on tech stack, hiring intent, and funding.
+                <div className="container-editorial relative z-10">
+                    {/* Section Header */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 30 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        className="text-center max-w-3xl mx-auto mb-16"
+                    >
+                        <span className="text-label text-[var(--terracotta)] block mb-4">Features</span>
+                        <h2 className="text-display-sm text-white mb-6">
+                            Everything you need to dominate outbound.
+                        </h2>
+                        <p className="text-lg text-[var(--text-secondary)] leading-relaxed">
+                            Built for ambitious sales teams who want to scale without the complexity.
                         </p>
-                        <LeadDiscoveryMockup />
-                    </BentoCard>
+                    </motion.div>
 
-                    {/* Feature 2 - Personalization */}
-                    <BentoCard className="md:col-span-1">
-                        <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center mb-4 ring-1 ring-blue-500/30">
-                            <Sparkles className="w-5 h-5 text-blue-400" />
-                        </div>
-                        <h3 className="text-lg font-semibold text-white mb-2">Personalization at Scale</h3>
-                        <p className="text-sm text-zinc-400 leading-relaxed">
-                            AI writes unique openers for every prospect, referencing their recent news or posts.
-                        </p>
-                        <PersonalizationMockup />
-                    </BentoCard>
+                    {/* Bento Grid */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        {bentoFeatures.map((feature, i) => (
+                            <motion.div
+                                key={feature.title}
+                                initial={{ opacity: 0, y: 30 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: i * 0.08, duration: 0.5 }}
+                                className={`${feature.span} group`}
+                            >
+                                <div className={`h-full p-6 lg:p-8 rounded-2xl transition-all duration-300 ${feature.variant === 'primary'
+                                    ? 'bg-gradient-to-br from-[var(--terracotta)]/20 to-[var(--terracotta)]/5 border border-[var(--terracotta)]/30 hover:border-[var(--terracotta)]/50'
+                                    : feature.variant === 'accent'
+                                        ? 'bg-gradient-to-br from-[var(--gold)]/20 to-[var(--gold)]/5 border border-[var(--gold)]/30 hover:border-[var(--gold)]/50'
+                                        : feature.variant === 'dark'
+                                            ? 'bg-[var(--slate-mid)] border border-white/10 hover:border-white/20'
+                                            : 'card-glass card-glass-hover'
+                                    }`}
+                                >
+                                    {/* Icon */}
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-6 ${feature.variant === 'primary'
+                                        ? 'bg-[var(--terracotta)]/20'
+                                        : feature.variant === 'accent'
+                                            ? 'bg-[var(--gold)]/20'
+                                            : 'bg-white/5'
+                                        }`}>
+                                        <feature.icon className={`w-6 h-6 ${feature.variant === 'primary'
+                                            ? 'text-[var(--terracotta)]'
+                                            : feature.variant === 'accent'
+                                                ? 'text-[var(--gold)]'
+                                                : 'text-[var(--text-secondary)]'
+                                            }`} />
+                                    </div>
 
-                    {/* Feature 3 - Unified Inbox */}
-                    <BentoCard className="md:col-span-1">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center mb-4 ring-1 ring-emerald-500/30">
-                            <InboxIcon className="w-5 h-5 text-emerald-400" />
-                        </div>
-                        <h3 className="text-lg font-semibold text-white mb-2">Unified Inbox</h3>
-                        <p className="text-sm text-zinc-400 leading-relaxed">
-                            Manage replies from all your email accounts in one master inbox. Never miss a lead.
-                        </p>
-                        <InboxMockup />
-                    </BentoCard>
+                                    {/* Content */}
+                                    <h3 className="text-lg lg:text-xl font-semibold text-white mb-3" style={{ fontFamily: 'Syne, sans-serif' }}>
+                                        {feature.title}
+                                    </h3>
+                                    <p className="text-[var(--text-secondary)] text-sm lg:text-base leading-relaxed">
+                                        {feature.description}
+                                    </p>
 
-                    {/* Feature 4 - Campaign Analytics - Full Width */}
-                    <BentoCard className="md:col-span-3">
-                        <div className="flex flex-col md:flex-row md:items-start gap-8">
-                            <div className="flex-1">
-                                <div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center mb-4 ring-1 ring-orange-500/30">
-                                    <TrendingUp className="w-5 h-5 text-orange-400" />
+                                    {/* Learn More Link (Primary card) */}
+                                    {feature.variant === 'primary' && (
+                                        <div className="mt-8 flex items-center gap-2 text-[var(--terracotta)] font-medium group-hover:gap-3 transition-all">
+                                            <span>Learn more</span>
+                                            <ArrowRight className="w-4 h-4" />
+                                        </div>
+                                    )}
                                 </div>
-                                <h3 className="text-lg font-semibold text-white mb-2">Campaign Performance</h3>
-                                <p className="text-sm text-zinc-400 leading-relaxed max-w-md">
-                                    Track the exact ROI of your campaigns. Our system automatically attributes closed deals and revenue to specific email campaigns.
-                                </p>
-                            </div>
-                            <div className="flex-1">
-                                <CampaignStatsMockup />
-                            </div>
-                        </div>
-                    </BentoCard>
+                            </motion.div>
+                        ))}
+                    </div>
                 </div>
             </section>
 
-            {/* ==================== TESTIMONIALS ==================== */}
+            {/* Testimonials */}
             <TestimonialsSection />
 
-            {/* ==================== VALUE PROPOSITION / COMPARISON ==================== */}
-            <section className="py-24 px-6 bg-black">
-                <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-16 items-center">
-                    {/* Left Side - Content */}
-                    <div>
-                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-xs font-semibold mb-6">
-                            <TrendingUp className="w-3.5 h-3.5" />
-                            <span>Why Sales Teams Switch</span>
-                        </div>
-                        <h2 className="text-3xl md:text-4xl font-bold text-white mb-6 leading-tight">
-                            Stop paying per email account.
-                        </h2>
-                        <p className="text-zinc-500 mb-8 leading-relaxed">
-                            Legacy tools charge you for every seat and every email account you connect. We don't. Connect unlimited accounts to scale your outreach volume without scaling your costs.
-                        </p>
+            {/* ═══════════════════════════════════════════════════════════════
+                VALUE PROPOSITION - Why Switch
+            ═══════════════════════════════════════════════════════════════ */}
+            <section className="py-32 relative overflow-hidden">
+                <div className="absolute inset-0 bg-[var(--slate-rich)]" />
+                <div className="absolute inset-0 dot-grid-dark opacity-20" />
 
-                        {/* Comparison Cards */}
-                        <div className="space-y-3">
-                            <div className="flex items-center gap-4 p-4 bg-zinc-900/50 rounded-xl border border-white/5">
-                                <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 shrink-0">
-                                    <span className="font-bold text-sm">L</span>
+                <div className="container-editorial relative z-10">
+                    <div className="grid lg:grid-cols-2 gap-16 items-center">
+                        {/* Left - Content */}
+                        <motion.div
+                            initial={{ opacity: 0, x: -40 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 0.7 }}
+                        >
+                            <span className="text-label text-[var(--terracotta)] block mb-4">Why Switch?</span>
+                            <h2 className="text-display-sm text-white mb-6">
+                                Stop paying per email account.
+                            </h2>
+                            <p className="text-lg text-[var(--text-secondary)] leading-relaxed mb-10">
+                                Legacy tools charge you for every seat and every email account. We don't. Connect unlimited accounts to scale your outreach without scaling your costs.
+                            </p>
+
+                            {/* Value Props Grid */}
+                            <div className="grid grid-cols-2 gap-4">
+                                {valueProps.map((prop, i) => (
+                                    <motion.div
+                                        key={prop.title}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        whileInView={{ opacity: 1, y: 0 }}
+                                        viewport={{ once: true }}
+                                        transition={{ delay: i * 0.1, duration: 0.5 }}
+                                        className="flex items-start gap-3 p-4 rounded-xl bg-white/5 border border-white/5"
+                                    >
+                                        <div className="w-10 h-10 rounded-lg bg-[var(--terracotta)]/10 flex items-center justify-center shrink-0">
+                                            <prop.icon className="w-5 h-5 text-[var(--terracotta)]" />
+                                        </div>
+                                        <div>
+                                            <div className="font-semibold text-white text-sm">{prop.title}</div>
+                                            <div className="text-xs text-[var(--text-muted)]">{prop.description}</div>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </motion.div>
+
+                        {/* Right - Pricing Comparison */}
+                        <motion.div
+                            initial={{ opacity: 0, x: 40 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 0.7 }}
+                            className="relative"
+                        >
+                            <div className="absolute -inset-4 bg-gradient-to-r from-[var(--terracotta)]/20 to-transparent rounded-3xl blur-2xl" />
+                            <div className="relative card-glass p-8">
+                                <div className="text-overline text-[var(--text-muted)] mb-8">
+                                    Cost to send 50K emails/month
                                 </div>
-                                <div className="flex-1">
-                                    <div className="font-medium text-white text-sm">Legacy Tools</div>
-                                    <div className="text-xs text-zinc-600">Charges per inbox ($30/mo each)</div>
+
+                                <div className="space-y-6">
+                                    {/* Competitor L */}
+                                    <div>
+                                        <div className="flex justify-between items-center mb-3">
+                                            <span className="text-sm text-[var(--text-muted)]">Competitor L</span>
+                                            <span className="text-lg font-bold text-white">$1,200/mo</span>
+                                        </div>
+                                        <div className="h-3 bg-white/5 rounded-full overflow-hidden">
+                                            <div className="h-full bg-white/20 rounded-full" style={{ width: '100%' }} />
+                                        </div>
+                                    </div>
+
+                                    {/* Competitor I */}
+                                    <div>
+                                        <div className="flex justify-between items-center mb-3">
+                                            <span className="text-sm text-[var(--text-muted)]">Competitor I</span>
+                                            <span className="text-lg font-bold text-white">$499/mo</span>
+                                        </div>
+                                        <div className="h-3 bg-white/5 rounded-full overflow-hidden">
+                                            <div className="h-full bg-white/20 rounded-full" style={{ width: '42%' }} />
+                                        </div>
+                                    </div>
+
+                                    {/* Kokorick */}
+                                    <div>
+                                        <div className="flex justify-between items-center mb-3">
+                                            <span className="text-sm font-medium text-[var(--terracotta)] flex items-center gap-2">
+                                                <Bot className="w-4 h-4" />
+                                                Kokorick AI
+                                            </span>
+                                            <span className="text-lg font-bold text-[var(--terracotta)]">$79/mo</span>
+                                        </div>
+                                        <div className="h-3 bg-[var(--terracotta)]/10 rounded-full overflow-hidden border border-[var(--terracotta)]/30">
+                                            <div className="h-full bg-gradient-to-r from-[var(--terracotta)] to-[var(--terracotta-light)] rounded-full" style={{ width: '7%' }} />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Savings */}
+                                <div className="mt-10 pt-6 border-t border-white/10 text-center">
+                                    <div className="inline-flex items-baseline gap-3">
+                                        <span className="text-5xl font-bold text-[var(--sage)]" style={{ fontFamily: 'Syne, sans-serif' }}>93%</span>
+                                        <span className="text-[var(--text-secondary)]">savings vs competitors</span>
+                                    </div>
                                 </div>
                             </div>
-
-                            <div className="flex items-center gap-4 p-4 bg-violet-500/5 rounded-xl border border-violet-500/20 relative">
-                                <span className="absolute top-2 right-2 text-[9px] uppercase font-bold text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded-full">Winner</span>
-                                <div className="w-10 h-10 rounded-full bg-violet-500/20 flex items-center justify-center text-violet-400 shrink-0">
-                                    <Bot className="w-5 h-5" />
-                                </div>
-                                <div className="flex-1">
-                                    <div className="font-medium text-white text-sm">Kokorick AI</div>
-                                    <div className="text-xs text-violet-400">Unlimited Inboxes (Flat Rate)</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Right Side - Pricing Comparison */}
-                    <div className="bg-zinc-900/50 rounded-2xl p-6 border border-white/10">
-                        <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-6">
-                            Cost to send 50k emails/mo
-                        </div>
-
-                        <div className="space-y-5">
-                            {/* Competitor L */}
-                            <div>
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="text-sm text-zinc-400">Competitor L</span>
-                                    <span className="text-sm font-semibold text-white">$1,200/mo</span>
-                                </div>
-                                <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
-                                    <div className="h-full bg-zinc-600 rounded-full" style={{ width: '100%' }} />
-                                </div>
-                            </div>
-
-                            {/* Competitor I */}
-                            <div>
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="text-sm text-zinc-400">Competitor I</span>
-                                    <span className="text-sm font-semibold text-white">$499/mo</span>
-                                </div>
-                                <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
-                                    <div className="h-full bg-zinc-600 rounded-full" style={{ width: '42%' }} />
-                                </div>
-                            </div>
-
-                            {/* Kokorick */}
-                            <div>
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="text-sm font-medium text-violet-400 flex items-center gap-1.5">
-                                        <Bot className="w-3.5 h-3.5" />
-                                        Kokorick AI
-                                    </span>
-                                    <span className="text-sm font-bold text-violet-400">$79/mo</span>
-                                </div>
-                                <div className="h-2 bg-violet-500/20 rounded-full overflow-hidden">
-                                    <div className="h-full bg-violet-500 rounded-full" style={{ width: '7%' }} />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Savings callout */}
-                        <div className="mt-6 pt-5 border-t border-white/5 text-center">
-                            <span className="text-2xl font-bold text-emerald-400">Save up to 93%</span>
-                            <span className="text-sm text-zinc-500 ml-2">vs competitors</span>
-                        </div>
+                        </motion.div>
                     </div>
                 </div>
             </section>
 
-            {/* ==================== FINAL CTA ==================== */}
-            <section className="py-24 px-6 relative overflow-hidden bg-black border-t border-white/10">
-                <div className="absolute inset-0 bg-gradient-to-t from-violet-900/20 via-black to-black pointer-events-none" />
-                <div className="max-w-4xl mx-auto relative z-10 text-center">
-                    <h2 className="text-4xl md:text-5xl font-bold text-white mb-8">
-                        Ready to automate your growth?
-                    </h2>
-                    <p className="text-xl text-slate-400 mb-10 max-w-2xl mx-auto">
-                        Join thousands of innovative sales teams changing the way they do outreach today.
-                    </p>
-                    <Link to="/signup">
-                        <button className="px-10 py-5 bg-white text-black rounded-full font-bold hover:bg-zinc-200 transition-all shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] hover:scale-105">
-                            Start Free Trial Today
-                        </button>
-                    </Link>
+            {/* ═══════════════════════════════════════════════════════════════
+                FINAL CTA
+            ═══════════════════════════════════════════════════════════════ */}
+            <section className="py-32 relative overflow-hidden">
+                {/* Background */}
+                <div className="absolute inset-0 bg-[var(--slate-deep)]" />
+                <div className="absolute inset-0">
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[var(--terracotta)]/10 rounded-full blur-[150px]" />
+                </div>
+
+                <div className="container-editorial relative z-10">
+                    <motion.div
+                        initial={{ opacity: 0, y: 40 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.7 }}
+                        className="max-w-3xl mx-auto text-center"
+                    >
+                        <h2 className="text-display-sm text-white mb-8">
+                            Ready to transform your outreach?
+                        </h2>
+                        <p className="text-xl text-[var(--text-secondary)] mb-12 leading-relaxed">
+                            Join thousands of sales teams who've already made the switch to smarter, more effective cold email.
+                        </p>
+                        <Link to="/signup">
+                            <button className="btn-terracotta text-lg px-10 py-5 group">
+                                Start Your Free Trial Today
+                                <ArrowUpRight className="w-5 h-5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                            </button>
+                        </Link>
+                        <p className="mt-6 text-sm text-[var(--text-muted)]">
+                            No credit card required · Cancel anytime
+                        </p>
+                    </motion.div>
                 </div>
             </section>
         </div>

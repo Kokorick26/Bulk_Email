@@ -2,21 +2,21 @@
 import React from 'react';
 import Marquee from '../ui/Marquee';
 
-// Inline SVG icons - these will ALWAYS work
+// Inline SVG icons
 const HubSpotIcon = () => (
-    <svg viewBox="0 0 24 24" fill="#FF7A59" className="w-8 h-8">
+    <svg viewBox="0 0 24 24" fill="#FF7A59" className="w-7 h-7">
         <path d="M18.164 7.93V5.084a2.198 2.198 0 001.267-1.982 2.202 2.202 0 00-4.404 0c0 .877.52 1.626 1.267 1.982v2.846a5.85 5.85 0 00-2.603 1.07l-6.87-5.37a2.05 2.05 0 00.084-.57 2.116 2.116 0 10-2.115 2.115c.395 0 .759-.113 1.073-.3l6.75 5.275a5.844 5.844 0 00-.88 3.072c0 1.17.342 2.258.933 3.172l-2.046 2.046a1.69 1.69 0 00-.5-.079 1.699 1.699 0 101.699 1.698c0-.176-.03-.344-.079-.5l2.006-2.007a5.846 5.846 0 109.438-6.553 5.852 5.852 0 00-4.02-5.069z" />
     </svg>
 );
 
 const SalesforceIcon = () => (
-    <svg viewBox="0 0 24 24" fill="#00A1E0" className="w-8 h-8">
+    <svg viewBox="0 0 24 24" fill="#00A1E0" className="w-7 h-7">
         <path d="M10.006 5.415a4.195 4.195 0 013.045-1.306c1.56 0 2.954.9 3.69 2.205a4.69 4.69 0 011.932-.416c2.605 0 4.718 2.144 4.718 4.786 0 2.641-2.113 4.785-4.718 4.785-.413 0-.813-.053-1.197-.154a3.787 3.787 0 01-3.34 2.022c-.47 0-.92-.087-1.335-.243a4.329 4.329 0 01-3.907 2.506c-1.594 0-3.013-.884-3.775-2.206a4.163 4.163 0 01-1.464.27C1.601 17.664 0 16.036 0 14.009c0-1.416.79-2.65 1.953-3.262a4.048 4.048 0 01-.293-1.52c0-2.24 1.79-4.055 3.998-4.055 1.34 0 2.53.67 3.26 1.696a4.262 4.262 0 011.088-.453z" />
     </svg>
 );
 
 const SlackIcon = () => (
-    <svg viewBox="0 0 24 24" className="w-8 h-8">
+    <svg viewBox="0 0 24 24" className="w-7 h-7">
         <path fill="#E01E5A" d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313z" />
         <path fill="#36C5F0" d="M8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312z" />
         <path fill="#2EB67D" d="M18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312z" />
@@ -25,7 +25,7 @@ const SlackIcon = () => (
 );
 
 const GmailIcon = () => (
-    <svg viewBox="0 0 24 24" className="w-8 h-8">
+    <svg viewBox="0 0 24 24" className="w-7 h-7">
         <path fill="#4285F4" d="M22 6v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2h16c1.1 0 2 .9 2 2z" />
         <path fill="#EA4335" d="M22 6l-10 7.5L2 6" />
         <path fill="#FBBC05" d="M2 6v12l7.5-6z" />
@@ -35,31 +35,31 @@ const GmailIcon = () => (
 );
 
 const ZapierIcon = () => (
-    <svg viewBox="0 0 24 24" fill="#FF4A00" className="w-8 h-8">
+    <svg viewBox="0 0 24 24" fill="#FF4A00" className="w-7 h-7">
         <path d="M15.637 8.363h4.608l-3.27 3.27 3.27 3.267h-4.608l-1.758 1.758v4.608l-3.267-3.27-3.27 3.27v-4.608l-1.758-1.758H1.755l3.27-3.267-3.27-3.27h4.608L8.12 6.605V1.997l3.27 3.27 3.267-3.27v4.608z" />
     </svg>
 );
 
 const NotionIcon = () => (
-    <svg viewBox="0 0 24 24" fill="white" className="w-8 h-8">
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-7 h-7 text-white">
         <path d="M4.459 4.208c.746.606 1.026.56 2.428.466l13.215-.793c.28 0 .047-.28-.046-.326L17.86 1.968c-.42-.326-.981-.7-2.055-.607L3.01 2.613c-.466.046-.56.28-.374.466zm.793 3.08v13.904c0 .747.373 1.027 1.214.98l14.523-.84c.841-.046.935-.56.935-1.167V6.354c0-.606-.233-.933-.748-.886l-15.177.887c-.56.047-.747.327-.747.933zm14.337.745c.093.42 0 .84-.42.888l-.7.14v10.264c-.608.327-1.168.514-1.635.514-.748 0-.935-.234-1.495-.933l-4.577-7.186v6.952l1.448.327s0 .84-1.168.84l-3.22.186c-.094-.186 0-.653.327-.746l.84-.233V9.854L7.822 9.76c-.094-.42.14-1.026.793-1.073l3.456-.233 4.764 7.279v-6.44l-1.215-.14c-.093-.514.28-.886.747-.933zM2.877 1.54l13.728-1.026c1.682-.14 2.101.093 2.803.607l3.876 2.706c.467.327.607.747.607 1.26v16.5c0 1.027-.373 1.635-1.682 1.728l-15.457.933c-.98.047-1.448-.093-1.962-.747l-3.08-4.012c-.56-.747-.793-1.307-.793-1.96V3.2c0-.84.373-1.54 1.96-1.66z" />
     </svg>
 );
 
 const LinkedInIcon = () => (
-    <svg viewBox="0 0 24 24" fill="#0A66C2" className="w-8 h-8">
+    <svg viewBox="0 0 24 24" fill="#0A66C2" className="w-7 h-7">
         <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
     </svg>
 );
 
 const OutlookIcon = () => (
-    <svg viewBox="0 0 24 24" fill="#0078D4" className="w-8 h-8">
+    <svg viewBox="0 0 24 24" fill="#0078D4" className="w-7 h-7">
         <path d="M7.88 12.04q0 .45-.11.87-.1.41-.33.74-.22.33-.58.52-.37.2-.87.2t-.85-.2q-.35-.21-.57-.55-.22-.33-.33-.75-.1-.42-.1-.86t.1-.87q.1-.43.34-.76.22-.34.59-.54.36-.2.87-.2t.86.2q.35.2.58.53.22.33.33.77.1.43.1.88zM24 12v9.38q0 .46-.33.8-.33.32-.8.32H7.13q-.46 0-.8-.33-.32-.33-.32-.8V18H1q-.41 0-.7-.3-.3-.29-.3-.7V7q0-.41.3-.7Q.58 6 1 6h6.5V2.55q0-.44.3-.75.3-.3.75-.3h12.9q.44 0 .75.3.3.3.3.75V12zm-6-8.25v3h3v-3zm0 4.5v3h3v-3zm0 4.5v1.83l3.05-1.83zm-5.25-9v3h3.75v-3zm0 4.5v3h3.75v-3zm0 4.5v2.03l2.41 1.5 1.34-.8v-2.73zM9 3.75V6h2l.13.01.12.04v-2.3zM9 9.5v3h2l.13.01.12.04V9.5zm0 4.5v1.5q0 .41-.3.7-.29.3-.7.3H7.13q-.17 0-.33-.07-.17-.07-.29-.2-.13-.12-.2-.28-.07-.17-.07-.35v-1.6zM6.25 8.25q-.41 0-.76.13-.36.12-.64.37-.27.24-.43.58-.15.33-.15.74 0 .39.15.73.16.35.43.58.27.24.64.37.36.13.77.13t.77-.13q.36-.12.63-.37.28-.24.43-.58.16-.35.16-.73 0-.41-.16-.74-.16-.34-.43-.58-.27-.25-.63-.37-.35-.13-.76-.13z" />
     </svg>
 );
 
 const AirtableIcon = () => (
-    <svg viewBox="0 0 24 24" className="w-8 h-8">
+    <svg viewBox="0 0 24 24" className="w-7 h-7">
         <path fill="#FFBF00" d="M11.992 0L1.59 3.822v11.14L11.992 24l10.4-9.038V3.822z" />
         <path fill="#26B5F8" d="M11.992 0L1.59 3.822l10.4 5.178 10.4-5.178z" />
         <path fill="#EF5098" d="M11.992 9L1.59 3.822v11.14L11.992 24z" />
@@ -68,7 +68,7 @@ const AirtableIcon = () => (
 );
 
 const CalendarIcon = () => (
-    <svg viewBox="0 0 24 24" className="w-8 h-8">
+    <svg viewBox="0 0 24 24" className="w-7 h-7">
         <path fill="#4285F4" d="M18 4h-1V2h-2v2H9V2H7v2H6c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H6V9h12v11z" />
         <path fill="#EA4335" d="M6 9h12v2H6z" />
         <path fill="#34A853" d="M8 14h3v3H8z" />
@@ -90,18 +90,27 @@ const integrations = [
 
 export default function LogoMarquee() {
     return (
-        <section className="py-12 border-y border-white/5 bg-black overflow-hidden">
-            <div className="max-w-7xl mx-auto px-6 mb-8 text-center">
-                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">
-                    Connect with your favorite tools
-                </p>
+        <section className="py-16 border-y border-white/5 bg-[var(--slate-rich)] overflow-hidden relative">
+            {/* Subtle Background */}
+            <div className="absolute inset-0 dot-grid-dark opacity-20" />
+
+            <div className="max-w-7xl mx-auto px-6 mb-10 text-center relative z-10">
+                <span className="text-overline text-[var(--text-muted)]">
+                    Integrates with your stack
+                </span>
             </div>
 
-            <div className="[mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]">
-                <Marquee pauseOnHover className="[--duration:25s] [--gap:3rem]">
+            <div className="[mask-image:linear-gradient(to_right,transparent,black_15%,black_85%,transparent)] relative z-10">
+                <Marquee pauseOnHover className="[--duration:30s] [--gap:4rem]">
                     {integrations.map((item, i) => (
-                        <div key={i} className="flex items-center justify-center opacity-80 hover:opacity-100 transition-opacity" title={item.name}>
-                            <item.Icon />
+                        <div
+                            key={i}
+                            className="flex items-center justify-center opacity-50 hover:opacity-100 transition-opacity duration-300"
+                            title={item.name}
+                        >
+                            <div className="p-4 rounded-xl bg-white/5 border border-white/5 hover:border-[var(--terracotta)]/30 transition-all duration-300">
+                                <item.Icon />
+                            </div>
                         </div>
                     ))}
                 </Marquee>

@@ -4,7 +4,7 @@ import Footer from "@/components/landing/Footer";
 
 export default function MarketingLayout() {
     return (
-        <div className="min-h-screen bg-white text-slate-900 font-sans antialiased selection:bg-indigo-100 selection:text-indigo-900">
+        <div className="min-h-screen bg-[var(--slate-deep)] text-[var(--text-primary)] antialiased selection:bg-[var(--terracotta)]/20 selection:text-[var(--terracotta)]" style={{ fontFamily: 'DM Sans, sans-serif' }}>
             <Navbar />
             <main>
                 <Outlet />

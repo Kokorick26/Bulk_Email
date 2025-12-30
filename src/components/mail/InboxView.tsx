@@ -368,7 +368,7 @@ export default function InboxView({ smtpAccounts, onRefreshAccounts, onReply, on
             {/* Left Sidebar - Folder Categories Only */}
             <div className={cn(
                 'w-48 flex-shrink-0 flex flex-col border-r',
-                theme === 'dark' ? 'bg-[#1a1a1a] border-gray-800' : 'bg-[#f8f9fa] border-gray-200'
+                theme === 'dark' ? 'bg-[var(--slate-rich)] border-white/5' : 'bg-[#f8f9fa] border-gray-200'
             )}>
                 <ScrollArea className="flex-1 py-4">
                     {/* Filter Section */}
@@ -385,8 +385,8 @@ export default function InboxView({ smtpAccounts, onRefreshAccounts, onReply, on
                                 className={cn(
                                     'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all',
                                     activeFilter === 'all'
-                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
-                                        : theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'
+                                        ? theme === 'dark' ? 'bg-[var(--terracotta)] text-white shadow-lg shadow-[var(--terracotta)]/25' : 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
+                                        : theme === 'dark' ? 'text-[var(--text-secondary)] hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'
                                 )}
                             >
                                 <Mail className="w-4 h-4" />
@@ -405,8 +405,8 @@ export default function InboxView({ smtpAccounts, onRefreshAccounts, onReply, on
                                 className={cn(
                                     'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all',
                                     activeFilter === 'unread'
-                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
-                                        : theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'
+                                        ? theme === 'dark' ? 'bg-[var(--terracotta)] text-white shadow-lg shadow-[var(--terracotta)]/25' : 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
+                                        : theme === 'dark' ? 'text-[var(--text-secondary)] hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'
                                 )}
                             >
                                 <MailOpen className="w-4 h-4" />
@@ -424,8 +424,8 @@ export default function InboxView({ smtpAccounts, onRefreshAccounts, onReply, on
                                 className={cn(
                                     'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all',
                                     activeFilter === 'starred'
-                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
-                                        : theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'
+                                        ? theme === 'dark' ? 'bg-[var(--terracotta)] text-white shadow-lg shadow-[var(--terracotta)]/25' : 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
+                                        : theme === 'dark' ? 'text-[var(--text-secondary)] hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'
                                 )}
                             >
                                 <Star className="w-4 h-4" />
@@ -448,8 +448,8 @@ export default function InboxView({ smtpAccounts, onRefreshAccounts, onReply, on
                                 className={cn(
                                     'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all',
                                     activeFolder === 'INBOX'
-                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
-                                        : theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'
+                                        ? theme === 'dark' ? 'bg-[var(--terracotta)] text-white shadow-lg shadow-[var(--terracotta)]/25' : 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
+                                        : theme === 'dark' ? 'text-[var(--text-secondary)] hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'
                                 )}
                             >
                                 <Inbox className="w-4 h-4" />
@@ -460,8 +460,8 @@ export default function InboxView({ smtpAccounts, onRefreshAccounts, onReply, on
                                 className={cn(
                                     'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all',
                                     activeFolder === 'Sent'
-                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
-                                        : theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'
+                                        ? theme === 'dark' ? 'bg-[var(--terracotta)] text-white shadow-lg shadow-[var(--terracotta)]/25' : 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
+                                        : theme === 'dark' ? 'text-[var(--text-secondary)] hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'
                                 )}
                             >
                                 <Mail className="w-4 h-4" />
@@ -472,8 +472,8 @@ export default function InboxView({ smtpAccounts, onRefreshAccounts, onReply, on
                                 className={cn(
                                     'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all',
                                     activeFolder === 'Drafts'
-                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
-                                        : theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'
+                                        ? theme === 'dark' ? 'bg-[var(--terracotta)] text-white shadow-lg shadow-[var(--terracotta)]/25' : 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
+                                        : theme === 'dark' ? 'text-[var(--text-secondary)] hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'
                                 )}
                             >
                                 <Folder className="w-4 h-4" />
@@ -484,8 +484,8 @@ export default function InboxView({ smtpAccounts, onRefreshAccounts, onReply, on
                                 className={cn(
                                     'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all',
                                     activeFolder === 'Archive'
-                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
-                                        : theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'
+                                        ? theme === 'dark' ? 'bg-[var(--terracotta)] text-white shadow-lg shadow-[var(--terracotta)]/25' : 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
+                                        : theme === 'dark' ? 'text-[var(--text-secondary)] hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'
                                 )}
                             >
                                 <Archive className="w-4 h-4" />
@@ -496,8 +496,8 @@ export default function InboxView({ smtpAccounts, onRefreshAccounts, onReply, on
                                 className={cn(
                                     'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all',
                                     activeFolder === 'Spam'
-                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
-                                        : theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'
+                                        ? theme === 'dark' ? 'bg-[var(--terracotta)] text-white shadow-lg shadow-[var(--terracotta)]/25' : 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
+                                        : theme === 'dark' ? 'text-[var(--text-secondary)] hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'
                                 )}
                             >
                                 <AlertCircle className="w-4 h-4" />
@@ -508,8 +508,8 @@ export default function InboxView({ smtpAccounts, onRefreshAccounts, onReply, on
                                 className={cn(
                                     'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all',
                                     activeFolder === 'Trash'
-                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
-                                        : theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'
+                                        ? theme === 'dark' ? 'bg-[var(--terracotta)] text-white shadow-lg shadow-[var(--terracotta)]/25' : 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
+                                        : theme === 'dark' ? 'text-[var(--text-secondary)] hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'
                                 )}
                             >
                                 <Trash2 className="w-4 h-4" />
@@ -557,17 +557,17 @@ export default function InboxView({ smtpAccounts, onRefreshAccounts, onReply, on
                             className={cn(
                                 'flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all -mb-px whitespace-nowrap',
                                 selectedAccount?.id === account.id
-                                    ? 'border-blue-500 text-blue-500'
+                                    ? theme === 'dark' ? 'border-[var(--terracotta)] text-[var(--terracotta)]' : 'border-blue-500 text-blue-500'
                                     : theme === 'dark'
-                                        ? 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600'
+                                        ? 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-white/10'
                                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                             )}
                         >
                             <div className={cn(
                                 'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold',
                                 selectedAccount?.id === account.id
-                                    ? 'bg-blue-500 text-white'
-                                    : theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-600'
+                                    ? theme === 'dark' ? 'bg-[var(--terracotta)] text-white' : 'bg-blue-500 text-white'
+                                    : theme === 'dark' ? 'bg-[var(--slate-mid)] text-[var(--text-secondary)]' : 'bg-gray-200 text-gray-600'
                             )}>
                                 {account.fromEmail.charAt(0).toUpperCase()}
                             </div>
@@ -618,7 +618,7 @@ export default function InboxView({ smtpAccounts, onRefreshAccounts, onReply, on
                 <div className="flex-1 overflow-y-auto overflow-x-hidden">
                     {loading && messages.length === 0 ? (
                         <div className="flex items-center justify-center py-12">
-                            <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                            <Loader2 className={cn('w-8 h-8 animate-spin', theme === 'dark' ? 'text-[var(--terracotta)]' : 'text-blue-500')} />
                         </div>
                     ) : filteredMessages.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-16">

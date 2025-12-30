@@ -39,6 +39,10 @@ export interface Campaign {
     tags?: string[];
     priority?: 'low' | 'normal' | 'high';
     aiGenerated?: boolean;
+    // Configuration
+    options?: CampaignOptions;
+    schedule?: CampaignSchedule;
+    sequence?: Sequence;
 }
 
 export interface Lead {
@@ -93,11 +97,9 @@ export interface EmailVariant {
 
 export interface CampaignSchedule {
     timezone: string;
-    sendDays: ('monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday')[];
+    days: string[]; // Renamed from sendDays and simplified type for UI
     startTime: string; // HH:mm format
     endTime: string;
-    maxEmailsPerDay: number;
-    delayBetweenEmails: number; // seconds
 }
 
 export interface CampaignOptions {
@@ -107,9 +109,12 @@ export interface CampaignOptions {
     stopOnClick: boolean;
     removeUnsubscribed: boolean;
     smtpAccountId?: string;
+    // Added fields that are used in OptionsTab
+    dailyLimit: number;
+    timeBetweenEmails: number;
 }
 
-export type CampaignTab = 'analytics' | 'leads' | 'sequences' | 'schedule' | 'options' | 'history';
+export type CampaignTab = 'analytics' | 'leads' | 'sequences' | 'schedule' | 'options' | 'accounts' | 'history';
 
 export interface CampaignFilter {
     status: 'all' | Campaign['status'];

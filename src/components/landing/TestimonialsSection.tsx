@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Star } from 'lucide-react';
+import { Star, Quote } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface Testimonial {
@@ -50,33 +50,40 @@ function TestimonialCard({ testimonial }: { testimonial: Testimonial }) {
     const initials = testimonial.name.split(' ').map(n => n[0]).join('');
 
     return (
-        <div className="p-6 rounded-2xl bg-zinc-900/50 border border-white/10 max-w-xs w-full hover:border-white/20 transition-colors">
-            <div className="flex items-center gap-3 mb-4">
+        <div className="p-6 rounded-2xl bg-[var(--slate-rich)] border border-white/5 max-w-xs w-full hover:border-[var(--terracotta)]/30 transition-all duration-300 group">
+            {/* Quote Icon */}
+            <div className="mb-4">
+                <Quote className="w-8 h-8 text-[var(--terracotta)]/30 group-hover:text-[var(--terracotta)]/50 transition-colors" />
+            </div>
+
+            {/* Testimonial Text */}
+            <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-6">"{testimonial.text}"</p>
+
+            {/* Stars */}
+            <div className="flex gap-0.5 mb-4">
+                {[1, 2, 3, 4, 5].map(i => (
+                    <Star key={i} className="w-3.5 h-3.5 fill-[var(--gold)] text-[var(--gold)]" />
+                ))}
+            </div>
+
+            {/* Author */}
+            <div className="flex items-center gap-3 pt-4 border-t border-white/5">
                 {testimonial.image ? (
                     <img
                         src={testimonial.image}
                         alt={testimonial.name}
-                        className="w-10 h-10 rounded-full object-cover"
+                        className="w-10 h-10 rounded-full object-cover ring-2 ring-[var(--terracotta)]/20"
                     />
                 ) : (
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white text-sm font-bold">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--terracotta)] to-[var(--gold)] flex items-center justify-center text-white text-sm font-bold ring-2 ring-[var(--terracotta)]/20">
                         {initials}
                     </div>
                 )}
                 <div>
-                    <div className="font-medium text-white text-sm">{testimonial.name}</div>
-                    <div className="text-xs text-zinc-500">{testimonial.role}</div>
+                    <div className="font-semibold text-white text-sm" style={{ fontFamily: 'Syne, sans-serif' }}>{testimonial.name}</div>
+                    <div className="text-xs text-[var(--text-muted)]">{testimonial.role}</div>
                 </div>
             </div>
-
-            {/* Stars */}
-            <div className="flex gap-0.5 mb-3">
-                {[1, 2, 3, 4, 5].map(i => (
-                    <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                ))}
-            </div>
-
-            <p className="text-sm text-zinc-400 leading-relaxed">"{testimonial.text}"</p>
         </div>
     );
 }
@@ -126,17 +133,28 @@ export default function TestimonialsSection() {
     const col3 = [...testimonials.slice(0, 2), ...testimonials.slice(4, 6)];
 
     return (
-        <section className="py-24 px-6 bg-black overflow-hidden">
-            <div className="max-w-6xl mx-auto">
+        <section className="py-32 px-6 bg-[var(--slate-deep)] overflow-hidden relative">
+            {/* Background */}
+            <div className="absolute inset-0 dot-grid-dark opacity-20" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[var(--terracotta)]/5 rounded-full blur-[150px]" />
+
+            <div className="max-w-6xl mx-auto relative z-10">
                 {/* Header */}
-                <div className="text-center mb-16">
-                    <h2 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">
+                <motion.div
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.7 }}
+                    className="text-center mb-16"
+                >
+                    <span className="text-label text-[var(--terracotta)] block mb-4">Testimonials</span>
+                    <h2 className="text-display-sm text-white mb-6">
                         Loved by fast-growing<br />sales teams
                     </h2>
-                    <p className="text-zinc-500 max-w-md mx-auto">
+                    <p className="text-lg text-[var(--text-secondary)] max-w-lg mx-auto">
                         Join thousands of sales professionals who've transformed their outbound with Kokorick.
                     </p>
-                </div>
+                </motion.div>
 
                 {/* Scrolling Columns */}
                 <div className="flex justify-center gap-6 h-[600px] overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_10%,black_90%,transparent)]">

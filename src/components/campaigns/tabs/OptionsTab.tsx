@@ -1,114 +1,51 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import {
-    Server, ChevronDown, Plus
-} from 'lucide-react';
+import { Save, Zap, Shield, Flame, Clock } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { useTheme } from '../../../lib/ThemeContext';
 import { Button } from '../../ui/Button';
-import type { CampaignOptions } from '../types';
+import type { Campaign } from '../types';
 
 interface OptionsTabProps {
     campaignId: string;
-    options: CampaignOptions | null;
-    onOptionsUpdate: (options: CampaignOptions) => void;
+    options: Campaign['options'];
+    onOptionsUpdate: (options: Campaign['options']) => void;
     className?: string;
-}
-
-interface ExtendedOptions extends CampaignOptions {
-    linkTracking: boolean;
-    sendTextOnly: boolean;
-    sendFirstEmailTextOnly: boolean;
-    dailyLimit: number;
-    useLeadTimezones: boolean;
-}
-
-const defaultOptions: ExtendedOptions = {
-    trackOpens: true,
-    trackClicks: true,
-    stopOnReply: true,
-    stopOnClick: false,
-    removeUnsubscribed: true,
-    smtpAccountId: undefined,
-    linkTracking: false,
-    sendTextOnly: false,
-    sendFirstEmailTextOnly: false,
-    dailyLimit: 30,
-    useLeadTimezones: true
-};
-
-interface ToggleButtonGroupProps {
-    value: boolean;
-    onChange: (value: boolean) => void;
-    enableLabel?: string;
-    disableLabel?: string;
-    theme: 'dark' | 'light';
-}
-
-function ToggleButtonGroup({
-    value,
-    onChange,
-    enableLabel = 'Enable',
-    disableLabel = 'Disable',
-    theme
-}: ToggleButtonGroupProps) {
-    return (
-        <div className="flex items-center gap-1">
-            <button
-                onClick={() => onChange(false)}
-                className={cn(
-                    'px-4 py-2 text-sm font-medium rounded-lg transition-all',
-                    !value
-                        ? theme === 'dark'
-                            ? 'bg-gray-700 text-white'
-                            : 'bg-gray-200 text-gray-900'
-                        : theme === 'dark'
-                            ? 'text-gray-400 hover:bg-gray-800'
-                            : 'text-gray-500 hover:bg-gray-100'
-                )}
-            >
-                {disableLabel}
-            </button>
-            <button
-                onClick={() => onChange(true)}
-                className={cn(
-                    'px-4 py-2 text-sm font-medium rounded-lg transition-all',
-                    value
-                        ? 'bg-emerald-500 text-white'
-                        : theme === 'dark'
-                            ? 'text-gray-400 hover:bg-gray-800'
-                            : 'text-gray-500 hover:bg-gray-100'
-                )}
-            >
-                {enableLabel}
-            </button>
-        </div>
-    );
 }
 
 export function OptionsTab({ campaignId, options, onOptionsUpdate, className }: OptionsTabProps) {
     const { theme } = useTheme();
-    const [localOptions, setLocalOptions] = useState<ExtendedOptions>({
-        ...defaultOptions,
-        ...options
-    });
-    const [showAdvanced, setShowAdvanced] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
 
+    // Local state for each toggle
+    const [trackOpens, setTrackOpens] = useState(true);
+    const [trackClicks, setTrackClicks] = useState(true);
+    const [stopOnReply, setStopOnReply] = useState(true);
+    const [dailyLimit, setDailyLimit] = useState(50);
+    const [timeBetweenEmails, setTimeBetweenEmails] = useState(300);
+
+    // Initialize from props once
     useEffect(() => {
         if (options) {
-            setLocalOptions(prev => ({ ...prev, ...options }));
+            setTrackOpens(options.trackOpens ?? true);
+            setTrackClicks(options.trackClicks ?? true);
+            setStopOnReply(options.stopOnReply ?? true);
+            setDailyLimit(options.dailyLimit ?? 50);
+            setTimeBetweenEmails(options.timeBetweenEmails ?? 300);
         }
-    }, [options]);
-
-    const handleUpdate = (key: keyof ExtendedOptions, value: any) => {
-        setLocalOptions(prev => ({
-            ...prev,
-            [key]: value
-        }));
-    };
+    }, []);
 
     const handleSave = async () => {
-        // Save to backend
+        setIsSaving(true);
+        const newOptions = {
+            trackOpens,
+            trackClicks,
+            stopOnReply,
+            stopOnClick: false,
+            removeUnsubscribed: false,
+            dailyLimit,
+            timeBetweenEmails
+        };
+
         try {
             const token = localStorage.getItem('bulkEmailToken');
             await fetch(`/api/bulk-email/campaigns/${campaignId}/options`, {
@@ -117,360 +54,254 @@ export function OptionsTab({ campaignId, options, onOptionsUpdate, className }: 
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`
                 },
-                body: JSON.stringify({ options: localOptions })
+                body: JSON.stringify({ options: newOptions })
             });
+            onOptionsUpdate(newOptions);
         } catch (err) {
             console.error('Error saving options:', err);
+        } finally {
+            setIsSaving(false);
         }
-
-        onOptionsUpdate(localOptions);
     };
 
+    // Toggle Switch Component
+    const Toggle = ({ checked, onChange }: { checked: boolean; onChange: (val: boolean) => void }) => (
+        <button
+            type="button"
+            role="switch"
+            aria-checked={checked}
+            onClick={() => onChange(!checked)}
+            className={cn(
+                'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2',
+                checked
+                    ? theme === 'dark' ? 'bg-[#d97757] focus:ring-[#d97757]' : 'bg-blue-600 focus:ring-blue-500'
+                    : theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200',
+                theme === 'dark' ? 'focus:ring-offset-gray-900' : 'focus:ring-offset-white'
+            )}
+        >
+            <span
+                className={cn(
+                    'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+                    checked ? 'translate-x-5' : 'translate-x-0'
+                )}
+            />
+        </button>
+    );
+
+    // Option Row Component - Entire row is clickable
+    const OptionRow = ({
+        icon: Icon,
+        title,
+        description,
+        checked,
+        onChange
+    }: {
+        icon: any;
+        title: string;
+        description: string;
+        checked: boolean;
+        onChange: (val: boolean) => void;
+    }) => (
+        <div
+            onClick={() => onChange(!checked)}
+            className={cn(
+                'flex items-center justify-between p-5 rounded-xl border transition-all cursor-pointer select-none',
+                theme === 'dark'
+                    ? 'bg-[#12151a] border-[#252a33] hover:border-[#d97757]/50 hover:bg-[#1a1e25]'
+                    : 'bg-white border-gray-200 hover:border-blue-300 hover:bg-blue-50/50 shadow-sm'
+            )}
+        >
+            <div className="flex items-center gap-4 pointer-events-none">
+                <div className={cn(
+                    'p-2.5 rounded-lg transition-colors',
+                    checked
+                        ? theme === 'dark' ? 'bg-[#d97757]/20 text-[#d97757]' : 'bg-blue-100 text-blue-600'
+                        : theme === 'dark' ? 'bg-gray-800 text-gray-500' : 'bg-gray-100 text-gray-400'
+                )}>
+                    <Icon className="w-5 h-5" />
+                </div>
+                <div>
+                    <h4 className={cn(
+                        'text-sm font-semibold',
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                    )}>
+                        {title}
+                    </h4>
+                    <p className={cn(
+                        'text-xs mt-0.5',
+                        theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
+                    )}>
+                        {description}
+                    </p>
+                </div>
+            </div>
+            {/* Custom Toggle Display (not a button, just visual) */}
+            <div className={cn(
+                'relative w-12 h-7 rounded-full transition-colors pointer-events-none',
+                checked
+                    ? theme === 'dark' ? 'bg-[#d97757]' : 'bg-blue-600'
+                    : theme === 'dark' ? 'bg-gray-700' : 'bg-gray-300'
+            )}>
+                <div className={cn(
+                    'absolute top-1 w-5 h-5 rounded-full bg-white shadow-sm transition-transform',
+                    checked ? 'left-6' : 'left-1'
+                )} />
+            </div>
+        </div>
+    );
+
     return (
-        <div className={cn('max-w-3xl space-y-4', className)}>
-            {/* Accounts to use */}
-            <div className={cn(
-                'p-5 rounded-xl border',
-                theme === 'dark' ? 'bg-[#1a1a1a] border-gray-800' : 'bg-white border-gray-200'
-            )}>
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h4 className={cn(
-                            'font-medium',
-                            theme === 'dark' ? 'text-white' : 'text-gray-900'
-                        )}>
-                            Accounts to use
-                        </h4>
-                        <p className={cn(
-                            'text-sm mt-0.5',
-                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                        )}>
-                            Select one or more accounts to send emails from
-                        </p>
-                    </div>
-                    <div className="text-right">
-                        <div className="relative w-48">
-                            <select
-                                value={localOptions.smtpAccountId || ''}
-                                onChange={(e) => handleUpdate('smtpAccountId', e.target.value || undefined)}
-                                className={cn(
-                                    'w-full px-4 py-2.5 pr-10 rounded-lg border appearance-none cursor-pointer text-sm',
-                                    theme === 'dark'
-                                        ? 'bg-[#252525] border-gray-700 text-white'
-                                        : 'bg-gray-50 border-gray-200 text-gray-900'
-                                )}
-                            >
-                                <option value="">Select...</option>
-                            </select>
-                            <ChevronDown className={cn(
-                                'absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none',
-                                theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                            )} />
-                        </div>
-                        <button className="text-sm text-blue-500 hover:underline mt-2">
-                            Connect new email account
-                        </button>
-                    </div>
+        <div className={cn('max-w-2xl mx-auto animate-in fade-in duration-500', className)}>
+            {/* Header */}
+            <div className="flex items-center justify-between mb-8">
+                <div>
+                    <h2 className={cn(
+                        'text-2xl font-[Syne] font-bold',
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                    )}>
+                        Campaign <span className="text-[#d97757]">Options</span>
+                    </h2>
+                    <p className={cn(
+                        'text-sm mt-1',
+                        theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
+                    )}>
+                        Configure tracking and automation settings
+                    </p>
                 </div>
+                <Button
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className={cn(
+                        'h-10 px-6 rounded-lg font-semibold',
+                        theme === 'dark'
+                            ? 'bg-[#d97757] hover:bg-[#c46144] text-white'
+                            : 'bg-blue-600 hover:bg-blue-700 text-white'
+                    )}
+                >
+                    {isSaving ? (
+                        <Clock className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                        <Save className="w-4 h-4 mr-2" />
+                    )}
+                    {isSaving ? 'Saving...' : 'Save'}
+                </Button>
             </div>
 
-            {/* Stop sending emails on reply */}
-            <div className={cn(
-                'p-5 rounded-xl border',
-                theme === 'dark' ? 'bg-[#1a1a1a] border-gray-800' : 'bg-white border-gray-200'
-            )}>
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h4 className={cn(
-                            'font-medium',
-                            theme === 'dark' ? 'text-white' : 'text-gray-900'
-                        )}>
-                            Stop sending emails on reply
-                        </h4>
-                        <p className={cn(
-                            'text-sm mt-0.5',
-                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                        )}>
-                            Stop sending emails to a lead if a response has been received
-                        </p>
-                    </div>
-                    <ToggleButtonGroup
-                        value={localOptions.stopOnReply}
-                        onChange={(v) => handleUpdate('stopOnReply', v)}
-                        theme={theme}
-                    />
-                </div>
+            {/* Tracking Options */}
+            <div className="space-y-3 mb-8">
+                <h3 className={cn(
+                    'text-xs font-bold uppercase tracking-wider mb-4',
+                    theme === 'dark' ? 'text-[#d97757]' : 'text-blue-600'
+                )}>
+                    Tracking
+                </h3>
+                <OptionRow
+                    icon={Zap}
+                    title="Track Opens"
+                    description="Monitor when recipients open your emails"
+                    checked={trackOpens}
+                    onChange={setTrackOpens}
+                />
+                <OptionRow
+                    icon={Flame}
+                    title="Track Clicks"
+                    description="Track link clicks within your emails"
+                    checked={trackClicks}
+                    onChange={setTrackClicks}
+                />
             </div>
 
-            {/* Open Tracking */}
-            <div className={cn(
-                'p-5 rounded-xl border',
-                theme === 'dark' ? 'bg-[#1a1a1a] border-gray-800' : 'bg-white border-gray-200'
-            )}>
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h4 className={cn(
-                            'font-medium',
-                            theme === 'dark' ? 'text-white' : 'text-gray-900'
-                        )}>
-                            Open Tracking
-                        </h4>
-                        <p className={cn(
-                            'text-sm mt-0.5',
-                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                        )}>
-                            Track email opens
-                        </p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={localOptions.linkTracking}
-                                onChange={(e) => handleUpdate('linkTracking', e.target.checked)}
-                                className="w-4 h-4 rounded border-gray-600"
-                            />
-                            <span className={cn(
-                                'text-sm',
-                                theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+            {/* Automation Options */}
+            <div className="space-y-3 mb-8">
+                <h3 className={cn(
+                    'text-xs font-bold uppercase tracking-wider mb-4',
+                    theme === 'dark' ? 'text-[#d97757]' : 'text-blue-600'
+                )}>
+                    Automation
+                </h3>
+                <OptionRow
+                    icon={Shield}
+                    title="Stop on Reply"
+                    description="Pause sequence when lead replies"
+                    checked={stopOnReply}
+                    onChange={setStopOnReply}
+                />
+            </div>
+
+            {/* Safety Limits */}
+            <div className="space-y-4">
+                <h3 className={cn(
+                    'text-xs font-bold uppercase tracking-wider mb-4',
+                    theme === 'dark' ? 'text-[#d97757]' : 'text-blue-600'
+                )}>
+                    Safety Limits
+                </h3>
+                <div className={cn(
+                    'p-5 rounded-xl border',
+                    theme === 'dark'
+                        ? 'bg-[#12151a] border-[#252a33]'
+                        : 'bg-white border-gray-200 shadow-sm'
+                )}>
+                    <div className="flex items-center justify-between mb-6">
+                        <div>
+                            <h4 className={cn(
+                                'text-sm font-semibold',
+                                theme === 'dark' ? 'text-white' : 'text-gray-900'
                             )}>
-                                Link tracking
-                            </span>
-                        </label>
-                        <ToggleButtonGroup
-                            value={localOptions.trackOpens}
-                            onChange={(v) => handleUpdate('trackOpens', v)}
-                            theme={theme}
+                                Daily Limit
+                            </h4>
+                            <p className={cn(
+                                'text-xs mt-0.5',
+                                theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
+                            )}>
+                                Max emails per day per account
+                            </p>
+                        </div>
+                        <input
+                            type="number"
+                            value={dailyLimit}
+                            onChange={(e) => setDailyLimit(parseInt(e.target.value) || 0)}
+                            className={cn(
+                                'w-24 px-3 py-2 rounded-lg text-right font-mono font-bold border',
+                                theme === 'dark'
+                                    ? 'bg-[#0a0c0f] border-[#252a33] text-white focus:border-[#d97757]'
+                                    : 'bg-white border-gray-200 text-gray-900 focus:border-blue-500'
+                            )}
+                        />
+                    </div>
+                    <div className={cn(
+                        'w-full h-px mb-6',
+                        theme === 'dark' ? 'bg-[#252a33]' : 'bg-gray-200'
+                    )} />
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h4 className={cn(
+                                'text-sm font-semibold',
+                                theme === 'dark' ? 'text-white' : 'text-gray-900'
+                            )}>
+                                Time Gap
+                            </h4>
+                            <p className={cn(
+                                'text-xs mt-0.5',
+                                theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
+                            )}>
+                                Seconds between emails
+                            </p>
+                        </div>
+                        <input
+                            type="number"
+                            value={timeBetweenEmails}
+                            onChange={(e) => setTimeBetweenEmails(parseInt(e.target.value) || 0)}
+                            className={cn(
+                                'w-24 px-3 py-2 rounded-lg text-right font-mono font-bold border',
+                                theme === 'dark'
+                                    ? 'bg-[#0a0c0f] border-[#252a33] text-white focus:border-[#d97757]'
+                                    : 'bg-white border-gray-200 text-gray-900 focus:border-blue-500'
+                            )}
                         />
                     </div>
                 </div>
             </div>
-
-            {/* Delivery Optimization */}
-            <div className={cn(
-                'p-5 rounded-xl border',
-                theme === 'dark' ? 'bg-[#1a1a1a] border-gray-800' : 'bg-white border-gray-200'
-            )}>
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h4 className={cn(
-                            'font-medium flex items-center gap-2',
-                            theme === 'dark' ? 'text-white' : 'text-gray-900'
-                        )}>
-                            Delivery Optimization
-                            <span className="px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/20 text-emerald-500">
-                                Recommended
-                            </span>
-                        </h4>
-                        <p className={cn(
-                            'text-sm mt-0.5',
-                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                        )}>
-                            Disables open tracking
-                        </p>
-                    </div>
-                    <div className="space-y-2">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={localOptions.sendTextOnly}
-                                onChange={(e) => handleUpdate('sendTextOnly', e.target.checked)}
-                                className="w-4 h-4 rounded border-gray-600"
-                            />
-                            <span className={cn(
-                                'text-sm',
-                                theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                            )}>
-                                Send emails as text-only (no HTML)
-                            </span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={localOptions.sendFirstEmailTextOnly}
-                                onChange={(e) => handleUpdate('sendFirstEmailTextOnly', e.target.checked)}
-                                className="w-4 h-4 rounded border-gray-600"
-                            />
-                            <span className={cn(
-                                'text-sm flex items-center gap-2',
-                                theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                            )}>
-                                Send first email as text-only
-                                <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-amber-500/20 text-amber-500">
-                                    Pro
-                                </span>
-                            </span>
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            {/* Daily Limit */}
-            <div className={cn(
-                'p-5 rounded-xl border',
-                theme === 'dark' ? 'bg-[#1a1a1a] border-gray-800' : 'bg-white border-gray-200'
-            )}>
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h4 className={cn(
-                            'font-medium',
-                            theme === 'dark' ? 'text-white' : 'text-gray-900'
-                        )}>
-                            Daily Limit
-                        </h4>
-                        <p className={cn(
-                            'text-sm mt-0.5',
-                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                        )}>
-                            Max number of emails to send per day for this campaign
-                        </p>
-                    </div>
-                    <input
-                        type="number"
-                        min="1"
-                        max="1000"
-                        value={localOptions.dailyLimit}
-                        onChange={(e) => handleUpdate('dailyLimit', parseInt(e.target.value) || 30)}
-                        className={cn(
-                            'w-24 px-4 py-2.5 rounded-lg border text-center',
-                            theme === 'dark'
-                                ? 'bg-[#252525] border-gray-700 text-white'
-                                : 'bg-gray-50 border-gray-200 text-gray-900'
-                        )}
-                    />
-                </div>
-            </div>
-
-            {/* Timezone-Aware Sending */}
-            <div className={cn(
-                'p-5 rounded-xl border',
-                theme === 'dark' ? 'bg-[#1a1a1a] border-gray-800' : 'bg-white border-gray-200'
-            )}>
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h4 className={cn(
-                            'font-medium',
-                            theme === 'dark' ? 'text-white' : 'text-gray-900'
-                        )}>
-                            Timezone-Aware Sending
-                        </h4>
-                        <p className={cn(
-                            'text-sm mt-0.5',
-                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                        )}>
-                            {localOptions.useLeadTimezones
-                                ? 'Only send emails during lead\'s working hours (9am-6pm in their timezone)'
-                                : 'Emails will be sent immediately regardless of recipient\'s timezone'
-                            }
-                        </p>
-                    </div>
-                    <ToggleButtonGroup
-                        value={localOptions.useLeadTimezones}
-                        onChange={(v) => handleUpdate('useLeadTimezones', v)}
-                        theme={theme}
-                    />
-                </div>
-            </div>
-
-            {/* Show advanced options */}
-            <button
-                onClick={() => setShowAdvanced(!showAdvanced)}
-                className={cn(
-                    'w-full flex items-center justify-center gap-2 py-3 text-sm transition-colors',
-                    theme === 'dark'
-                        ? 'text-blue-400 hover:text-blue-300'
-                        : 'text-blue-600 hover:text-blue-700'
-                )}
-            >
-                <span className={cn(
-                    'w-2 h-2 rounded-full',
-                    theme === 'dark' ? 'bg-blue-400' : 'bg-blue-600'
-                )} />
-                {showAdvanced ? 'Hide' : 'Show'} advanced options
-                <ChevronDown className={cn(
-                    'w-4 h-4 transition-transform',
-                    showAdvanced && 'rotate-180'
-                )} />
-            </button>
-
-            {/* Advanced Options */}
-            {showAdvanced && (
-                <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="space-y-4"
-                >
-                    {/* Stop on click */}
-                    <div className={cn(
-                        'p-5 rounded-xl border',
-                        theme === 'dark' ? 'bg-[#1a1a1a] border-gray-800' : 'bg-white border-gray-200'
-                    )}>
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h4 className={cn(
-                                    'font-medium',
-                                    theme === 'dark' ? 'text-white' : 'text-gray-900'
-                                )}>
-                                    Stop sending emails on click
-                                </h4>
-                                <p className={cn(
-                                    'text-sm mt-0.5',
-                                    theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                                )}>
-                                    Stop sending emails to a lead if they click a link
-                                </p>
-                            </div>
-                            <ToggleButtonGroup
-                                value={localOptions.stopOnClick}
-                                onChange={(v) => handleUpdate('stopOnClick', v)}
-                                theme={theme}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Remove unsubscribed */}
-                    <div className={cn(
-                        'p-5 rounded-xl border',
-                        theme === 'dark' ? 'bg-[#1a1a1a] border-gray-800' : 'bg-white border-gray-200'
-                    )}>
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h4 className={cn(
-                                    'font-medium',
-                                    theme === 'dark' ? 'text-white' : 'text-gray-900'
-                                )}>
-                                    Remove unsubscribed contacts
-                                </h4>
-                                <p className={cn(
-                                    'text-sm mt-0.5',
-                                    theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                                )}>
-                                    Automatically remove contacts who unsubscribe
-                                </p>
-                            </div>
-                            <ToggleButtonGroup
-                                value={localOptions.removeUnsubscribed}
-                                onChange={(v) => handleUpdate('removeUnsubscribed', v)}
-                                theme={theme}
-                            />
-                        </div>
-                    </div>
-                </motion.div>
-            )}
-
-            {/* Save Button */}
-            <Button
-                onClick={handleSave}
-                className={cn(
-                    'px-6',
-                    theme === 'dark'
-                        ? 'bg-blue-600 hover:bg-blue-500 text-white'
-                        : 'bg-blue-600 hover:bg-blue-700 text-white'
-                )}
-            >
-                Save
-            </Button>
         </div>
     );
 }

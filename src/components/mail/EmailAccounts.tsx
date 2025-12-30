@@ -360,7 +360,12 @@ export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsP
 
                         <Button
                             onClick={() => setView('add-options')}
-                            className="bg-blue-600 hover:bg-blue-500 text-white gap-2"
+                            className={cn(
+                                'gap-2',
+                                theme === 'dark'
+                                    ? 'bg-[var(--terracotta)] hover:bg-[var(--terracotta-dark)] text-white'
+                                    : 'bg-blue-600 hover:bg-blue-500 text-white'
+                            )}
                         >
                             <Plus className="w-4 h-4" />
                             Add New
@@ -371,7 +376,7 @@ export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsP
                 {/* Table */}
                 <div className={cn(
                     'rounded-xl border',
-                    theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
+                    theme === 'dark' ? 'border-white/5' : 'border-gray-200'
                 )}>
                     {/* Table Header */}
                     <div className={cn(
@@ -409,7 +414,12 @@ export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsP
                             </p>
                             <Button
                                 onClick={() => setView('add-options')}
-                                className="bg-blue-600 hover:bg-blue-500 text-white gap-2"
+                                className={cn(
+                                    'gap-2',
+                                    theme === 'dark'
+                                        ? 'bg-[var(--terracotta)] hover:bg-[var(--terracotta-dark)] text-white'
+                                        : 'bg-blue-600 hover:bg-blue-500 text-white'
+                                )}
                             >
                                 <Plus className="w-4 h-4" />
                                 Add New Account

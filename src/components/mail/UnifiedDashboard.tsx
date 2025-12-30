@@ -23,7 +23,7 @@ import { useDashboardContext } from '../../layouts/DashboardShell';
 import InboxView from './InboxView';
 import SentView from './SentView';
 // New organized campaign components
-import { CampaignsList, CampaignCreate, CampaignDetail } from '../campaigns';
+import { CampaignsList, CampaignWizard, CampaignDetail } from '../campaigns';
 import type { Campaign as OrganizedCampaign } from '../campaigns';
 // AI Lead Discovery
 import { LeadDiscovery } from '../discovery';
@@ -204,8 +204,13 @@ export default function UnifiedDashboard() {
         return (
             <div className="h-[calc(100vh-64px)] flex items-center justify-center">
                 <div className="text-center">
-                    <Loader2 className="w-8 h-8 animate-spin text-[#1a73e8] mx-auto mb-4" />
-                    <p className="text-[#5f6368]">Loading your dashboard...</p>
+                    <Loader2 className={cn(
+                        "w-8 h-8 animate-spin mx-auto mb-4",
+                        theme === 'dark' ? 'text-[var(--terracotta)]' : 'text-[#1a73e8]'
+                    )} />
+                    <p className={cn(
+                        theme === 'dark' ? 'text-[var(--text-muted)]' : 'text-[#5f6368]'
+                    )}>Loading your dashboard...</p>
                 </div>
             </div>
         );
@@ -471,18 +476,14 @@ export default function UnifiedDashboard() {
         if (activeItem === 'campaigns') {
             if (campaignView === 'create') {
                 return (
-                    <ScrollArea className="flex-1">
-                        <div className="px-8 py-6">
-                            <CampaignCreate
-                                onBack={() => setCampaignView('list')}
-                                onComplete={(campaignId: string) => {
-                                    setSelectedCampaignId(campaignId);
-                                    setCampaignView('detail');
-                                    fetchData();
-                                }}
-                            />
-                        </div>
-                    </ScrollArea>
+                    <CampaignWizard
+                        onBack={() => setCampaignView('list')}
+                        onComplete={(campaignId: string) => {
+                            setSelectedCampaignId(campaignId);
+                            setCampaignView('detail');
+                            fetchData();
+                        }}
+                    />
                 );
             }
 
@@ -608,7 +609,7 @@ export default function UnifiedDashboard() {
             <div className={cn(
                 'shrink-0 flex flex-col py-2 overflow-hidden hidden md:flex',
                 sidebarCollapsed ? 'w-[72px]' : 'w-[256px]',
-                theme === 'dark' ? 'bg-[#0c0c10] border-r border-white/5' : 'bg-white border-r border-gray-100'
+                theme === 'dark' ? 'bg-[var(--slate-rich)] border-r border-white/5' : 'bg-white border-r border-gray-100'
             )}>
                 <ScrollArea className="flex-1 pt-4">
                     {/* Main Navigation Items */}
@@ -625,10 +626,10 @@ export default function UnifiedDashboard() {
                                         : 'w-full gap-3 px-6 py-2.5 rounded-r-full mr-3',
                                     activeItem === item.id || (item.id === 'inbox' && isInboxSection)
                                         ? theme === 'dark'
-                                            ? 'bg-[#3c4043] text-[#8ab4f8] font-medium'
+                                            ? 'bg-[var(--terracotta)]/10 text-[var(--terracotta)] font-medium border-l-2 border-[var(--terracotta)]'
                                             : 'bg-[#d3e3fd] text-[#001d35] font-medium'
                                         : theme === 'dark'
-                                            ? 'hover:bg-[#3c4043] text-[#e8eaed]'
+                                            ? 'hover:bg-white/5 text-[var(--text-secondary)] border-l-2 border-transparent'
                                             : 'hover:bg-[#e8eaed] text-[#202124]'
                                 )}
                             >
@@ -640,7 +641,7 @@ export default function UnifiedDashboard() {
                         {/* Divider */}
                         <div className={cn(
                             'h-px my-3',
-                            theme === 'dark' ? 'bg-[#3c4043]' : 'bg-[#dadce0]',
+                            theme === 'dark' ? 'bg-white/5' : 'bg-[#dadce0]',
                             sidebarCollapsed ? 'mx-2' : 'mx-4'
                         )} />
 
@@ -655,10 +656,10 @@ export default function UnifiedDashboard() {
                                     : 'w-full gap-3 px-6 py-2.5 rounded-r-full mr-3',
                                 activeItem === 'settings'
                                     ? theme === 'dark'
-                                        ? 'bg-[#3c4043] text-[#8ab4f8] font-medium'
+                                        ? 'bg-[var(--terracotta)]/10 text-[var(--terracotta)] font-medium border-l-2 border-[var(--terracotta)]'
                                         : 'bg-[#d3e3fd] text-[#001d35] font-medium'
                                     : theme === 'dark'
-                                        ? 'hover:bg-[#3c4043] text-[#e8eaed]'
+                                        ? 'hover:bg-white/5 text-[var(--text-secondary)] border-l-2 border-transparent'
                                         : 'hover:bg-[#e8eaed] text-[#202124]'
                             )}
                         >
@@ -672,7 +673,7 @@ export default function UnifiedDashboard() {
                 {isCampaignSection && !sidebarCollapsed && (
                     <div className={cn(
                         'px-4 py-3 border-t',
-                        theme === 'dark' ? 'border-[#3c4043]' : 'border-[#dadce0]'
+                        theme === 'dark' ? 'border-white/5' : 'border-[#dadce0]'
                     )}>
                         <button
                             onClick={() => setAiSidebarOpen(!aiSidebarOpen)}
@@ -680,10 +681,10 @@ export default function UnifiedDashboard() {
                                 'w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all',
                                 aiSidebarOpen
                                     ? theme === 'dark'
-                                        ? 'bg-[#1a73e8]/20 text-[#8ab4f8]'
+                                        ? 'bg-[var(--terracotta)]/10 text-[var(--terracotta)]'
                                         : 'bg-[#e8f0fe] text-[#1a73e8]'
                                     : theme === 'dark'
-                                        ? 'text-[#9aa0a6] hover:bg-[#3c4043]'
+                                        ? 'text-[var(--text-muted)] hover:bg-white/5'
                                         : 'text-[#5f6368] hover:bg-[#f1f3f4]'
                             )}
                         >
@@ -691,7 +692,7 @@ export default function UnifiedDashboard() {
                             <span className="flex-1 text-left">Iris AI</span>
                             <span className={cn(
                                 'text-xs px-2 py-0.5 rounded-full',
-                                aiSidebarOpen ? 'bg-[#1a73e8] text-white' : theme === 'dark' ? 'bg-[#3c4043] text-[#9aa0a6]' : 'bg-[#f1f3f4] text-[#5f6368]'
+                                aiSidebarOpen ? 'bg-[var(--terracotta)] text-white' : theme === 'dark' ? 'bg-white/5 text-[var(--text-muted)]' : 'bg-[#f1f3f4] text-[#5f6368]'
                             )}>
                                 {aiSidebarOpen ? 'On' : 'Off'}
                             </span>
@@ -703,7 +704,7 @@ export default function UnifiedDashboard() {
             {/* Main Content Area */}
             <div className={cn(
                 'flex-1 flex overflow-hidden',
-                theme === 'dark' ? 'bg-[#09090b]' : 'bg-[#f6f8fc]'
+                theme === 'dark' ? 'bg-[var(--slate-deep)]' : 'bg-[#f6f8fc]'
             )}>
                 {renderContent()}
             </div>
@@ -738,7 +739,7 @@ export default function UnifiedDashboard() {
                     className={cn(
                         'fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-full shadow-lg transition-all hover:scale-105',
                         theme === 'dark'
-                            ? 'bg-[#1a73e8] text-white hover:bg-[#1557b0]'
+                            ? 'bg-[var(--terracotta)] text-white hover:bg-[var(--terracotta-dark)] shadow-[var(--terracotta)]/20'
                             : 'bg-[#1a73e8] text-white hover:bg-[#1557b0]'
                     )}
                     title="Open Iris AI Assistant"

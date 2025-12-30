@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Upload, FileSpreadsheet, X, Check, AlertCircle,
     Users, Loader2, Trash2, Eye, ChevronDown, Ban,
-    Mail, User, Building, Hash, Clock, Plus, Edit3, FolderOpen, ExternalLink
+    Mail, User, Building, Hash, Clock, Plus, Edit3, FolderOpen, ExternalLink, ArrowLeft
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { useTheme } from '../../../lib/ThemeContext';
@@ -606,7 +606,7 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
     // If showing column mapping view
     if (showMapping) {
         return (
-            <div className={cn('space-y-6', className)}>
+            <div className={cn('max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500', className)}>
                 {/* Back Link */}
                 <button
                     onClick={() => {
@@ -615,62 +615,88 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                         setColumnMappings([]);
                     }}
                     className={cn(
-                        'flex items-center gap-1 text-sm font-medium transition-colors',
+                        'flex items-center gap-2 text-sm font-bold uppercase tracking-wider transition-colors group',
                         theme === 'dark'
-                            ? 'text-blue-400 hover:text-blue-300'
-                            : 'text-blue-600 hover:text-blue-700'
+                            ? 'text-gray-500 hover:text-[#d97757]'
+                            : 'text-gray-400 hover:text-blue-600'
                     )}
                 >
-                    ← Choose another method
+                    <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+                    Back to Database
                 </button>
 
                 {/* Title */}
-                <h2 className={cn(
-                    'text-xl font-semibold',
-                    theme === 'dark' ? 'text-white' : 'text-gray-900'
-                )}>
-                    Upload CSV File
-                </h2>
+                <div className="space-y-2">
+                    <h2 className={cn(
+                        'text-4xl font-[Syne] font-bold tracking-tight',
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                    )}>
+                        Data <span className="text-[#d97757]">Import</span>
+                    </h2>
+                    <p className={cn(
+                        'text-sm font-light leading-relaxed max-w-lg',
+                        theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                    )}>
+                        Map your CSV columns to the system fields. We'll intelligentally detect types for you.
+                    </p>
+                </div>
 
                 {/* Uploaded File Card */}
                 {uploadedFile && (
                     <div className={cn(
-                        'relative p-8 rounded-xl border-2 border-dashed text-center',
+                        'relative p-6 rounded-2xl border transition-all duration-300',
                         theme === 'dark'
-                            ? 'border-gray-700 bg-[#1a1a1a]'
-                            : 'border-gray-200 bg-gray-50'
+                            ? 'bg-[#12151a] border-[#252a33] shadow-lg'
+                            : 'bg-white border-blue-100 shadow-xl'
                     )}>
-                        <button
-                            onClick={() => {
-                                setUploadedFile(null);
-                                setShowMapping(false);
-                            }}
-                            className={cn(
-                                'absolute top-3 right-3 p-1 rounded-full',
-                                theme === 'dark'
-                                    ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
-                                    : 'bg-red-100 text-red-500 hover:bg-red-200'
-                            )}
-                        >
-                            <X className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className={cn(
+                                    'p-3 rounded-xl',
+                                    theme === 'dark' ? 'bg-[#1a1e25] text-[#d97757]' : 'bg-blue-50 text-blue-600'
+                                )}>
+                                    <FileSpreadsheet className="w-8 h-8" />
+                                </div>
+                                <div>
+                                    <p className={cn(
+                                        'text-xs font-mono mb-1 opacity-60',
+                                        theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                                    )}>
+                                        SOURCE FILE ({formatFileSize(uploadedFile.size)})
+                                    </p>
+                                    <p className={cn(
+                                        'text-lg font-[Syne] font-bold',
+                                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                                    )}>
+                                        {uploadedFile.name}
+                                    </p>
+                                </div>
+                            </div>
 
-                        <p className={cn(
-                            'text-xs mb-1',
-                            theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                        )}>
-                            {formatFileSize(uploadedFile.size)}
-                        </p>
-                        <p className={cn(
-                            'text-lg font-medium',
-                            theme === 'dark' ? 'text-white' : 'text-gray-900'
-                        )}>
-                            {uploadedFile.name}
-                        </p>
+                            <button
+                                onClick={() => {
+                                    setUploadedFile(null);
+                                    setShowMapping(false);
+                                }}
+                                className={cn(
+                                    'p-2 rounded-full transition-colors',
+                                    theme === 'dark'
+                                        ? 'hover:bg-[#252a33] text-gray-500 hover:text-white'
+                                        : 'hover:bg-red-50 text-gray-400 hover:text-red-500'
+                                )}
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
 
-                        <div className="flex items-center justify-center gap-2 mt-4">
-                            <Check className="w-4 h-4 text-emerald-500" />
-                            <span className="text-emerald-500 text-sm font-medium">File processed</span>
+                        <div className={cn(
+                            'mt-6 py-2 px-4 rounded-lg flex items-center gap-3 text-xs font-medium border',
+                            theme === 'dark'
+                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                        )}>
+                            <Check className="w-3 h-3" />
+                            File successfully parsed and ready for mapping
                         </div>
                     </div>
                 )}
@@ -1099,7 +1125,7 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
     // Show leads list
     return (
         <>
-            <div className={cn('space-y-4', className)}>
+            <div className={cn('max-w-7xl mx-auto space-y-4', className)}>
                 {/* Lead Builder Modal */}
                 <AnimatePresence>
                     {showLeadBuilder && (
@@ -1111,13 +1137,29 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                     )}
                 </AnimatePresence>
 
-                <div className="flex items-center justify-between">
-                    <p className={cn(
-                        'text-sm',
-                        theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                    )}>
-                        {leads.length} leads in this campaign
-                    </p>
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b pb-6" style={{ borderColor: theme === 'dark' ? '#252a33' : '#e5e7eb' }}>
+                    <div className="space-y-1">
+                        <h2 className={cn(
+                            'text-3xl font-[Syne] font-bold tracking-tight',
+                            theme === 'dark' ? 'text-white' : 'text-gray-900'
+                        )}>
+                            Target <span className="text-[#d97757]">Audience</span>
+                        </h2>
+                        <div className="flex items-center gap-2">
+                            <div className={cn(
+                                'text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded',
+                                theme === 'dark' ? 'bg-[#252a33] text-gray-400' : 'bg-gray-100 text-gray-500'
+                            )}>
+                                Database
+                            </div>
+                            <p className={cn(
+                                'text-sm mb-0',
+                                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                            )}>
+                                • {leads.length} leads loaded
+                            </p>
+                        </div>
+                    </div>
                     <div className="flex items-center gap-2">
                         {/* Edit Leads Button */}
                         <Button
@@ -1190,207 +1232,12 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                     </div>
                 </div>
 
-                {/* Schedule Preview Card - Grouped by Sending Account */}
-                {leads.filter(l => l.status === 'pending').length > 0 && smtpAccounts.length > 0 && (() => {
-                    // Group pending leads by sending account
-                    const pendingLeads = leads.filter(l => l.status === 'pending');
-                    const groupedByAccount: Record<string, { account: typeof smtpAccounts[0]; leads: typeof pendingLeads }> = {};
-
-                    pendingLeads.forEach((lead, index) => {
-                        // Determine which account this lead will use
-                        const accountId = lead.sendingAccountId || smtpAccounts[index % smtpAccounts.length]?.id;
-                        const account = smtpAccounts.find(a => a.id === accountId) || smtpAccounts[0];
-
-                        if (account) {
-                            if (!groupedByAccount[account.id]) {
-                                groupedByAccount[account.id] = { account, leads: [] };
-                            }
-                            groupedByAccount[account.id].leads.push(lead);
-                        }
-                    });
-
-                    return (
-                        <div className={cn(
-                            'rounded-xl border overflow-hidden',
-                            theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
-                        )}>
-                            {/* Header */}
-                            <div className={cn(
-                                'px-4 py-3 border-b flex items-center justify-between',
-                                theme === 'dark' ? 'bg-blue-500/10 border-gray-800' : 'bg-blue-50 border-blue-100'
-                            )}>
-                                <div className="flex items-center gap-2">
-                                    <Clock className={cn(
-                                        'w-4 h-4',
-                                        theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
-                                    )} />
-                                    <h4 className={cn(
-                                        'text-sm font-semibold',
-                                        theme === 'dark' ? 'text-blue-300' : 'text-blue-700'
-                                    )}>
-                                        Scheduled Emails by Sending Account
-                                    </h4>
-                                </div>
-                                <span className={cn(
-                                    'px-2 py-0.5 rounded-full text-xs font-medium',
-                                    theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-600'
-                                )}>
-                                    {pendingLeads.length} emails pending
-                                </span>
-                            </div>
-
-                            {/* Accounts Grid */}
-                            <div className={cn(
-                                'p-4 grid gap-4',
-                                Object.keys(groupedByAccount).length === 1 ? 'grid-cols-1' :
-                                    Object.keys(groupedByAccount).length === 2 ? 'grid-cols-1 md:grid-cols-2' :
-                                        'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
-                            )}>
-                                {Object.values(groupedByAccount).map(({ account, leads: accountLeads }) => (
-                                    <div
-                                        key={account.id}
-                                        className={cn(
-                                            'rounded-lg border overflow-hidden',
-                                            theme === 'dark' ? 'border-gray-800 bg-[#1a1a1a]' : 'border-gray-200 bg-white'
-                                        )}
-                                    >
-                                        {/* Account Header */}
-                                        <div className={cn(
-                                            'px-4 py-3 border-b flex items-center justify-between',
-                                            theme === 'dark' ? 'border-gray-800 bg-gradient-to-r from-blue-500/10 to-transparent' : 'border-gray-100 bg-gradient-to-r from-blue-50 to-transparent'
-                                        )}>
-                                            <div className="flex items-center gap-2">
-                                                <div className={cn(
-                                                    'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold',
-                                                    theme === 'dark' ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-600'
-                                                )}>
-                                                    {account.fromEmail.charAt(0).toUpperCase()}
-                                                </div>
-                                                <div>
-                                                    <p className={cn(
-                                                        'text-sm font-medium',
-                                                        theme === 'dark' ? 'text-white' : 'text-gray-900'
-                                                    )}>
-                                                        {account.name || account.fromEmail.split('@')[0]}
-                                                    </p>
-                                                    <p className={cn(
-                                                        'text-xs',
-                                                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                                                    )}>
-                                                        {account.fromEmail}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <span className={cn(
-                                                'px-2 py-1 rounded-lg text-xs font-semibold',
-                                                theme === 'dark' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-600'
-                                            )}>
-                                                {accountLeads.length} {accountLeads.length === 1 ? 'email' : 'emails'}
-                                            </span>
-                                        </div>
-
-                                        {/* Leads List */}
-                                        <div className="max-h-[200px] overflow-y-auto">
-                                            {accountLeads.slice(0, 10).map((lead, idx) => {
-                                                const globalIndex = pendingLeads.findIndex(l => l.id === lead.id);
-                                                const sendTime = getScheduledTime(globalIndex);
-                                                return (
-                                                    <div
-                                                        key={lead.id}
-                                                        onClick={() => openScheduledEmailPreview(lead)}
-                                                        className={cn(
-                                                            'px-4 py-2 flex items-center justify-between border-b last:border-b-0 cursor-pointer group transition-all',
-                                                            theme === 'dark' ? 'border-gray-800 hover:bg-blue-500/10' : 'border-gray-100 hover:bg-blue-50'
-                                                        )}
-                                                    >
-                                                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                                                            <span className={cn(
-                                                                'text-xs font-mono w-5 flex-shrink-0',
-                                                                theme === 'dark' ? 'text-gray-600' : 'text-gray-400'
-                                                            )}>
-                                                                {idx + 1}
-                                                            </span>
-                                                            <div className="flex-1 min-w-0">
-                                                                <p className={cn(
-                                                                    'text-sm truncate',
-                                                                    theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                                                                )}>
-                                                                    {lead.firstName ? `${lead.firstName} ${lead.lastName || ''}`.trim() : lead.email.split('@')[0]}
-                                                                </p>
-                                                                <p className={cn(
-                                                                    'text-xs truncate',
-                                                                    theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                                                                )}>
-                                                                    {lead.email}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                                                            <div className="flex flex-col items-end">
-                                                                <span className={cn(
-                                                                    'text-xs font-medium',
-                                                                    globalIndex === 0
-                                                                        ? 'text-emerald-500'
-                                                                        : theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
-                                                                )}>
-                                                                    {globalIndex === 0 ? '🚀 Now' : formatTime(sendTime)}
-                                                                </span>
-                                                                {lead.timezone && (
-                                                                    <span className={cn(
-                                                                        'text-xs',
-                                                                        theme === 'dark' ? 'text-gray-600' : 'text-gray-400'
-                                                                    )}>
-                                                                        {lead.timezone.split('/').pop()?.replace('_', ' ')}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                            <Eye className={cn(
-                                                                'w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity',
-                                                                theme === 'dark' ? 'text-blue-400' : 'text-blue-500'
-                                                            )} />
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                            {accountLeads.length > 10 && (
-                                                <div className={cn(
-                                                    'px-4 py-2 text-center',
-                                                    theme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'
-                                                )}>
-                                                    <span className={cn(
-                                                        'text-xs',
-                                                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                                                    )}>
-                                                        +{accountLeads.length - 10} more emails scheduled
-                                                    </span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Footer Note */}
-                            <div className={cn(
-                                'px-4 py-2 border-t',
-                                theme === 'dark' ? 'border-gray-800 bg-[#0c0c0c]' : 'border-gray-100 bg-gray-50'
-                            )}>
-                                <p className={cn(
-                                    'text-xs',
-                                    theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                                )}>
-                                    💡 First email sends instantly, then every 10 minutes. Emails are distributed across accounts for better deliverability. Leads outside their working hours will be scheduled for later.
-                                </p>
-                            </div>
-                        </div>
-                    );
-                })()}
 
                 <div className={cn(
-                    'rounded-xl border overflow-hidden',
+                    'rounded-xl border overflow-hidden flex-1',
                     theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
                 )}>
-                    <ScrollArea className="h-[400px]">
+                    <ScrollArea className="h-[calc(100vh-320px)]">
                         <Table>
                             <TableHeader className="sticky top-0 z-10">
                                 <TableRow className={cn(
