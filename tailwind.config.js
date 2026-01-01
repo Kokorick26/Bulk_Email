@@ -14,7 +14,23 @@ export default {
             },
         },
         extend: {
+            fontFamily: {
+                sans: ["Manrope", "sans-serif"],
+                heading: ["Unbounded", "sans-serif"],
+                body: ["Manrope", "sans-serif"],
+                mono: ["JetBrains Mono", "monospace"],
+            },
             colors: {
+                "brand-dark": "#050505",
+                "brand-lime": "#ccff00",
+                "brand-orange": "#FF5533",
+                "brand-pink": "#FF3399",
+                "brand-purple": "#6633FF",
+                "neo-bg": "#050505",
+                "neo-text": "#eaeaea",
+                "neo-lime": "#ccff00",
+                "neo-coral": "#FF5533",
+                "neo-blue": "#6633FF",
                 border: "hsl(var(--border))",
                 input: "hsl(var(--input))",
                 ring: "hsl(var(--ring))",

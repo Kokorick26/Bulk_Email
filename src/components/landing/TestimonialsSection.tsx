@@ -29,7 +29,7 @@ export const testimonials: Testimonial[] = [
         role: "Head of Growth @ ScaleUp",
     },
     {
-        text: "We closed $240K in new ARR within the first 2 months of using Kokorick. The ROI is insane.",
+        text: "We closed $240K in new ARR within the first 2 months of using Warmlo. The ROI is insane.",
         name: "Michael Chen",
         role: "CEO @ DataStack",
     },
@@ -50,19 +50,19 @@ function TestimonialCard({ testimonial }: { testimonial: Testimonial }) {
     const initials = testimonial.name.split(' ').map(n => n[0]).join('');
 
     return (
-        <div className="p-6 rounded-2xl bg-[var(--slate-rich)] border border-white/5 max-w-xs w-full hover:border-[var(--terracotta)]/30 transition-all duration-300 group">
+        <div className="p-6 rounded-2xl bg-[#0A0A0A] border border-white/5 max-w-xs w-full hover:border-brand-orange/30 transition-all duration-300 group">
             {/* Quote Icon */}
             <div className="mb-4">
-                <Quote className="w-8 h-8 text-[var(--terracotta)]/30 group-hover:text-[var(--terracotta)]/50 transition-colors" />
+                <Quote className="w-8 h-8 text-brand-orange/30 group-hover:text-brand-orange/50 transition-colors" />
             </div>
 
             {/* Testimonial Text */}
-            <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-6">"{testimonial.text}"</p>
+            <p className="text-sm text-gray-400 leading-relaxed mb-6">"{testimonial.text}"</p>
 
             {/* Stars */}
             <div className="flex gap-0.5 mb-4">
                 {[1, 2, 3, 4, 5].map(i => (
-                    <Star key={i} className="w-3.5 h-3.5 fill-[var(--gold)] text-[var(--gold)]" />
+                    <Star key={i} className="w-3.5 h-3.5 fill-brand-orange text-brand-orange" />
                 ))}
             </div>
 
@@ -72,16 +72,16 @@ function TestimonialCard({ testimonial }: { testimonial: Testimonial }) {
                     <img
                         src={testimonial.image}
                         alt={testimonial.name}
-                        className="w-10 h-10 rounded-full object-cover ring-2 ring-[var(--terracotta)]/20"
+                        className="w-10 h-10 rounded-full object-cover ring-2 ring-brand-orange/20"
                     />
                 ) : (
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--terracotta)] to-[var(--gold)] flex items-center justify-center text-white text-sm font-bold ring-2 ring-[var(--terracotta)]/20">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-orange to-brand-pink flex items-center justify-center text-white text-sm font-bold ring-2 ring-brand-orange/20">
                         {initials}
                     </div>
                 )}
                 <div>
-                    <div className="font-semibold text-white text-sm" style={{ fontFamily: 'Syne, sans-serif' }}>{testimonial.name}</div>
-                    <div className="text-xs text-[var(--text-muted)]">{testimonial.role}</div>
+                    <div className="font-semibold text-white text-sm font-heading">{testimonial.name}</div>
+                    <div className="text-xs text-gray-500">{testimonial.role}</div>
                 </div>
             </div>
         </div>

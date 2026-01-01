@@ -2,13 +2,12 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     ChevronLeft, Search, Plus, MoreHorizontal, Mail, Check,
-    FileSpreadsheet, Loader2, Download, ArrowRight, Edit, Pause, Trash2
+    FileSpreadsheet, Loader2, Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../../lib/utils';
 import { useTheme } from '../../lib/ThemeContext';
 import { Button } from '../ui/Button';
-import { Input } from '../ui/Input';
 import { Checkbox } from '../ui/Checkbox';
 import {
     DropdownMenu,
@@ -20,7 +19,7 @@ import {
 
 const API_BASE = '/api/bulk-email';
 
-// Google Logo SVG
+// Provider Logos
 const GoogleLogo = () => (
     <svg viewBox="0 0 24 24" className="w-5 h-5">
         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -30,7 +29,6 @@ const GoogleLogo = () => (
     </svg>
 );
 
-// Microsoft Logo SVG
 const MicrosoftLogo = () => (
     <svg viewBox="0 0 21 21" className="w-5 h-5">
         <rect x="1" y="1" width="9" height="9" fill="#f25022" />
@@ -38,20 +36,6 @@ const MicrosoftLogo = () => (
         <rect x="1" y="11" width="9" height="9" fill="#00a4ef" />
         <rect x="11" y="11" width="9" height="9" fill="#ffb900" />
     </svg>
-);
-
-// Yahoo Logo SVG
-const YahooLogo = () => (
-    <svg viewBox="0 0 24 24" className="w-5 h-5">
-        <path fill="#6001D2" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm3.5 13.5h-2V9l-3.5 4.5h-.1L6.5 9v6.5h-2v-9h2.2l3.3 4.2 3.3-4.2h2.2v9z" />
-    </svg>
-);
-
-// Zoho Logo Icon
-const ZohoLogo = () => (
-    <div className="w-5 h-5 rounded bg-gradient-to-r from-yellow-400 to-red-500 flex items-center justify-center">
-        <span className="text-white text-xs font-bold">Z</span>
-    </div>
 );
 
 interface SmtpAccount {
@@ -79,15 +63,15 @@ interface EmailAccountsProps {
     className?: string;
 }
 
-type ViewState = 'list' | 'add-options' | 'provider-select' | 'form-basic' | 'form-imap' | 'form-smtp' | 'google-setup' | 'microsoft-setup';
+type ViewState = 'list' | 'add-options' | 'provider-select' | 'form-basic' | 'form-imap' | 'form-smtp';
 
 export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsProps) {
     const { theme } = useTheme();
+    const isDark = theme === 'dark';
     const [view, setView] = useState<ViewState>('list');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedAccounts, setSelectedAccounts] = useState<Set<string>>(new Set());
     const [saving, setSaving] = useState(false);
-    const [selectedProvider, setSelectedProvider] = useState<'google' | 'microsoft' | 'other' | null>(null);
 
     // Form state
     const [form, setForm] = useState({
@@ -104,13 +88,11 @@ export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsP
         smtpPort: '587',
     });
 
-    // Testing states
     const [testingImap, setTestingImap] = useState(false);
     const [imapTestResult, setImapTestResult] = useState<{ success: boolean; message: string } | null>(null);
     const [testingSmtp, setTestingSmtp] = useState(false);
     const [smtpTestResult, setSmtpTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
-    // Test IMAP connection
     const handleTestImap = async () => {
         if (!form.imapHost || !form.imapUsername || !form.imapPassword) {
             toast.error('Please fill all IMAP fields');
@@ -147,7 +129,6 @@ export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsP
         }
     };
 
-    // Test SMTP connection
     const handleTestSmtp = async () => {
         if (!form.smtpHost || !form.smtpUsername || !form.smtpPassword) {
             toast.error('Please fill all SMTP fields');
@@ -278,7 +259,7 @@ export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsP
         }
     };
 
-    // Auto-fill IMAP/SMTP based on email domain
+    // Auto-fill based on email domain
     useEffect(() => {
         if (form.email && form.email.includes('@')) {
             const domain = form.email.split('@')[1].toLowerCase();
@@ -288,7 +269,6 @@ export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsP
                 'hotmail.com': { imap: 'outlook.office365.com', smtp: 'smtp.office365.com' },
                 'yahoo.com': { imap: 'imap.mail.yahoo.com', smtp: 'smtp.mail.yahoo.com' },
                 'zoho.com': { imap: 'imappro.zoho.com', smtp: 'smtppro.zoho.com' },
-                'zoho.eu': { imap: 'imappro.zoho.eu', smtp: 'smtppro.zoho.eu' },
             };
 
             const preset = presets[domain];
@@ -304,125 +284,75 @@ export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsP
         }
     }, [form.email]);
 
-    // Render based on view state
+    // List View
     if (view === 'list') {
         return (
-            <div className={cn('min-h-screen', className)}>
+            <div className={cn('min-h-full', className)}>
                 {/* Header */}
-                <div className="flex items-center justify-between mb-8">
-                    <h1 className={cn(
-                        'text-2xl font-semibold',
-                        theme === 'dark' ? 'text-white' : 'text-gray-900'
-                    )}>
+                <div className="flex items-center justify-between mb-6">
+                    <h1 className={cn('text-xl font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
                         Email Accounts
                     </h1>
+                    <Button
+                        onClick={() => setView('add-options')}
+                        className="gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white"
+                    >
+                        <Plus className="w-4 h-4" />
+                        Add Account
+                    </Button>
                 </div>
 
-                {/* Toolbar */}
-                <div className="flex items-center justify-between mb-6">
-                    <div className="relative w-64">
-                        <Search className={cn(
-                            'absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4',
-                            theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                        )} />
+                {/* Search */}
+                <div className="mb-6">
+                    <div className={cn(
+                        'flex items-center gap-2 h-10 px-3 rounded-lg w-72',
+                        isDark ? 'bg-neutral-900' : 'bg-gray-100'
+                    )}>
+                        <Search className={cn('w-4 h-4', isDark ? 'text-neutral-500' : 'text-gray-400')} />
                         <input
                             type="text"
-                            placeholder="Search..."
+                            placeholder="Search accounts..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className={cn(
-                                'w-full pl-10 pr-4 py-2.5 rounded-lg text-sm border',
-                                theme === 'dark'
-                                    ? 'bg-gray-900 border-gray-700 text-white placeholder:text-gray-500'
-                                    : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400'
+                                'flex-1 bg-transparent border-0 outline-none text-[13px]',
+                                isDark ? 'text-white placeholder:text-neutral-500' : 'text-gray-900 placeholder:text-gray-400'
                             )}
                         />
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <button className={cn(
-                                    'flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm border',
-                                    theme === 'dark'
-                                        ? 'border-gray-700 text-gray-300 hover:bg-gray-800'
-                                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                                )}>
-                                    All statuses
-                                </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                                <DropdownMenuItem>All statuses</DropdownMenuItem>
-                                <DropdownMenuItem>Active</DropdownMenuItem>
-                                <DropdownMenuItem>Paused</DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-
-                        <Button
-                            onClick={() => setView('add-options')}
-                            className={cn(
-                                'gap-2',
-                                theme === 'dark'
-                                    ? 'bg-[var(--terracotta)] hover:bg-[var(--terracotta-dark)] text-white'
-                                    : 'bg-blue-600 hover:bg-blue-500 text-white'
-                            )}
-                        >
-                            <Plus className="w-4 h-4" />
-                            Add New
-                        </Button>
                     </div>
                 </div>
 
                 {/* Table */}
-                <div className={cn(
-                    'rounded-xl border',
-                    theme === 'dark' ? 'border-white/5' : 'border-gray-200'
-                )}>
-                    {/* Table Header */}
+                <div className={cn('rounded-xl border', isDark ? 'border-neutral-800' : 'border-gray-200')}>
+                    {/* Header */}
                     <div className={cn(
-                        'grid grid-cols-[auto_1fr_120px_140px_120px_50px] gap-4 px-6 py-4 border-b text-xs font-medium uppercase tracking-wider',
-                        theme === 'dark' ? 'border-gray-800 text-gray-400' : 'border-gray-200 text-gray-500'
+                        'grid grid-cols-[auto_1fr_100px_120px_100px_50px] gap-4 px-5 py-3 border-b text-[11px] font-semibold uppercase tracking-wider',
+                        isDark ? 'border-neutral-800 text-neutral-500' : 'border-gray-200 text-gray-400'
                     )}>
-                        <div className="flex items-center">
-                            <Checkbox />
-                        </div>
+                        <div className="flex items-center"><Checkbox /></div>
                         <div>Email</div>
-                        <div>Emails Sent</div>
-                        <div>Warmup Emails</div>
-                        <div>Health Score</div>
+                        <div>Sent</div>
+                        <div>Warmup</div>
+                        <div>Health</div>
                         <div></div>
                     </div>
 
-                    {/* Table Body */}
+                    {/* Body */}
                     {filteredAccounts.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-20">
-                            <Mail className={cn(
-                                'w-12 h-12 mb-4',
-                                theme === 'dark' ? 'text-gray-600' : 'text-gray-300'
-                            )} />
-                            <p className={cn(
-                                'text-lg font-medium mb-1',
-                                theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                            )}>
-                                No email accounts yet
+                        <div className="flex flex-col items-center justify-center py-16">
+                            <Mail className={cn('w-10 h-10 mb-3', isDark ? 'text-neutral-600' : 'text-gray-300')} />
+                            <p className={cn('font-medium mb-1', isDark ? 'text-neutral-300' : 'text-gray-700')}>
+                                No accounts yet
                             </p>
-                            <p className={cn(
-                                'text-sm mb-4',
-                                theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
-                            )}>
-                                Add your first email account to get started
+                            <p className={cn('text-sm mb-4', isDark ? 'text-neutral-500' : 'text-gray-500')}>
+                                Add your first email account
                             </p>
                             <Button
                                 onClick={() => setView('add-options')}
-                                className={cn(
-                                    'gap-2',
-                                    theme === 'dark'
-                                        ? 'bg-[var(--terracotta)] hover:bg-[var(--terracotta-dark)] text-white'
-                                        : 'bg-blue-600 hover:bg-blue-500 text-white'
-                                )}
+                                className="gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white"
                             >
                                 <Plus className="w-4 h-4" />
-                                Add New Account
+                                Add Account
                             </Button>
                         </div>
                     ) : (
@@ -435,9 +365,9 @@ export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsP
                                     exit={{ opacity: 0 }}
                                     transition={{ delay: index * 0.02 }}
                                     className={cn(
-                                        'grid grid-cols-[auto_1fr_120px_140px_120px_50px] gap-4 px-6 py-4 items-center border-b last:border-b-0',
-                                        theme === 'dark'
-                                            ? 'border-gray-800 hover:bg-gray-800/50'
+                                        'grid grid-cols-[auto_1fr_100px_120px_100px_50px] gap-4 px-5 py-3 items-center border-b last:border-b-0',
+                                        isDark
+                                            ? 'border-neutral-800 hover:bg-neutral-800/50'
                                             : 'border-gray-100 hover:bg-gray-50'
                                     )}
                                 >
@@ -452,50 +382,38 @@ export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsP
                                             }}
                                         />
                                     </div>
-                                    <div className={cn(
-                                        'text-sm font-medium',
-                                        theme === 'dark' ? 'text-white' : 'text-gray-900'
-                                    )}>
+                                    <div className={cn('text-[13px] font-medium truncate', isDark ? 'text-white' : 'text-gray-900')}>
                                         {account.fromEmail}
                                     </div>
-                                    <div className={cn(
-                                        'text-sm',
-                                        theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                                    )}>
+                                    <div className={cn('text-[13px]', isDark ? 'text-neutral-400' : 'text-gray-600')}>
                                         {account.emailsSent || 0}
                                     </div>
-                                    <div className={cn(
-                                        'text-sm',
-                                        theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                                    )}>
+                                    <div className={cn('text-[13px]', isDark ? 'text-neutral-400' : 'text-gray-600')}>
                                         {account.warmupEmails || 0}
                                     </div>
-                                    <div className={cn(
-                                        'text-sm',
-                                        theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                                    )}>
-                                        {account.healthScore || 0}%
+                                    <div className={cn('text-[13px]', isDark ? 'text-neutral-400' : 'text-gray-600')}>
+                                        {account.healthScore || 100}%
                                     </div>
                                     <div>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                                 <button className={cn(
                                                     'p-2 rounded-lg transition-colors',
-                                                    theme === 'dark'
-                                                        ? 'hover:bg-gray-700 text-gray-400'
-                                                        : 'hover:bg-gray-100 text-gray-500'
+                                                    isDark ? 'hover:bg-neutral-700 text-neutral-400' : 'hover:bg-gray-100 text-gray-500'
                                                 )}>
                                                     <MoreHorizontal className="w-4 h-4" />
                                                 </button>
                                             </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem>Edit</DropdownMenuItem>
-                                                <DropdownMenuItem>Pause</DropdownMenuItem>
-                                                <DropdownMenuSeparator />
+                                            <DropdownMenuContent align="end" className={cn('rounded-xl p-1', isDark ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-200')}>
+                                                <DropdownMenuItem className={cn('rounded-lg text-[13px]', isDark ? 'text-neutral-300 hover:bg-neutral-700' : 'text-gray-700 hover:bg-gray-50')}>
+                                                    Edit
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator className={isDark ? 'bg-neutral-700' : 'bg-gray-100'} />
                                                 <DropdownMenuItem
                                                     onClick={() => handleDeleteAccount(account.id)}
-                                                    className="text-red-500"
+                                                    className={cn('rounded-lg text-[13px]', isDark ? 'text-red-400 hover:bg-red-500/10' : 'text-red-600 hover:bg-red-50')}
                                                 >
+                                                    <Trash2 className="w-4 h-4 mr-2" />
                                                     Delete
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
@@ -513,89 +431,32 @@ export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsP
     // Add Options View
     if (view === 'add-options') {
         return (
-            <div className={cn('min-h-screen', className)}>
-                {/* Back Button */}
+            <div className={cn('min-h-full', className)}>
                 <button
                     onClick={handleBack}
                     className={cn(
-                        'flex items-center gap-2 text-sm font-medium mb-12',
-                        theme === 'dark' ? 'text-white hover:text-gray-300' : 'text-gray-900 hover:text-gray-600'
+                        'flex items-center gap-2 text-sm font-medium mb-8',
+                        isDark ? 'text-white hover:text-neutral-300' : 'text-gray-900 hover:text-gray-600'
                     )}
                 >
                     <ChevronLeft className="w-4 h-4" />
                     Back
                 </button>
 
-                {/* Options Grid */}
-                <div className="grid grid-cols-3 gap-6 max-w-5xl mx-auto">
-                    {/* Pre-warmed accounts */}
+                <div className="grid grid-cols-3 gap-6 max-w-4xl">
+                    {/* Connect existing */}
                     <div className={cn(
                         'p-6 rounded-xl border',
-                        theme === 'dark' ? 'bg-[#1e1e1e] border-gray-700' : 'bg-white border-gray-200'
+                        isDark ? 'bg-neutral-800/50 border-neutral-700' : 'bg-white border-gray-200'
                     )}>
-                        <h3 className={cn(
-                            'text-lg font-semibold mb-6',
-                            theme === 'dark' ? 'text-white' : 'text-gray-900'
-                        )}>
-                            Pre-warmed accounts
+                        <h3 className={cn('text-lg font-semibold mb-4', isDark ? 'text-white' : 'text-gray-900')}>
+                            Connect Existing Account
                         </h3>
-                        <div className="space-y-3 mb-8">
-                            {[
-                                'Pre-Made Accounts & Domains',
-                                'Start Sending Right away',
-                                'No Setup Required',
-                                'Scale existing campaigns instantly',
-                                'High-quality US IP Accounts',
-                                'Deliverability Optimized',
-                            ].map((feature, i) => (
+                        <div className="space-y-2 mb-4">
+                            {['Connect via IMAP/SMTP', 'Sync replies automatically'].map((feature, i) => (
                                 <div key={i} className="flex items-center gap-2">
                                     <Check className="w-4 h-4 text-emerald-500" />
-                                    <span className={cn(
-                                        'text-sm',
-                                        theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-                                    )}>
-                                        {feature}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                        <p className={cn(
-                            'text-sm mb-4',
-                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                        )}>
-                            403 domains remaining
-                        </p>
-                        <Button onClick={() => toast.info('Pre-warmed accounts coming soon! Use "Connect existing accounts" for now.')} className="w-full bg-gray-600 hover:bg-gray-500 text-white">
-                            Coming Soon <span className="ml-2 px-1.5 py-0.5 text-xs bg-orange-500 rounded">Pro</span>
-                        </Button>
-                    </div>
-
-                    {/* Done-for-you Email Setup */}
-                    <div className={cn(
-                        'p-6 rounded-xl border',
-                        theme === 'dark' ? 'bg-[#1e1e1e] border-gray-700' : 'bg-white border-gray-200'
-                    )}>
-                        <h3 className={cn(
-                            'text-lg font-semibold mb-6',
-                            theme === 'dark' ? 'text-white' : 'text-gray-900'
-                        )}>
-                            Done-for-you Email Setup
-                        </h3>
-                        <div className="space-y-3 mb-8">
-                            {[
-                                'We Set Up Your Accounts',
-                                'You Choose The Domain & Account Names',
-                                'Automatic reconnects',
-                                'Save time and money',
-                                'High-quality US IP accounts',
-                                'Deliverability Optimized',
-                            ].map((feature, i) => (
-                                <div key={i} className="flex items-center gap-2">
-                                    <Check className="w-4 h-4 text-emerald-500" />
-                                    <span className={cn(
-                                        'text-sm',
-                                        theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-                                    )}>
+                                    <span className={cn('text-sm', isDark ? 'text-neutral-300' : 'text-gray-600')}>
                                         {feature}
                                     </span>
                                 </div>
@@ -603,322 +464,96 @@ export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsP
                         </div>
                         <div className="space-y-2">
                             <button
-                                onClick={() => toast.info('Done-for-you setup coming soon! Use "Connect existing accounts" for now.')}
+                                onClick={() => setView('form-basic')}
                                 className={cn(
-                                    'w-full flex items-center gap-3 p-3 rounded-lg border text-left opacity-60',
-                                    theme === 'dark'
-                                        ? 'border-gray-600 hover:border-gray-500'
-                                        : 'border-gray-200 hover:border-gray-300'
-                                )}
-                            >
-                                <div className="w-8 h-8 bg-white rounded flex items-center justify-center">
-                                    <GoogleLogo />
-                                </div>
-                                <div className="flex-1">
-                                    <div className={cn('text-sm font-medium', theme === 'dark' ? 'text-white' : 'text-gray-900')}>
-                                        Google
-                                    </div>
-                                    <div className={cn('text-xs', theme === 'dark' ? 'text-gray-400' : 'text-gray-500')}>
-                                        Gmail / G-Suite
-                                    </div>
-                                </div>
-                                <span className="text-xs px-2 py-1 bg-gray-600 text-white rounded">Soon</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Connect existing accounts */}
-                    <div className={cn(
-                        'p-6 rounded-xl border',
-                        theme === 'dark' ? 'bg-[#1e1e1e] border-gray-700' : 'bg-white border-gray-200'
-                    )}>
-                        <h3 className={cn(
-                            'text-lg font-semibold mb-6',
-                            theme === 'dark' ? 'text-white' : 'text-gray-900'
-                        )}>
-                            Connect existing accounts
-                        </h3>
-                        <div className="space-y-3 mb-8">
-                            {[
-                                'Connect any IMAP or SMTP email provider',
-                                'Sync up replies in the Unibox',
-                            ].map((feature, i) => (
-                                <div key={i} className="flex items-center gap-2">
-                                    <Check className="w-4 h-4 text-emerald-500" />
-                                    <span className={cn(
-                                        'text-sm',
-                                        theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-                                    )}>
-                                        {feature}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="space-y-2">
-                            <button
-                                onClick={() => setView('google-setup')}
-                                className={cn(
-                                    'w-full flex items-center gap-3 p-3 rounded-lg border text-left',
-                                    theme === 'dark'
-                                        ? 'border-gray-600 hover:border-gray-500'
-                                        : 'border-gray-200 hover:border-gray-300'
+                                    'w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-colors',
+                                    isDark ? 'border-neutral-600 hover:border-neutral-500 hover:bg-neutral-700' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                                 )}
                             >
                                 <div className="w-8 h-8 bg-white rounded flex items-center justify-center">
                                     <GoogleLogo />
                                 </div>
                                 <div>
-                                    <div className={cn('text-sm font-medium', theme === 'dark' ? 'text-white' : 'text-gray-900')}>
-                                        Google
-                                    </div>
-                                    <div className={cn('text-xs', theme === 'dark' ? 'text-gray-400' : 'text-gray-500')}>
-                                        Gmail / G-Suite
-                                    </div>
+                                    <div className={cn('text-sm font-medium', isDark ? 'text-white' : 'text-gray-900')}>Google</div>
+                                    <div className={cn('text-xs', isDark ? 'text-neutral-400' : 'text-gray-500')}>Gmail / G-Suite</div>
                                 </div>
                             </button>
                             <button
-                                onClick={() => setView('microsoft-setup')}
+                                onClick={() => setView('form-basic')}
                                 className={cn(
-                                    'w-full flex items-center gap-3 p-3 rounded-lg border text-left',
-                                    theme === 'dark'
-                                        ? 'border-gray-600 hover:border-gray-500'
-                                        : 'border-gray-200 hover:border-gray-300'
+                                    'w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-colors',
+                                    isDark ? 'border-neutral-600 hover:border-neutral-500 hover:bg-neutral-700' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                                 )}
                             >
                                 <div className="w-8 h-8 bg-white rounded flex items-center justify-center">
                                     <MicrosoftLogo />
                                 </div>
                                 <div>
-                                    <div className={cn('text-sm font-medium', theme === 'dark' ? 'text-white' : 'text-gray-900')}>
-                                        Microsoft
-                                    </div>
-                                    <div className={cn('text-xs', theme === 'dark' ? 'text-gray-400' : 'text-gray-500')}>
-                                        Office 365 / Outlook
-                                    </div>
+                                    <div className={cn('text-sm font-medium', isDark ? 'text-white' : 'text-gray-900')}>Microsoft</div>
+                                    <div className={cn('text-xs', isDark ? 'text-neutral-400' : 'text-gray-500')}>Office 365 / Outlook</div>
                                 </div>
                             </button>
                             <button
-                                onClick={() => setView('provider-select')}
+                                onClick={() => setView('form-basic')}
                                 className={cn(
-                                    'w-full flex items-center gap-3 p-3 rounded-lg border text-left',
-                                    theme === 'dark'
-                                        ? 'border-gray-600 hover:border-gray-500'
-                                        : 'border-gray-200 hover:border-gray-300'
+                                    'w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-colors',
+                                    isDark ? 'border-neutral-600 hover:border-neutral-500 hover:bg-neutral-700' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                                 )}
                             >
-                                <div className={cn(
-                                    'w-8 h-8 rounded flex items-center justify-center',
-                                    theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'
-                                )}>
+                                <div className={cn('w-8 h-8 rounded flex items-center justify-center', isDark ? 'bg-neutral-600' : 'bg-gray-100')}>
                                     <Mail className="w-4 h-4" />
                                 </div>
                                 <div>
-                                    <div className={cn('text-sm font-medium', theme === 'dark' ? 'text-white' : 'text-gray-900')}>
-                                        Any Provider
-                                    </div>
-                                    <div className={cn('text-xs', theme === 'dark' ? 'text-gray-400' : 'text-gray-500')}>
-                                        IMAP / SMTP
-                                    </div>
+                                    <div className={cn('text-sm font-medium', isDark ? 'text-white' : 'text-gray-900')}>Custom SMTP</div>
+                                    <div className={cn('text-xs', isDark ? 'text-neutral-400' : 'text-gray-500')}>Any provider</div>
                                 </div>
                             </button>
                         </div>
                     </div>
-                </div>
-            </div>
-        );
-    }
 
-    // Provider Select View
-    if (view === 'provider-select') {
-        return (
-            <div className={cn('min-h-screen', className)}>
-                {/* Back Button */}
-                <button
-                    onClick={handleBack}
-                    className={cn(
-                        'flex items-center gap-2 text-sm font-medium mb-12',
-                        theme === 'dark' ? 'text-white hover:text-gray-300' : 'text-gray-900 hover:text-gray-600'
-                    )}
-                >
-                    <ChevronLeft className="w-4 h-4" />
-                    Back
-                </button>
-
-                <div className="max-w-md mx-auto">
-                    <button
-                        onClick={handleBack}
-                        className={cn(
-                            'flex items-center gap-2 text-sm mb-8',
-                            theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
-                        )}
-                    >
-                        <ChevronLeft className="w-4 h-4" />
-                        Select another provider
-                    </button>
-
-                    <div className="space-y-3">
-                        <button className={cn(
-                            'w-full flex items-center gap-4 p-4 rounded-lg border text-left',
-                            theme === 'dark'
-                                ? 'border-gray-700 hover:border-gray-600 hover:bg-gray-800/50'
-                                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                        )}>
-                            <div className={cn(
-                                'w-10 h-10 rounded-lg flex items-center justify-center',
-                                theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'
-                            )}>
-                                <FileSpreadsheet className="w-5 h-5 text-emerald-500" />
-                            </div>
-                            <div>
-                                <div className={cn('text-sm', theme === 'dark' ? 'text-gray-400' : 'text-gray-500')}>
-                                    Any Provider
+                    {/* Pre-warmed (Coming Soon) */}
+                    <div className={cn(
+                        'p-6 rounded-xl border opacity-60',
+                        isDark ? 'bg-neutral-800/50 border-neutral-700' : 'bg-white border-gray-200'
+                    )}>
+                        <h3 className={cn('text-lg font-semibold mb-4', isDark ? 'text-white' : 'text-gray-900')}>
+                            Pre-warmed Accounts
+                        </h3>
+                        <div className="space-y-2 mb-4">
+                            {['Ready to send immediately', 'No setup required', 'High deliverability'].map((feature, i) => (
+                                <div key={i} className="flex items-center gap-2">
+                                    <Check className="w-4 h-4 text-emerald-500" />
+                                    <span className={cn('text-sm', isDark ? 'text-neutral-300' : 'text-gray-600')}>
+                                        {feature}
+                                    </span>
                                 </div>
-                                <div className={cn('font-medium', theme === 'dark' ? 'text-white' : 'text-gray-900')}>
-                                    Bulk Import from CSV
-                                </div>
-                            </div>
-                        </button>
-
-                        <button
-                            onClick={() => setView('form-basic')}
-                            className={cn(
-                                'w-full flex items-center gap-4 p-4 rounded-lg border text-left',
-                                theme === 'dark'
-                                    ? 'border-gray-700 hover:border-gray-600 hover:bg-gray-800/50'
-                                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                            )}
-                        >
-                            <div className={cn(
-                                'w-10 h-10 rounded-lg flex items-center justify-center',
-                                theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'
-                            )}>
-                                <Mail className="w-5 h-5" />
-                            </div>
-                            <div>
-                                <div className={cn('text-sm', theme === 'dark' ? 'text-gray-400' : 'text-gray-500')}>
-                                    Any Provider
-                                </div>
-                                <div className={cn('font-medium', theme === 'dark' ? 'text-white' : 'text-gray-900')}>
-                                    Single Account
-                                </div>
-                            </div>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    // Basic Form View
-    if (view === 'form-basic') {
-        return (
-            <div className={cn('min-h-screen', className)}>
-                {/* Back Button */}
-                <button
-                    onClick={handleBack}
-                    className={cn(
-                        'flex items-center gap-2 text-sm font-medium mb-12',
-                        theme === 'dark' ? 'text-white hover:text-gray-300' : 'text-gray-900 hover:text-gray-600'
-                    )}
-                >
-                    <ChevronLeft className="w-4 h-4" />
-                    Back
-                </button>
-
-                <div className="max-w-lg mx-auto">
-                    <button
-                        onClick={() => setView('provider-select')}
-                        className={cn(
-                            'flex items-center gap-2 text-sm mb-8',
-                            theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
-                        )}
-                    >
-                        <ChevronLeft className="w-4 h-4" />
-                        Select another provider
-                    </button>
-
-                    {/* Header */}
-                    <div className="flex items-center gap-4 mb-8">
-                        <div className={cn(
-                            'w-12 h-12 rounded-lg flex items-center justify-center',
-                            theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'
-                        )}>
-                            <Mail className="w-6 h-6" />
+                            ))}
                         </div>
-                        <div>
-                            <h2 className={cn(
-                                'text-lg font-semibold',
-                                theme === 'dark' ? 'text-white' : 'text-gray-900'
-                            )}>
-                                Connect Any Provider Account
-                            </h2>
-                            <p className={cn('text-sm', theme === 'dark' ? 'text-gray-400' : 'text-gray-500')}>
-                                IMAP / SMTP
-                            </p>
-                        </div>
+                        <Button disabled className="w-full">
+                            Coming Soon
+                        </Button>
                     </div>
 
-                    {/* Form */}
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className={cn(
-                                    'block text-sm mb-2',
-                                    theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                                )}>
-                                    First Name
-                                </label>
-                                <Input
-                                    value={form.firstName}
-                                    onChange={(e) => setForm(p => ({ ...p, firstName: e.target.value }))}
-                                    placeholder="John"
-                                    className={cn(
-                                        theme === 'dark' ? 'bg-gray-900 border-gray-700' : ''
-                                    )}
-                                />
-                            </div>
-                            <div>
-                                <label className={cn(
-                                    'block text-sm mb-2',
-                                    theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                                )}>
-                                    Last Name
-                                </label>
-                                <Input
-                                    value={form.lastName}
-                                    onChange={(e) => setForm(p => ({ ...p, lastName: e.target.value }))}
-                                    placeholder="Doe"
-                                    className={cn(
-                                        theme === 'dark' ? 'bg-gray-900 border-gray-700' : ''
-                                    )}
-                                />
-                            </div>
+                    {/* Done-for-you (Coming Soon) */}
+                    <div className={cn(
+                        'p-6 rounded-xl border opacity-60',
+                        isDark ? 'bg-neutral-800/50 border-neutral-700' : 'bg-white border-gray-200'
+                    )}>
+                        <h3 className={cn('text-lg font-semibold mb-4', isDark ? 'text-white' : 'text-gray-900')}>
+                            Done-for-you Setup
+                        </h3>
+                        <div className="space-y-2 mb-4">
+                            {['We set up your accounts', 'Choose your domain', 'Automatic reconnects'].map((feature, i) => (
+                                <div key={i} className="flex items-center gap-2">
+                                    <Check className="w-4 h-4 text-emerald-500" />
+                                    <span className={cn('text-sm', isDark ? 'text-neutral-300' : 'text-gray-600')}>
+                                        {feature}
+                                    </span>
+                                </div>
+                            ))}
                         </div>
-
-                        <div>
-                            <label className={cn(
-                                'block text-sm mb-2',
-                                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                            )}>
-                                Email <span className="text-red-500">*</span>
-                            </label>
-                            <Input
-                                type="email"
-                                value={form.email}
-                                onChange={(e) => setForm(p => ({ ...p, email: e.target.value }))}
-                                placeholder="Email address to connect"
-                                className={cn(
-                                    theme === 'dark' ? 'bg-gray-900 border-gray-700' : ''
-                                )}
-                            />
-                        </div>
-
-                        <Button
-                            onClick={() => setView('form-imap')}
-                            disabled={!form.email}
-                            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white mt-6"
-                        >
-                            Next <ArrowRight className="w-4 h-4 ml-2" />
+                        <Button disabled className="w-full">
+                            Coming Soon
                         </Button>
                     </div>
                 </div>
@@ -926,402 +561,314 @@ export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsP
         );
     }
 
-    // IMAP Form View
-    if (view === 'form-imap') {
+    // Form - Basic Info
+    if (view === 'form-basic') {
         return (
-            <div className={cn('min-h-screen', className)}>
-                {/* Back Button */}
+            <div className={cn('min-h-full', className)}>
                 <button
                     onClick={handleBack}
                     className={cn(
-                        'flex items-center gap-2 text-sm font-medium mb-12',
-                        theme === 'dark' ? 'text-white hover:text-gray-300' : 'text-gray-900 hover:text-gray-600'
+                        'flex items-center gap-2 text-sm font-medium mb-8',
+                        isDark ? 'text-white hover:text-neutral-300' : 'text-gray-900 hover:text-gray-600'
                     )}
                 >
                     <ChevronLeft className="w-4 h-4" />
                     Back
                 </button>
 
-                <div className="max-w-lg mx-auto">
-                    <button
-                        onClick={() => setView('provider-select')}
-                        className={cn(
-                            'flex items-center gap-2 text-sm mb-8',
-                            theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
-                        )}
-                    >
-                        <ChevronLeft className="w-4 h-4" />
-                        Select another provider
-                    </button>
+                <div className="max-w-md">
+                    <h2 className={cn('text-xl font-semibold mb-6', isDark ? 'text-white' : 'text-gray-900')}>
+                        Account Details
+                    </h2>
 
-                    {/* Header */}
-                    <div className="flex items-center gap-4 mb-8">
-                        <div className={cn(
-                            'w-12 h-12 rounded-lg flex items-center justify-center',
-                            theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'
-                        )}>
-                            <Download className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <h2 className={cn(
-                                'text-lg font-semibold',
-                                theme === 'dark' ? 'text-white' : 'text-gray-900'
-                            )}>
-                                IMAP
-                            </h2>
-                            <p className={cn('text-sm', theme === 'dark' ? 'text-gray-400' : 'text-gray-500')}>
-                                IMAP Setup
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Form */}
                     <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className={cn('block text-sm font-medium mb-1.5', isDark ? 'text-neutral-300' : 'text-gray-700')}>
+                                    First Name
+                                </label>
+                                <input
+                                    type="text"
+                                    value={form.firstName}
+                                    onChange={(e) => setForm(p => ({ ...p, firstName: e.target.value }))}
+                                    className={cn(
+                                        'w-full h-10 px-3 rounded-lg border text-sm outline-none transition-colors',
+                                        isDark
+                                            ? 'bg-neutral-800 border-neutral-700 text-white focus:border-orange-500'
+                                            : 'bg-white border-gray-200 text-gray-900 focus:border-orange-500'
+                                    )}
+                                />
+                            </div>
+                            <div>
+                                <label className={cn('block text-sm font-medium mb-1.5', isDark ? 'text-neutral-300' : 'text-gray-700')}>
+                                    Last Name
+                                </label>
+                                <input
+                                    type="text"
+                                    value={form.lastName}
+                                    onChange={(e) => setForm(p => ({ ...p, lastName: e.target.value }))}
+                                    className={cn(
+                                        'w-full h-10 px-3 rounded-lg border text-sm outline-none transition-colors',
+                                        isDark
+                                            ? 'bg-neutral-800 border-neutral-700 text-white focus:border-orange-500'
+                                            : 'bg-white border-gray-200 text-gray-900 focus:border-orange-500'
+                                    )}
+                                />
+                            </div>
+                        </div>
                         <div>
-                            <label className={cn(
-                                'block text-sm mb-2',
-                                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                            )}>
-                                IMAP Username <span className="text-red-500">*</span>
+                            <label className={cn('block text-sm font-medium mb-1.5', isDark ? 'text-neutral-300' : 'text-gray-700')}>
+                                Email Address
                             </label>
-                            <Input
-                                value={form.imapUsername}
-                                onChange={(e) => setForm(p => ({ ...p, imapUsername: e.target.value }))}
-                                placeholder={form.email || "username@example.com"}
+                            <input
+                                type="email"
+                                value={form.email}
+                                onChange={(e) => setForm(p => ({ ...p, email: e.target.value }))}
+                                placeholder="you@example.com"
                                 className={cn(
-                                    theme === 'dark' ? 'bg-gray-900 border-gray-700' : ''
+                                    'w-full h-10 px-3 rounded-lg border text-sm outline-none transition-colors',
+                                    isDark
+                                        ? 'bg-neutral-800 border-neutral-700 text-white focus:border-orange-500 placeholder:text-neutral-500'
+                                        : 'bg-white border-gray-200 text-gray-900 focus:border-orange-500 placeholder:text-gray-400'
                                 )}
                             />
                         </div>
+                    </div>
 
+                    <div className="flex gap-3 mt-8">
+                        <Button variant="outline" onClick={handleBack}>Cancel</Button>
+                        <Button
+                            onClick={() => setView('form-imap')}
+                            disabled={!form.email}
+                            className="bg-gradient-to-r from-orange-500 to-orange-600 text-white"
+                        >
+                            Continue
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Form - IMAP
+    if (view === 'form-imap') {
+        return (
+            <div className={cn('min-h-full', className)}>
+                <button
+                    onClick={handleBack}
+                    className={cn(
+                        'flex items-center gap-2 text-sm font-medium mb-8',
+                        isDark ? 'text-white hover:text-neutral-300' : 'text-gray-900 hover:text-gray-600'
+                    )}
+                >
+                    <ChevronLeft className="w-4 h-4" />
+                    Back
+                </button>
+
+                <div className="max-w-md">
+                    <h2 className={cn('text-xl font-semibold mb-2', isDark ? 'text-white' : 'text-gray-900')}>
+                        IMAP Settings
+                    </h2>
+                    <p className={cn('text-sm mb-6', isDark ? 'text-neutral-400' : 'text-gray-500')}>
+                        Configure IMAP to receive and sync emails
+                    </p>
+
+                    <div className="space-y-4">
                         <div>
-                            <label className={cn(
-                                'block text-sm mb-2',
-                                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                            )}>
-                                IMAP Password <span className="text-red-500">*</span>
+                            <label className={cn('block text-sm font-medium mb-1.5', isDark ? 'text-neutral-300' : 'text-gray-700')}>
+                                IMAP Host
                             </label>
-                            <Input
+                            <input
+                                type="text"
+                                value={form.imapHost}
+                                onChange={(e) => setForm(p => ({ ...p, imapHost: e.target.value }))}
+                                placeholder="imap.gmail.com"
+                                className={cn(
+                                    'w-full h-10 px-3 rounded-lg border text-sm outline-none transition-colors',
+                                    isDark
+                                        ? 'bg-neutral-800 border-neutral-700 text-white focus:border-orange-500 placeholder:text-neutral-500'
+                                        : 'bg-white border-gray-200 text-gray-900 focus:border-orange-500 placeholder:text-gray-400'
+                                )}
+                            />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className={cn('block text-sm font-medium mb-1.5', isDark ? 'text-neutral-300' : 'text-gray-700')}>
+                                    Port
+                                </label>
+                                <input
+                                    type="text"
+                                    value={form.imapPort}
+                                    onChange={(e) => setForm(p => ({ ...p, imapPort: e.target.value }))}
+                                    className={cn(
+                                        'w-full h-10 px-3 rounded-lg border text-sm outline-none transition-colors',
+                                        isDark
+                                            ? 'bg-neutral-800 border-neutral-700 text-white focus:border-orange-500'
+                                            : 'bg-white border-gray-200 text-gray-900 focus:border-orange-500'
+                                    )}
+                                />
+                            </div>
+                            <div>
+                                <label className={cn('block text-sm font-medium mb-1.5', isDark ? 'text-neutral-300' : 'text-gray-700')}>
+                                    Username
+                                </label>
+                                <input
+                                    type="text"
+                                    value={form.imapUsername}
+                                    onChange={(e) => setForm(p => ({ ...p, imapUsername: e.target.value }))}
+                                    className={cn(
+                                        'w-full h-10 px-3 rounded-lg border text-sm outline-none transition-colors',
+                                        isDark
+                                            ? 'bg-neutral-800 border-neutral-700 text-white focus:border-orange-500'
+                                            : 'bg-white border-gray-200 text-gray-900 focus:border-orange-500'
+                                    )}
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <label className={cn('block text-sm font-medium mb-1.5', isDark ? 'text-neutral-300' : 'text-gray-700')}>
+                                Password / App Password
+                            </label>
+                            <input
                                 type="password"
                                 value={form.imapPassword}
                                 onChange={(e) => setForm(p => ({ ...p, imapPassword: e.target.value }))}
-                                placeholder="IMAP Password"
                                 className={cn(
-                                    theme === 'dark' ? 'bg-gray-900 border-gray-700' : ''
+                                    'w-full h-10 px-3 rounded-lg border text-sm outline-none transition-colors',
+                                    isDark
+                                        ? 'bg-neutral-800 border-neutral-700 text-white focus:border-orange-500'
+                                        : 'bg-white border-gray-200 text-gray-900 focus:border-orange-500'
                                 )}
                             />
                         </div>
+                    </div>
 
-                        <div className="grid grid-cols-3 gap-4">
-                            <div className="col-span-2">
-                                <label className={cn(
-                                    'block text-sm mb-2',
-                                    theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                                )}>
-                                    IMAP Host <span className="text-red-500">*</span>
-                                </label>
-                                <Input
-                                    value={form.imapHost}
-                                    onChange={(e) => setForm(p => ({ ...p, imapHost: e.target.value }))}
-                                    placeholder="imap.website.com"
-                                    className={cn(
-                                        theme === 'dark' ? 'bg-gray-900 border-gray-700' : ''
-                                    )}
-                                />
-                            </div>
-                            <div>
-                                <label className={cn(
-                                    'block text-sm mb-2',
-                                    theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                                )}>
-                                    IMAP Port <span className="text-red-500">*</span>
-                                </label>
-                                <Input
-                                    value={form.imapPort}
-                                    onChange={(e) => setForm(p => ({ ...p, imapPort: e.target.value }))}
-                                    placeholder="993"
-                                    className={cn(
-                                        theme === 'dark' ? 'bg-gray-900 border-gray-700' : ''
-                                    )}
-                                />
-                            </div>
-                        </div>
-
-                        {/* Test Result */}
-                        {imapTestResult && (
-                            <div className={cn(
-                                'flex items-center gap-3 p-3 rounded-lg text-sm',
-                                imapTestResult.success
-                                    ? 'bg-green-500/10 text-green-400 border border-green-500/30'
-                                    : 'bg-red-500/10 text-red-400 border border-red-500/30'
-                            )}>
-                                {imapTestResult.success ? <Check className="w-5 h-5" /> : <Mail className="w-5 h-5" />}
-                                <span>{imapTestResult.message}</span>
-                            </div>
-                        )}
-
-                        <div className="flex gap-4 mt-8">
-                            <Button
-                                variant="outline"
-                                onClick={handleBack}
-                                className={cn('flex-1', theme === 'dark' ? 'border-gray-700 text-white' : '')}
-                            >
-                                <ChevronLeft className="w-4 h-4 mr-2" /> Back
-                            </Button>
-                            <Button
-                                onClick={handleTestImap}
-                                disabled={testingImap || !form.imapHost || !form.imapUsername || !form.imapPassword}
-                                variant="outline"
-                                className={cn('flex-1', theme === 'dark' ? 'border-gray-700 text-white' : '')}
-                            >
-                                {testingImap ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                                Test Connection
-                            </Button>
-                            <Button
-                                onClick={() => setView('form-smtp')}
-                                disabled={!imapTestResult?.success}
-                                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50"
-                            >
-                                Next <ArrowRight className="w-4 h-4 ml-2" />
-                            </Button>
-                        </div>
+                    <div className="flex gap-3 mt-8">
+                        <Button variant="outline" onClick={handleBack}>Back</Button>
+                        <Button variant="outline" onClick={handleTestImap} disabled={testingImap}>
+                            {testingImap ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                            Test Connection
+                        </Button>
+                        <Button
+                            onClick={() => setView('form-smtp')}
+                            className="bg-gradient-to-r from-orange-500 to-orange-600 text-white"
+                        >
+                            Continue
+                        </Button>
                     </div>
                 </div>
             </div>
         );
     }
 
-    // SMTP Form View
+    // Form - SMTP
     if (view === 'form-smtp') {
         return (
-            <div className={cn('min-h-screen', className)}>
-                {/* Back Button */}
+            <div className={cn('min-h-full', className)}>
                 <button
                     onClick={handleBack}
                     className={cn(
-                        'flex items-center gap-2 text-sm font-medium mb-12',
-                        theme === 'dark' ? 'text-white hover:text-gray-300' : 'text-gray-900 hover:text-gray-600'
+                        'flex items-center gap-2 text-sm font-medium mb-8',
+                        isDark ? 'text-white hover:text-neutral-300' : 'text-gray-900 hover:text-gray-600'
                     )}
                 >
                     <ChevronLeft className="w-4 h-4" />
                     Back
                 </button>
 
-                <div className="max-w-lg mx-auto">
-                    <button
-                        onClick={() => setView('provider-select')}
-                        className={cn(
-                            'flex items-center gap-2 text-sm mb-8',
-                            theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
-                        )}
-                    >
-                        <ChevronLeft className="w-4 h-4" />
-                        Select another provider
-                    </button>
+                <div className="max-w-md">
+                    <h2 className={cn('text-xl font-semibold mb-2', isDark ? 'text-white' : 'text-gray-900')}>
+                        SMTP Settings
+                    </h2>
+                    <p className={cn('text-sm mb-6', isDark ? 'text-neutral-400' : 'text-gray-500')}>
+                        Configure SMTP to send emails
+                    </p>
 
-                    {/* Header */}
-                    <div className="flex items-center gap-4 mb-8">
-                        <div className={cn(
-                            'w-12 h-12 rounded-lg flex items-center justify-center',
-                            theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'
-                        )}>
-                            <Mail className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <h2 className={cn(
-                                'text-lg font-semibold',
-                                theme === 'dark' ? 'text-white' : 'text-gray-900'
-                            )}>
-                                SMTP
-                            </h2>
-                            <p className={cn('text-sm', theme === 'dark' ? 'text-gray-400' : 'text-gray-500')}>
-                                SMTP Setup
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Form */}
                     <div className="space-y-4">
                         <div>
-                            <label className={cn(
-                                'block text-sm mb-2',
-                                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                            )}>
-                                SMTP Username <span className="text-red-500">*</span>
+                            <label className={cn('block text-sm font-medium mb-1.5', isDark ? 'text-neutral-300' : 'text-gray-700')}>
+                                SMTP Host
                             </label>
-                            <Input
-                                value={form.smtpUsername}
-                                onChange={(e) => setForm(p => ({ ...p, smtpUsername: e.target.value }))}
-                                placeholder={form.email || "username@example.com"}
+                            <input
+                                type="text"
+                                value={form.smtpHost}
+                                onChange={(e) => setForm(p => ({ ...p, smtpHost: e.target.value }))}
+                                placeholder="smtp.gmail.com"
                                 className={cn(
-                                    theme === 'dark' ? 'bg-gray-900 border-gray-700' : ''
+                                    'w-full h-10 px-3 rounded-lg border text-sm outline-none transition-colors',
+                                    isDark
+                                        ? 'bg-neutral-800 border-neutral-700 text-white focus:border-orange-500 placeholder:text-neutral-500'
+                                        : 'bg-white border-gray-200 text-gray-900 focus:border-orange-500 placeholder:text-gray-400'
                                 )}
                             />
                         </div>
-
-                        <div>
-                            <label className={cn(
-                                'block text-sm mb-2',
-                                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                            )}>
-                                SMTP Password <span className="text-red-500">*</span>
-                            </label>
-                            <Input
-                                type="password"
-                                value={form.smtpPassword}
-                                onChange={(e) => setForm(p => ({ ...p, smtpPassword: e.target.value }))}
-                                placeholder="SMTP Password"
-                                className={cn(
-                                    theme === 'dark' ? 'bg-gray-900 border-gray-700' : ''
-                                )}
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-4">
-                            <div className="col-span-2">
-                                <label className={cn(
-                                    'block text-sm mb-2',
-                                    theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                                )}>
-                                    SMTP Host <span className="text-red-500">*</span>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className={cn('block text-sm font-medium mb-1.5', isDark ? 'text-neutral-300' : 'text-gray-700')}>
+                                    Port
                                 </label>
-                                <Input
-                                    value={form.smtpHost}
-                                    onChange={(e) => setForm(p => ({ ...p, smtpHost: e.target.value }))}
-                                    placeholder="smtp.website.com"
+                                <input
+                                    type="text"
+                                    value={form.smtpPort}
+                                    onChange={(e) => setForm(p => ({ ...p, smtpPort: e.target.value }))}
                                     className={cn(
-                                        theme === 'dark' ? 'bg-gray-900 border-gray-700' : ''
+                                        'w-full h-10 px-3 rounded-lg border text-sm outline-none transition-colors',
+                                        isDark
+                                            ? 'bg-neutral-800 border-neutral-700 text-white focus:border-orange-500'
+                                            : 'bg-white border-gray-200 text-gray-900 focus:border-orange-500'
                                     )}
                                 />
                             </div>
                             <div>
-                                <label className={cn(
-                                    'block text-sm mb-2',
-                                    theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                                )}>
-                                    SMTP Port <span className="text-red-500">*</span>
+                                <label className={cn('block text-sm font-medium mb-1.5', isDark ? 'text-neutral-300' : 'text-gray-700')}>
+                                    Username
                                 </label>
-                                <Input
-                                    value={form.smtpPort}
-                                    onChange={(e) => setForm(p => ({ ...p, smtpPort: e.target.value }))}
-                                    placeholder="587"
+                                <input
+                                    type="text"
+                                    value={form.smtpUsername}
+                                    onChange={(e) => setForm(p => ({ ...p, smtpUsername: e.target.value }))}
                                     className={cn(
-                                        theme === 'dark' ? 'bg-gray-900 border-gray-700' : ''
+                                        'w-full h-10 px-3 rounded-lg border text-sm outline-none transition-colors',
+                                        isDark
+                                            ? 'bg-neutral-800 border-neutral-700 text-white focus:border-orange-500'
+                                            : 'bg-white border-gray-200 text-gray-900 focus:border-orange-500'
                                     )}
                                 />
                             </div>
                         </div>
-
-                        {/* Test Result */}
-                        {smtpTestResult && (
-                            <div className={cn(
-                                'flex items-center gap-3 p-3 rounded-lg text-sm',
-                                smtpTestResult.success
-                                    ? 'bg-green-500/10 text-green-400 border border-green-500/30'
-                                    : 'bg-red-500/10 text-red-400 border border-red-500/30'
-                            )}>
-                                {smtpTestResult.success ? <Check className="w-5 h-5" /> : <Mail className="w-5 h-5" />}
-                                <span>{smtpTestResult.message}</span>
-                            </div>
-                        )}
-
-                        <div className="flex gap-4 mt-8">
-                            <Button
-                                variant="outline"
-                                onClick={handleBack}
-                                className={cn('flex-1', theme === 'dark' ? 'border-gray-700 text-white' : '')}
-                            >
-                                <ChevronLeft className="w-4 h-4 mr-2" /> Back
-                            </Button>
-                            <Button
-                                onClick={handleTestSmtp}
-                                disabled={testingSmtp || !form.smtpHost || !form.smtpUsername || !form.smtpPassword}
-                                variant="outline"
-                                className={cn('flex-1', theme === 'dark' ? 'border-gray-700 text-white' : '')}
-                            >
-                                {testingSmtp ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                                Test Connection
-                            </Button>
-                            <Button
-                                onClick={handleSaveAccount}
-                                disabled={saving || !smtpTestResult?.success}
-                                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50"
-                            >
-                                {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                                Save Account
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    // Google Setup Instructions
-    if (view === 'google-setup') {
-        return (
-            <div className={cn('min-h-screen', className)}>
-                <button onClick={() => setView('add-options')} className={cn('flex items-center gap-2 text-sm font-medium mb-12', theme === 'dark' ? 'text-white hover:text-gray-300' : 'text-gray-900 hover:text-gray-600')}>
-                    <ChevronLeft className="w-4 h-4" /> Back
-                </button>
-                <div className="max-w-lg mx-auto">
-                    <div className="flex items-center gap-4 mb-8">
-                        <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center"><GoogleLogo /></div>
                         <div>
-                            <h2 className={cn('text-lg font-semibold', theme === 'dark' ? 'text-white' : 'text-gray-900')}>Connect Gmail / Google Workspace</h2>
-                            <p className={cn('text-sm', theme === 'dark' ? 'text-gray-400' : 'text-gray-500')}>Setup requires an App Password</p>
+                            <label className={cn('block text-sm font-medium mb-1.5', isDark ? 'text-neutral-300' : 'text-gray-700')}>
+                                Password / App Password
+                            </label>
+                            <input
+                                type="password"
+                                value={form.smtpPassword}
+                                onChange={(e) => setForm(p => ({ ...p, smtpPassword: e.target.value }))}
+                                className={cn(
+                                    'w-full h-10 px-3 rounded-lg border text-sm outline-none transition-colors',
+                                    isDark
+                                        ? 'bg-neutral-800 border-neutral-700 text-white focus:border-orange-500'
+                                        : 'bg-white border-gray-200 text-gray-900 focus:border-orange-500'
+                                )}
+                            />
                         </div>
                     </div>
-                    <div className={cn('p-6 rounded-xl border mb-6', theme === 'dark' ? 'bg-[#1e1e1e] border-gray-700' : 'bg-white border-gray-200')}>
-                        <h3 className={cn('font-medium mb-4', theme === 'dark' ? 'text-white' : 'text-gray-900')}>Steps to create App Password:</h3>
-                        <ol className="space-y-3">
-                            {['Enable 2-Step Verification on your Google Account', 'Go to myaccount.google.com → Security → App passwords', 'Select "Mail" as the app and your device', 'Click "Generate" to create a 16-digit password', 'Copy the password (you won\'t see it again)'].map((step, i) => (
-                                <li key={i} className="flex items-start gap-3">
-                                    <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center shrink-0">{i + 1}</span>
-                                    <span className={cn('text-sm', theme === 'dark' ? 'text-gray-300' : 'text-gray-600')}>{step}</span>
-                                </li>
-                            ))}
-                        </ol>
-                    </div>
-                    <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="block w-full text-center py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white rounded-lg mb-4">Open Google App Passwords →</a>
-                    <Button onClick={() => { setSelectedProvider('google'); setForm(p => ({ ...p, imapHost: 'imap.gmail.com', smtpHost: 'smtp.gmail.com', imapPort: '993', smtpPort: '587' })); setView('form-basic'); }} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white">
-                        I have my App Password, Continue →
-                    </Button>
-                </div>
-            </div>
-        );
-    }
 
-    // Microsoft Setup Instructions
-    if (view === 'microsoft-setup') {
-        return (
-            <div className={cn('min-h-screen', className)}>
-                <button onClick={() => setView('add-options')} className={cn('flex items-center gap-2 text-sm font-medium mb-12', theme === 'dark' ? 'text-white hover:text-gray-300' : 'text-gray-900 hover:text-gray-600')}>
-                    <ChevronLeft className="w-4 h-4" /> Back
-                </button>
-                <div className="max-w-lg mx-auto">
-                    <div className="flex items-center gap-4 mb-8">
-                        <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center"><MicrosoftLogo /></div>
-                        <div>
-                            <h2 className={cn('text-lg font-semibold', theme === 'dark' ? 'text-white' : 'text-gray-900')}>Connect Microsoft 365 / Outlook</h2>
-                            <p className={cn('text-sm', theme === 'dark' ? 'text-gray-400' : 'text-gray-500')}>Setup requires an App Password</p>
-                        </div>
+                    <div className="flex gap-3 mt-8">
+                        <Button variant="outline" onClick={handleBack}>Back</Button>
+                        <Button variant="outline" onClick={handleTestSmtp} disabled={testingSmtp}>
+                            {testingSmtp ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                            Test Connection
+                        </Button>
+                        <Button
+                            onClick={handleSaveAccount}
+                            disabled={saving || !form.smtpHost || !form.smtpUsername || !form.smtpPassword}
+                            className="bg-gradient-to-r from-orange-500 to-orange-600 text-white"
+                        >
+                            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                            Save Account
+                        </Button>
                     </div>
-                    <div className={cn('p-6 rounded-xl border mb-6', theme === 'dark' ? 'bg-[#1e1e1e] border-gray-700' : 'bg-white border-gray-200')}>
-                        <h3 className={cn('font-medium mb-4', theme === 'dark' ? 'text-white' : 'text-gray-900')}>Steps to create App Password:</h3>
-                        <ol className="space-y-3">
-                            {['Sign in to account.microsoft.com', 'Go to Security → Advanced security options', 'Enable Two-step verification if not already', 'Find "App passwords" and click "Create a new app password"', 'Copy the generated password'].map((step, i) => (
-                                <li key={i} className="flex items-start gap-3">
-                                    <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center shrink-0">{i + 1}</span>
-                                    <span className={cn('text-sm', theme === 'dark' ? 'text-gray-300' : 'text-gray-600')}>{step}</span>
-                                </li>
-                            ))}
-                        </ol>
-                    </div>
-                    <a href="https://account.microsoft.com/security" target="_blank" rel="noopener noreferrer" className="block w-full text-center py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white rounded-lg mb-4">Open Microsoft Security →</a>
-                    <Button onClick={() => { setSelectedProvider('microsoft'); setForm(p => ({ ...p, imapHost: 'outlook.office365.com', smtpHost: 'smtp.office365.com', imapPort: '993', smtpPort: '587' })); setView('form-basic'); }} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white">
-                        I have my App Password, Continue →
-                    </Button>
                 </div>
             </div>
         );

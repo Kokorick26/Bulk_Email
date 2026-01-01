@@ -3,6 +3,7 @@ import { Toaster } from 'sonner';
 import { ThemeProvider } from './lib/ThemeContext';
 import MarketingLayout from './layouts/MarketingLayout';
 import Home from './pages/landing/Home';
+import HomeRedesign from './pages/landing/HomeRedesign';
 import Features from './pages/landing/Features';
 import Pricing from './pages/landing/Pricing';
 import About from './pages/landing/About';
@@ -55,9 +56,11 @@ function App() {
         <ThemeProvider>
             <BrowserRouter>
                 <Routes>
-                    {/* Public Website Routes */}
+                    {/* Main Landing Page (Redesigned) */}
+                    <Route path="/" element={<HomeRedesign />} />
+
+                    {/* Other Marketing Pages (Original Layout) */}
                     <Route element={<MarketingLayout />}>
-                        <Route path="/" element={<Home />} />
                         <Route path="/features" element={<Features />} />
                         <Route path="/pricing" element={<Pricing />} />
                         <Route path="/about" element={<About />} />

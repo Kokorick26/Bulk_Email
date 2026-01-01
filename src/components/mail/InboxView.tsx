@@ -1,20 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Inbox, RefreshCw, Mail, MailOpen, Star, Trash2, Archive,
-    ChevronLeft, ChevronRight, Loader2, AlertCircle, Settings2,
-    Search, MoreVertical, CheckSquare, Square, Clock, Paperclip, X,
-    Zap, Filter, ChevronDown, Users, Megaphone, Folder, MoreHorizontal
+    Inbox, RefreshCw, Mail, MailOpen, Star, Trash2,
+    Loader2, AlertCircle, Settings2, Search, Paperclip
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../../lib/utils';
 import { cache } from '../../lib/cache';
-import { Button } from '../ui/Button';
-import { Input } from '../ui/Input';
 import { ScrollArea } from '../ui/ScrollArea';
-import { Badge } from '../ui/Badge';
 import { Checkbox } from '../ui/Checkbox';
 import { useTheme } from '../../lib/ThemeContext';
+import { useDashboardContext } from '../../layouts/DashboardShell';
 import EmailViewer from './EmailViewer';
 import ImapConfigDialog from './ImapConfigDialog';
 
@@ -65,8 +61,24 @@ interface InboxViewProps {
 
 type FilterType = 'all' | 'unread' | 'starred' | 'has_attachments';
 
+// Map sidebar items to folder names and filters
+const SIDEBAR_TO_FOLDER: Record<string, { folder?: string; filter?: FilterType }> = {
+    'all-mail': { folder: 'INBOX', filter: 'all' },
+    'unread': { filter: 'unread' },
+    'starred': { filter: 'starred' },
+    'sent': { folder: 'Sent' },
+    'archive': { folder: 'Archive' },
+    'inbox': { folder: 'INBOX' },
+    'drafts': { folder: 'Drafts' },
+    'spam': { folder: 'Spam' },
+    'trash': { folder: 'Trash' },
+};
+
 export default function InboxView({ smtpAccounts, onRefreshAccounts, onReply, onForward }: InboxViewProps) {
     const { theme } = useTheme();
+    const { activeSubItem, setActiveSubItem } = useDashboardContext();
+    const isDark = theme === 'dark';
+
     const [selectedAccount, setSelectedAccount] = useState<SmtpAccount | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
     const [loading, setLoading] = useState(false);
@@ -76,34 +88,30 @@ export default function InboxView({ smtpAccounts, onRefreshAccounts, onReply, on
     const [searchQuery, setSearchQuery] = useState('');
     const [showImapConfig, setShowImapConfig] = useState(false);
     const [accountToConfig, setAccountToConfig] = useState<SmtpAccount | null>(null);
-    const [activeFilter, setActiveFilter] = useState<FilterType>('all');
-    const [activeFolder, setActiveFolder] = useState<string>('INBOX');
 
-    // Filter accounts with IMAP configured
+    // Derive active folder and filter from context
+    const sidebarConfig = SIDEBAR_TO_FOLDER[activeSubItem] || { folder: 'INBOX', filter: 'all' };
+    const activeFolder = sidebarConfig.folder || 'INBOX';
+    const activeFilter: FilterType = sidebarConfig.filter || 'all';
+
     const configuredAccounts = smtpAccounts.filter(a => a.imapConfigured);
     const unconfiguredAccounts = smtpAccounts.filter(a => !a.imapConfigured);
 
-    // Auto-select first configured account
     useEffect(() => {
         if (!selectedAccount && configuredAccounts.length > 0) {
             setSelectedAccount(configuredAccounts[0]);
         }
     }, [configuredAccounts, selectedAccount]);
 
-    // Fetch messages when account or folder changes
     const fetchMessages = useCallback(async (fresh = false) => {
         if (!selectedAccount) return;
 
-        const cacheKey = `${activeFolder}:${selectedAccount.id}`;
-
-        // Try to load from IndexedDB cache first (instant)
         if (!fresh) {
             try {
                 const cachedMessages = await cache.getCachedMessages(selectedAccount.id, activeFolder);
                 if (cachedMessages && cachedMessages.length > 0) {
                     setMessages(cachedMessages);
                     setLoading(false);
-                    console.log(`Loaded ${cachedMessages.length} messages from cache (${activeFolder})`);
                     return;
                 }
             } catch (e) {
@@ -119,7 +127,6 @@ export default function InboxView({ smtpAccounts, onRefreshAccounts, onReply, on
             const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
             if (fresh) {
-                // Fetch fresh from IMAP
                 const res = await fetch(`${API_BASE}/fetch/${selectedAccount.id}`, {
                     method: 'POST',
                     headers,
@@ -134,19 +141,13 @@ export default function InboxView({ smtpAccounts, onRefreshAccounts, onReply, on
                 const data = await res.json();
                 const fetchedMessages = data.messages || [];
                 setMessages(fetchedMessages);
-
-                // Cache to IndexedDB
                 await cache.cacheMessages(selectedAccount.id, activeFolder, fetchedMessages);
-
-                toast.success(`Fetched ${data.count} emails from ${activeFolder}`);
+                toast.success(`Fetched ${data.count} emails`);
             } else {
-                // Get from server cache (DynamoDB)
                 const res = await fetch(`${API_BASE}/messages/${selectedAccount.id}?folder=${activeFolder}`, { headers });
                 if (res.ok) {
                     const data = await res.json();
                     setMessages(data);
-
-                    // Cache to IndexedDB
                     await cache.cacheMessages(selectedAccount.id, activeFolder, data);
                 }
             }
@@ -159,37 +160,30 @@ export default function InboxView({ smtpAccounts, onRefreshAccounts, onReply, on
         }
     }, [selectedAccount, activeFolder]);
 
-    // Track previous folder to detect folder changes
     const [prevFolder, setPrevFolder] = useState<string>('INBOX');
 
-    // Load messages when account or folder changes
     useEffect(() => {
         if (selectedAccount?.imapConfigured) {
-            // If folder changed, always fetch fresh
             const folderChanged = prevFolder !== activeFolder;
             if (folderChanged) {
                 setPrevFolder(activeFolder);
-                setMessages([]); // Clear old messages immediately
-                fetchMessages(true); // Fetch fresh from IMAP
+                setMessages([]);
+                fetchMessages(true);
             } else {
-                fetchMessages(false); // Use cache
+                fetchMessages(false);
             }
         }
     }, [selectedAccount, activeFolder]);
 
     const handleMarkAsRead = async (message: Message) => {
         if (!message.uid || message.isRead) return;
-
         try {
             const token = localStorage.getItem('bulkEmailToken');
             await fetch(`${API_BASE}/message/${message.accountId}/${message.uid}/read`, {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${token}` },
             });
-
-            setMessages(prev => prev.map(m =>
-                m.id === message.id ? { ...m, isRead: true } : m
-            ));
+            setMessages(prev => prev.map(m => m.id === message.id ? { ...m, isRead: true } : m));
         } catch (err) {
             console.error('Error marking as read:', err);
         }
@@ -197,18 +191,14 @@ export default function InboxView({ smtpAccounts, onRefreshAccounts, onReply, on
 
     const handleDelete = async (message: Message) => {
         if (!confirm('Delete this message?')) return;
-
         try {
             const token = localStorage.getItem('bulkEmailToken');
             await fetch(`${API_BASE}/message/${message.accountId}/${message.uid}`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` },
             });
-
             setMessages(prev => prev.filter(m => m.id !== message.id));
-            if (selectedMessage?.id === message.id) {
-                setSelectedMessage(null);
-            }
+            if (selectedMessage?.id === message.id) setSelectedMessage(null);
             toast.success('Message deleted');
         } catch (err) {
             toast.error('Failed to delete message');
@@ -230,115 +220,77 @@ export default function InboxView({ smtpAccounts, onRefreshAccounts, onReply, on
         const date = new Date(dateStr);
         const now = new Date();
         const isToday = date.toDateString() === now.toDateString();
-
-        if (isToday) {
-            return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-        }
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        if (isToday) return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     };
 
-    // Apply filters
     const filteredMessages = messages.filter(m => {
-
-        // Status filter
         if (activeFilter === 'unread' && m.isRead) return false;
         if (activeFilter === 'starred' && !m.isStarred) return false;
         if (activeFilter === 'has_attachments' && !m.hasAttachments) return false;
-
-        // Search filter
         if (searchQuery) {
             const query = searchQuery.toLowerCase();
-            return (
-                m.subject.toLowerCase().includes(query) ||
-                m.from.toLowerCase().includes(query) ||
-                m.snippet.toLowerCase().includes(query)
-            );
+            return m.subject.toLowerCase().includes(query) || m.from.toLowerCase().includes(query) || m.snippet.toLowerCase().includes(query);
         }
-
         return true;
     });
 
-    // Count unread messages
     const unreadCount = messages.filter(m => !m.isRead).length;
 
-    // No configured accounts view
+    // No configured accounts
     if (configuredAccounts.length === 0) {
         return (
             <div className="flex-1 flex flex-col items-center justify-center p-8">
                 <div className={cn(
-                    'w-20 h-20 rounded-full flex items-center justify-center mb-6',
-                    theme === 'dark' ? 'bg-[#3c4043]' : 'bg-[#e8f0fe]'
+                    'w-16 h-16 rounded-2xl flex items-center justify-center mb-6',
+                    isDark ? 'bg-neutral-800' : 'bg-gray-100'
                 )}>
-                    <Mail className={cn(
-                        'w-10 h-10',
-                        theme === 'dark' ? 'text-[#8ab4f8]' : 'text-[#1a73e8]'
-                    )} />
+                    <Mail className={cn('w-8 h-8', isDark ? 'text-orange-400' : 'text-orange-600')} />
                 </div>
-                <h2 className={cn(
-                    'text-xl font-medium mb-2',
-                    theme === 'dark' ? 'text-[#e8eaed]' : 'text-[#202124]'
-                )}>
+                <h2 className={cn('text-xl font-semibold mb-2', isDark ? 'text-white' : 'text-gray-900')}>
                     Configure IMAP to View Inbox
                 </h2>
-                <p className={cn(
-                    'text-center max-w-md mb-6',
-                    theme === 'dark' ? 'text-[#9aa0a6]' : 'text-[#5f6368]'
-                )}>
-                    To view your inbox, you need to configure IMAP settings for at least one SMTP account.
+                <p className={cn('text-center max-w-md mb-6', isDark ? 'text-neutral-400' : 'text-gray-500')}>
+                    Configure IMAP settings for at least one SMTP account to start receiving emails.
                 </p>
-
                 {smtpAccounts.length === 0 ? (
-                    <p className={cn(
-                        'text-sm',
-                        theme === 'dark' ? 'text-[#9aa0a6]' : 'text-[#5f6368]'
-                    )}>
+                    <p className={cn('text-sm', isDark ? 'text-neutral-500' : 'text-gray-400')}>
                         No SMTP accounts found. Add an SMTP account first.
                     </p>
                 ) : (
-                    <div className="space-y-3 w-full max-w-sm">
+                    <div className="space-y-2 w-full max-w-sm">
                         {unconfiguredAccounts.map(account => (
                             <button
                                 key={account.id}
                                 onClick={() => handleOpenImapConfig(account)}
                                 className={cn(
                                     'w-full flex items-center justify-between p-4 rounded-xl border transition-all',
-                                    theme === 'dark'
-                                        ? 'border-[#3c4043] bg-[#303134] hover:bg-[#3c4043]'
-                                        : 'border-[#dadce0] bg-white hover:bg-[#f1f3f4]'
+                                    isDark
+                                        ? 'border-neutral-700 bg-neutral-800/50 hover:bg-neutral-800'
+                                        : 'border-gray-200 bg-white hover:bg-gray-50'
                                 )}
                             >
                                 <div className="flex items-center gap-3">
                                     <div className={cn(
-                                        'w-10 h-10 rounded-full flex items-center justify-center',
-                                        theme === 'dark' ? 'bg-[#3c4043]' : 'bg-[#e8f0fe]'
+                                        'w-10 h-10 rounded-lg flex items-center justify-center',
+                                        isDark ? 'bg-neutral-700' : 'bg-gray-100'
                                     )}>
-                                        <Mail className="w-5 h-5 text-[#1a73e8]" />
+                                        <Mail className="w-5 h-5 text-orange-500" />
                                     </div>
                                     <div className="text-left">
-                                        <div className={cn(
-                                            'font-medium',
-                                            theme === 'dark' ? 'text-[#e8eaed]' : 'text-[#202124]'
-                                        )}>
+                                        <div className={cn('font-medium text-sm', isDark ? 'text-white' : 'text-gray-900')}>
                                             {account.name}
                                         </div>
-                                        <div className={cn(
-                                            'text-sm',
-                                            theme === 'dark' ? 'text-[#9aa0a6]' : 'text-[#5f6368]'
-                                        )}>
+                                        <div className={cn('text-xs', isDark ? 'text-neutral-400' : 'text-gray-500')}>
                                             {account.fromEmail}
                                         </div>
                                     </div>
                                 </div>
-                                <Settings2 className={cn(
-                                    'w-5 h-5',
-                                    theme === 'dark' ? 'text-[#9aa0a6]' : 'text-[#5f6368]'
-                                )} />
+                                <Settings2 className={cn('w-5 h-5', isDark ? 'text-neutral-500' : 'text-gray-400')} />
                             </button>
                         ))}
                     </div>
                 )}
-
-                {/* IMAP Config Dialog */}
                 <ImapConfigDialog
                     open={showImapConfig}
                     onOpenChange={setShowImapConfig}
@@ -349,7 +301,7 @@ export default function InboxView({ smtpAccounts, onRefreshAccounts, onReply, on
         );
     }
 
-    // Email viewer view
+    // Email viewer
     if (selectedMessage) {
         return (
             <EmailViewer
@@ -364,380 +316,153 @@ export default function InboxView({ smtpAccounts, onRefreshAccounts, onReply, on
     }
 
     return (
-        <div className="flex-1 flex overflow-hidden h-full">
-            {/* Left Sidebar - Folder Categories Only */}
+        <div className="flex-1 flex flex-col overflow-hidden h-full">
+            {/* Account Tabs + Refresh */}
             <div className={cn(
-                'w-48 flex-shrink-0 flex flex-col border-r',
-                theme === 'dark' ? 'bg-[var(--slate-rich)] border-white/5' : 'bg-[#f8f9fa] border-gray-200'
+                'flex items-center justify-between px-4 py-2 border-b flex-shrink-0',
+                isDark ? 'border-neutral-800' : 'border-gray-200'
             )}>
-                <ScrollArea className="flex-1 py-4">
-                    {/* Filter Section */}
-                    <div className="px-3 mb-6">
-                        <div className={cn(
-                            'text-xs font-semibold uppercase tracking-wider mb-3 px-3',
-                            theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                        )}>
-                            Filters
-                        </div>
-                        <div className="space-y-1">
-                            <button
-                                onClick={() => setActiveFilter('all')}
-                                className={cn(
-                                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all',
-                                    activeFilter === 'all'
-                                        ? theme === 'dark' ? 'bg-[var(--terracotta)] text-white shadow-lg shadow-[var(--terracotta)]/25' : 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
-                                        : theme === 'dark' ? 'text-[var(--text-secondary)] hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'
-                                )}
-                            >
-                                <Mail className="w-4 h-4" />
-                                <span>All Mail</span>
-                                {messages.length > 0 && (
-                                    <span className={cn(
-                                        'ml-auto text-xs px-2 py-0.5 rounded-full',
-                                        activeFilter === 'all' ? 'bg-blue-500' : theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
-                                    )}>
-                                        {messages.length}
-                                    </span>
-                                )}
-                            </button>
-                            <button
-                                onClick={() => setActiveFilter('unread')}
-                                className={cn(
-                                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all',
-                                    activeFilter === 'unread'
-                                        ? theme === 'dark' ? 'bg-[var(--terracotta)] text-white shadow-lg shadow-[var(--terracotta)]/25' : 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
-                                        : theme === 'dark' ? 'text-[var(--text-secondary)] hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'
-                                )}
-                            >
-                                <MailOpen className="w-4 h-4" />
-                                <span>Unread</span>
-                                {unreadCount > 0 && (
-                                    <span className={cn(
-                                        'ml-auto text-xs px-2 py-0.5 rounded-full bg-red-500 text-white'
-                                    )}>
-                                        {unreadCount}
-                                    </span>
-                                )}
-                            </button>
-                            <button
-                                onClick={() => setActiveFilter('starred')}
-                                className={cn(
-                                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all',
-                                    activeFilter === 'starred'
-                                        ? theme === 'dark' ? 'bg-[var(--terracotta)] text-white shadow-lg shadow-[var(--terracotta)]/25' : 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
-                                        : theme === 'dark' ? 'text-[var(--text-secondary)] hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'
-                                )}
-                            >
-                                <Star className="w-4 h-4" />
-                                <span>Starred</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Folders Section */}
-                    <div className="px-3 mb-6">
-                        <div className={cn(
-                            'text-xs font-semibold uppercase tracking-wider mb-3 px-3',
-                            theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                        )}>
-                            Folders
-                        </div>
-                        <div className="space-y-1">
-                            <button
-                                onClick={() => setActiveFolder('INBOX')}
-                                className={cn(
-                                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all',
-                                    activeFolder === 'INBOX'
-                                        ? theme === 'dark' ? 'bg-[var(--terracotta)] text-white shadow-lg shadow-[var(--terracotta)]/25' : 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
-                                        : theme === 'dark' ? 'text-[var(--text-secondary)] hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'
-                                )}
-                            >
-                                <Inbox className="w-4 h-4" />
-                                <span>Inbox</span>
-                            </button>
-                            <button
-                                onClick={() => setActiveFolder('Sent')}
-                                className={cn(
-                                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all',
-                                    activeFolder === 'Sent'
-                                        ? theme === 'dark' ? 'bg-[var(--terracotta)] text-white shadow-lg shadow-[var(--terracotta)]/25' : 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
-                                        : theme === 'dark' ? 'text-[var(--text-secondary)] hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'
-                                )}
-                            >
-                                <Mail className="w-4 h-4" />
-                                <span>Sent</span>
-                            </button>
-                            <button
-                                onClick={() => setActiveFolder('Drafts')}
-                                className={cn(
-                                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all',
-                                    activeFolder === 'Drafts'
-                                        ? theme === 'dark' ? 'bg-[var(--terracotta)] text-white shadow-lg shadow-[var(--terracotta)]/25' : 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
-                                        : theme === 'dark' ? 'text-[var(--text-secondary)] hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'
-                                )}
-                            >
-                                <Folder className="w-4 h-4" />
-                                <span>Drafts</span>
-                            </button>
-                            <button
-                                onClick={() => setActiveFolder('Archive')}
-                                className={cn(
-                                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all',
-                                    activeFolder === 'Archive'
-                                        ? theme === 'dark' ? 'bg-[var(--terracotta)] text-white shadow-lg shadow-[var(--terracotta)]/25' : 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
-                                        : theme === 'dark' ? 'text-[var(--text-secondary)] hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'
-                                )}
-                            >
-                                <Archive className="w-4 h-4" />
-                                <span>Archive</span>
-                            </button>
-                            <button
-                                onClick={() => setActiveFolder('Spam')}
-                                className={cn(
-                                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all',
-                                    activeFolder === 'Spam'
-                                        ? theme === 'dark' ? 'bg-[var(--terracotta)] text-white shadow-lg shadow-[var(--terracotta)]/25' : 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
-                                        : theme === 'dark' ? 'text-[var(--text-secondary)] hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'
-                                )}
-                            >
-                                <AlertCircle className="w-4 h-4" />
-                                <span>Spam</span>
-                            </button>
-                            <button
-                                onClick={() => setActiveFolder('Trash')}
-                                className={cn(
-                                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all',
-                                    activeFolder === 'Trash'
-                                        ? theme === 'dark' ? 'bg-[var(--terracotta)] text-white shadow-lg shadow-[var(--terracotta)]/25' : 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
-                                        : theme === 'dark' ? 'text-[var(--text-secondary)] hover:bg-white/5' : 'text-gray-700 hover:bg-gray-100'
-                                )}
-                            >
-                                <Trash2 className="w-4 h-4" />
-                                <span>Trash</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Actions Section */}
-                    <div className="px-3">
-                        <div className={cn(
-                            'text-xs font-semibold uppercase tracking-wider mb-3 px-3',
-                            theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                        )}>
-                            Actions
-                        </div>
-                        <div className="space-y-1">
-                            <button
-                                onClick={() => fetchMessages(true)}
-                                disabled={fetching}
-                                className={cn(
-                                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all',
-                                    theme === 'dark' ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'
-                                )}
-                            >
-                                <RefreshCw className={cn('w-4 h-4', fetching && 'animate-spin')} />
-                                <span>{fetching ? 'Refreshing...' : 'Refresh'}</span>
-                            </button>
-                        </div>
-                    </div>
-                </ScrollArea>
-            </div>
-
-            {/* Main Email List Area */}
-            <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-                {/* Email Account Tabs */}
-                <div className={cn(
-                    'flex items-center gap-2 px-4 border-b overflow-x-auto',
-                    theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
-                )}>
+                <div className="flex items-center gap-1 overflow-x-auto">
                     {configuredAccounts.map(account => (
                         <button
                             key={account.id}
                             onClick={() => setSelectedAccount(account)}
                             className={cn(
-                                'flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all -mb-px whitespace-nowrap',
+                                'flex items-center gap-2 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors whitespace-nowrap',
                                 selectedAccount?.id === account.id
-                                    ? theme === 'dark' ? 'border-[var(--terracotta)] text-[var(--terracotta)]' : 'border-blue-500 text-blue-500'
-                                    : theme === 'dark'
-                                        ? 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-white/10'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    ? isDark ? 'bg-neutral-800 text-white' : 'bg-gray-100 text-gray-900'
+                                    : isDark ? 'text-neutral-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
                             )}
                         >
                             <div className={cn(
-                                'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold',
+                                'w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold',
                                 selectedAccount?.id === account.id
-                                    ? theme === 'dark' ? 'bg-[var(--terracotta)] text-white' : 'bg-blue-500 text-white'
-                                    : theme === 'dark' ? 'bg-[var(--slate-mid)] text-[var(--text-secondary)]' : 'bg-gray-200 text-gray-600'
+                                    ? 'bg-orange-500 text-white'
+                                    : isDark ? 'bg-neutral-700 text-neutral-300' : 'bg-gray-200 text-gray-600'
                             )}>
                                 {account.fromEmail.charAt(0).toUpperCase()}
                             </div>
-                            <span className="max-w-[180px] truncate">{account.fromEmail}</span>
+                            <span className="max-w-[150px] truncate">{account.fromEmail}</span>
                         </button>
                     ))}
-
-                    {/* Add Account Button */}
-                    {unconfiguredAccounts.length > 0 && (
-                        <button
-                            onClick={() => handleOpenImapConfig(unconfiguredAccounts[0])}
-                            className={cn(
-                                'flex items-center gap-2 px-3 py-3 text-sm transition-colors -mb-px',
-                                theme === 'dark'
-                                    ? 'text-gray-500 hover:text-gray-300'
-                                    : 'text-gray-400 hover:text-gray-600'
-                            )}
-                        >
-                            <Settings2 className="w-4 h-4" />
-                            <span>Add</span>
-                        </button>
-                    )}
                 </div>
-
-                {/* Search Bar */}
-                <div className="px-6 py-3">
-                    <div className="relative">
-                        <Search className={cn(
-                            'absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4',
-                            theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                        )} />
-                        <input
-                            type="text"
-                            placeholder="Search mail"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className={cn(
-                                'w-full pl-10 pr-4 py-2.5 rounded-lg text-sm border',
-                                theme === 'dark'
-                                    ? 'bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500'
-                                    : 'bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400'
-                            )}
-                        />
-                    </div>
-                </div>
-
-                {/* Message List */}
-                <div className="flex-1 overflow-y-auto overflow-x-hidden">
-                    {loading && messages.length === 0 ? (
-                        <div className="flex items-center justify-center py-12">
-                            <Loader2 className={cn('w-8 h-8 animate-spin', theme === 'dark' ? 'text-[var(--terracotta)]' : 'text-blue-500')} />
-                        </div>
-                    ) : filteredMessages.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-16">
-                            <div className={cn(
-                                'w-16 h-16 rounded-full flex items-center justify-center mb-4',
-                                theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'
-                            )}>
-                                <Inbox className={cn(
-                                    'w-8 h-8',
-                                    theme === 'dark' ? 'text-gray-600' : 'text-gray-400'
-                                )} />
-                            </div>
-                            <p className={cn(
-                                'text-sm',
-                                theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
-                            )}>
-                                {searchQuery ? 'No matching emails found' : 'No emails in your inbox'}
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="w-full">
-                            <AnimatePresence>
-                                {filteredMessages.map((message, index) => (
-                                    <motion.div
-                                        key={message.id}
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        exit={{ opacity: 0 }}
-                                        transition={{ delay: index * 0.01 }}
-                                        onClick={() => {
-                                            setSelectedMessage(message);
-                                            if (!message.isRead) handleMarkAsRead(message);
-                                        }}
-                                        className={cn(
-                                            'grid grid-cols-[auto_1fr_auto] gap-3 px-4 py-3 cursor-pointer transition-colors border-b',
-                                            theme === 'dark'
-                                                ? 'hover:bg-gray-800/50 border-gray-800'
-                                                : 'hover:bg-gray-50 border-gray-100',
-                                            !message.isRead && (theme === 'dark' ? 'bg-gray-800/30' : 'bg-blue-50/30')
-                                        )}
-                                    >
-                                        {/* Checkbox */}
-                                        <div
-                                            onClick={(e) => e.stopPropagation()}
-                                            className="flex items-center"
-                                        >
-                                            <Checkbox
-                                                checked={selectedMessages.has(message.id)}
-                                                onCheckedChange={(checked: boolean | 'indeterminate') => {
-                                                    const newSet = new Set(selectedMessages);
-                                                    if (checked === true) {
-                                                        newSet.add(message.id);
-                                                    } else {
-                                                        newSet.delete(message.id);
-                                                    }
-                                                    setSelectedMessages(newSet);
-                                                }}
-                                            />
-                                        </div>
-
-                                        {/* Email Content - constrained width */}
-                                        <div className="min-w-0">
-                                            <div className={cn(
-                                                'text-sm truncate',
-                                                !message.isRead && 'font-semibold',
-                                                theme === 'dark' ? 'text-gray-200' : 'text-gray-900'
-                                            )}>
-                                                {message.fromEmail}
-                                            </div>
-                                            <div className={cn(
-                                                'text-sm truncate',
-                                                !message.isRead && 'font-medium',
-                                                theme === 'dark' ? 'text-gray-400' : 'text-gray-700'
-                                            )}>
-                                                {message.subject}
-                                                {message.hasAttachments && (
-                                                    <Paperclip className="w-3 h-3 inline ml-1 text-gray-400" />
-                                                )}
-                                            </div>
-                                            <p className={cn(
-                                                'text-xs truncate',
-                                                theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
-                                            )}>
-                                                {message.snippet}
-                                            </p>
-                                        </div>
-
-                                        {/* Date - fixed width */}
-                                        <div className={cn(
-                                            'text-xs whitespace-nowrap',
-                                            theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                                        )}>
-                                            {formatDate(message.date)}
-                                        </div>
-                                    </motion.div>
-                                ))}
-                            </AnimatePresence>
-
-                            {/* Load More Button */}
-                            <div className="px-4 py-3">
-                                <button
-                                    onClick={() => fetchMessages(true)}
-                                    disabled={fetching}
-                                    className={cn(
-                                        'w-full py-2 rounded-lg text-sm transition-colors',
-                                        theme === 'dark'
-                                            ? 'text-gray-400 hover:bg-gray-800'
-                                            : 'text-gray-500 hover:bg-gray-100'
-                                    )}
-                                >
-                                    {fetching ? 'Loading...' : 'Load more'}
-                                </button>
-                            </div>
-                        </div>
+                <button
+                    onClick={() => fetchMessages(true)}
+                    disabled={fetching}
+                    className={cn(
+                        'flex items-center gap-2 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors',
+                        isDark ? 'text-neutral-400 hover:text-white hover:bg-neutral-800' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
                     )}
+                >
+                    <RefreshCw className={cn('w-4 h-4', fetching && 'animate-spin')} />
+                    {fetching ? 'Refreshing...' : 'Refresh'}
+                </button>
+            </div>
+
+            {/* Search */}
+            <div className={cn('px-4 py-3 flex-shrink-0', isDark ? 'border-b border-neutral-800' : 'border-b border-gray-200')}>
+                <div className={cn(
+                    'flex items-center gap-2 h-9 px-3 rounded-lg',
+                    isDark ? 'bg-neutral-900' : 'bg-gray-100'
+                )}>
+                    <Search className={cn('w-4 h-4', isDark ? 'text-neutral-500' : 'text-gray-400')} />
+                    <input
+                        type="text"
+                        placeholder="Search emails..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className={cn(
+                            'flex-1 bg-transparent border-0 outline-none text-[13px]',
+                            isDark ? 'text-white placeholder:text-neutral-500' : 'text-gray-900 placeholder:text-gray-400'
+                        )}
+                    />
                 </div>
             </div>
 
-            {/* IMAP Config Dialog */}
+            {/* Messages */}
+            <ScrollArea className="flex-1">
+                {loading && messages.length === 0 ? (
+                    <div className="flex items-center justify-center py-12">
+                        <Loader2 className={cn('w-6 h-6 animate-spin', isDark ? 'text-orange-500' : 'text-blue-500')} />
+                    </div>
+                ) : filteredMessages.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16">
+                        <div className={cn(
+                            'w-14 h-14 rounded-xl flex items-center justify-center mb-4',
+                            isDark ? 'bg-neutral-800' : 'bg-gray-100'
+                        )}>
+                            <Inbox className={cn('w-7 h-7', isDark ? 'text-neutral-600' : 'text-gray-400')} />
+                        </div>
+                        <p className={cn('text-sm', isDark ? 'text-neutral-500' : 'text-gray-500')}>
+                            {searchQuery ? 'No matching emails' : 'No emails in this folder'}
+                        </p>
+                    </div>
+                ) : (
+                    <div>
+                        <AnimatePresence>
+                            {filteredMessages.map((message, index) => (
+                                <motion.div
+                                    key={message.id}
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ delay: index * 0.01 }}
+                                    onClick={() => {
+                                        setSelectedMessage(message);
+                                        if (!message.isRead) handleMarkAsRead(message);
+                                    }}
+                                    className={cn(
+                                        'flex items-center gap-3 px-4 py-3 cursor-pointer border-b transition-colors',
+                                        isDark
+                                            ? 'border-neutral-800 hover:bg-neutral-800/50'
+                                            : 'border-gray-100 hover:bg-gray-50',
+                                        !message.isRead && (isDark ? 'bg-neutral-800/30' : 'bg-blue-50/30')
+                                    )}
+                                >
+                                    <Checkbox
+                                        checked={selectedMessages.has(message.id)}
+                                        onCheckedChange={(checked) => {
+                                            const newSet = new Set(selectedMessages);
+                                            if (checked) newSet.add(message.id);
+                                            else newSet.delete(message.id);
+                                            setSelectedMessages(newSet);
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <span className={cn(
+                                                'text-[13px] truncate',
+                                                !message.isRead && 'font-semibold',
+                                                isDark ? 'text-white' : 'text-gray-900'
+                                            )}>
+                                                {message.fromEmail}
+                                            </span>
+                                            {message.hasAttachments && (
+                                                <Paperclip className={cn('w-3 h-3', isDark ? 'text-neutral-500' : 'text-gray-400')} />
+                                            )}
+                                        </div>
+                                        <div className={cn(
+                                            'text-[13px] truncate',
+                                            !message.isRead && 'font-medium',
+                                            isDark ? 'text-neutral-300' : 'text-gray-700'
+                                        )}>
+                                            {message.subject}
+                                        </div>
+                                        <p className={cn('text-[12px] truncate', isDark ? 'text-neutral-500' : 'text-gray-500')}>
+                                            {message.snippet}
+                                        </p>
+                                    </div>
+                                    <div className={cn('text-[11px] whitespace-nowrap', isDark ? 'text-neutral-500' : 'text-gray-400')}>
+                                        {formatDate(message.date)}
+                                    </div>
+                                </motion.div>
+                            ))}
+                        </AnimatePresence>
+                    </div>
+                )}
+            </ScrollArea>
+
             <ImapConfigDialog
                 open={showImapConfig}
                 onOpenChange={setShowImapConfig}

@@ -605,50 +605,44 @@ export function LeadListsPage({ onNavigateToCampaign }: LeadListsPageProps) {
         <div className="flex flex-1 min-h-0">
             {/* Sidebar - List of Lead Lists */}
             <div className={cn(
-                'w-72 flex-shrink-0 flex flex-col border-r',
-                theme === 'dark' ? 'bg-[#1a1a1a] border-gray-800' : 'bg-gray-50 border-gray-200'
+                'w-[280px] flex-shrink-0 flex flex-col border-r',
+                theme === 'dark' ? 'bg-[#0c0c0c] border-neutral-800' : 'bg-gray-50 border-gray-200'
             )}>
                 {/* Sidebar Header */}
                 <div className={cn(
                     'p-4 border-b',
-                    theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
+                    theme === 'dark' ? 'border-neutral-800' : 'border-gray-200'
                 )}>
                     <div className="flex items-center justify-between mb-4">
                         <h2 className={cn(
-                            'text-lg font-semibold',
+                            'text-[15px] font-semibold',
                             theme === 'dark' ? 'text-white' : 'text-gray-900'
                         )}>
                             Lead Lists
                         </h2>
                         <button
                             onClick={() => setShowCreateModal(true)}
-                            className={cn(
-                                'p-2 rounded-lg transition-colors',
-                                theme === 'dark'
-                                    ? 'bg-blue-600 text-white hover:bg-blue-500'
-                                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                            )}
+                            className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:opacity-90 transition-opacity"
                         >
-                            <Plus className="w-4 h-4" />
+                            <Plus className="w-3.5 h-3.5" />
+                            New
                         </button>
                     </div>
 
                     {/* Search */}
-                    <div className="relative">
-                        <Search className={cn(
-                            'absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4',
-                            theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                        )} />
+                    <div className={cn(
+                        'flex items-center gap-2 h-9 px-3 rounded-lg',
+                        theme === 'dark' ? 'bg-white/[0.04]' : 'bg-gray-100'
+                    )}>
+                        <Search className={cn('w-4 h-4', theme === 'dark' ? 'text-gray-500' : 'text-gray-400')} />
                         <input
                             type="text"
                             placeholder="Search lists..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className={cn(
-                                'w-full pl-10 pr-4 py-2 rounded-lg border text-sm',
-                                theme === 'dark'
-                                    ? 'bg-[#252525] border-gray-700 text-white placeholder:text-gray-500'
-                                    : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400'
+                                'flex-1 bg-transparent border-0 outline-none text-[13px]',
+                                theme === 'dark' ? 'text-white placeholder:text-gray-500' : 'text-gray-900 placeholder:text-gray-400'
                             )}
                         />
                     </div>
@@ -656,60 +650,78 @@ export function LeadListsPage({ onNavigateToCampaign }: LeadListsPageProps) {
 
                 {/* Lists */}
                 <ScrollArea className="flex-1">
-                    <div className="p-2 space-y-1">
+                    <div className="p-2 space-y-0.5">
                         {loading ? (
-                            <div className="flex items-center justify-center py-8">
-                                <Loader2 className={cn(
-                                    'w-6 h-6 animate-spin',
-                                    theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                                )} />
+                            <div className="flex items-center justify-center py-12">
+                                <Loader2 className={cn('w-5 h-5 animate-spin', theme === 'dark' ? 'text-gray-500' : 'text-gray-400')} />
                             </div>
                         ) : filteredLists.length === 0 ? (
-                            <div className={cn(
-                                'text-center py-8',
-                                theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                            )}>
-                                <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                                <p className="text-sm">No lists yet</p>
+                            <div className="text-center py-12 px-4">
+                                <div className={cn(
+                                    'w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center',
+                                    theme === 'dark' ? 'bg-white/[0.04]' : 'bg-gray-100'
+                                )}>
+                                    <Users className={cn('w-6 h-6', theme === 'dark' ? 'text-gray-500' : 'text-gray-400')} />
+                                </div>
+                                <p className={cn('text-[13px] font-medium mb-1', theme === 'dark' ? 'text-gray-400' : 'text-gray-600')}>
+                                    No lists yet
+                                </p>
+                                <p className={cn('text-[12px] mb-3', theme === 'dark' ? 'text-gray-500' : 'text-gray-400')}>
+                                    Create your first lead list
+                                </p>
                                 <button
                                     onClick={() => setShowCreateModal(true)}
-                                    className="text-blue-500 text-sm mt-2 hover:underline"
+                                    className="text-[12px] text-orange-500 hover:underline font-medium"
                                 >
-                                    Create your first list
+                                    Create list →
                                 </button>
                             </div>
                         ) : (
-                            filteredLists.map(list => (
-                                <button
-                                    key={list.id}
-                                    onClick={() => setSelectedList(list)}
-                                    className={cn(
-                                        'w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors group',
-                                        selectedList?.id === list.id
-                                            ? theme === 'dark'
-                                                ? 'bg-blue-500/20 text-blue-400'
-                                                : 'bg-blue-50 text-blue-600'
-                                            : theme === 'dark'
-                                                ? 'hover:bg-gray-800 text-gray-300'
-                                                : 'hover:bg-gray-100 text-gray-700'
-                                    )}
-                                >
-                                    <Users className="w-4 h-4 flex-shrink-0" />
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium truncate">{list.name}</p>
-                                        <p className={cn(
-                                            'text-xs',
-                                            theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                            filteredLists.map(list => {
+                                const isActive = selectedList?.id === list.id;
+                                return (
+                                    <button
+                                        key={list.id}
+                                        onClick={() => setSelectedList(list)}
+                                        className={cn(
+                                            'w-full flex items-center gap-3 p-3 rounded-lg text-left transition-all group',
+                                            isActive
+                                                ? theme === 'dark' ? 'bg-white/[0.08]' : 'bg-gray-100'
+                                                : theme === 'dark' ? 'hover:bg-white/[0.04]' : 'hover:bg-gray-50'
+                                        )}
+                                    >
+                                        <div className={cn(
+                                            'w-9 h-9 rounded-lg flex items-center justify-center shrink-0',
+                                            isActive
+                                                ? 'bg-gradient-to-br from-orange-500 to-orange-600'
+                                                : theme === 'dark' ? 'bg-white/[0.06]' : 'bg-gray-100'
                                         )}>
-                                            {list.leads.length} leads
-                                        </p>
-                                    </div>
-                                    <ChevronRight className={cn(
-                                        'w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity',
-                                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                                    )} />
-                                </button>
-                            ))
+                                            <Users className={cn(
+                                                'w-4 h-4',
+                                                isActive ? 'text-white' : theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                                            )} />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className={cn(
+                                                'text-[13px] font-medium truncate',
+                                                theme === 'dark' ? 'text-white' : 'text-gray-900'
+                                            )}>
+                                                {list.name}
+                                            </p>
+                                            <p className={cn(
+                                                'text-[11px]',
+                                                theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                            )}>
+                                                {list.leads.length} leads
+                                            </p>
+                                        </div>
+                                        <ChevronRight className={cn(
+                                            'w-4 h-4 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity',
+                                            theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                        )} />
+                                    </button>
+                                );
+                            })
                         )}
                     </div>
                 </ScrollArea>

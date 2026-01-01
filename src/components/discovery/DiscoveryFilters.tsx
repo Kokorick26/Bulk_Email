@@ -59,23 +59,23 @@ export function DiscoveryFilters({ filters, onChange, onClear }: DiscoveryFilter
     }) => (
         <div className={cn(
             'border-b transition-colors',
-            theme === 'dark' ? 'border-[#3c4043]' : 'border-[#e8eaed]'
+            theme === 'dark' ? 'border-neutral-800' : 'border-gray-200'
         )}>
             <button
                 onClick={() => setExpandedSection(expandedSection === id ? null : id)}
                 className={cn(
                     'w-full flex items-center justify-between px-4 py-3 text-left transition-colors',
-                    theme === 'dark' ? 'hover:bg-[#3c4043]/50' : 'hover:bg-[#f1f3f4]'
+                    theme === 'dark' ? 'hover:bg-white/[0.04]' : 'hover:bg-gray-50'
                 )}
             >
                 <div className="flex items-center gap-3">
                     <Icon className={cn(
                         'w-4 h-4',
-                        theme === 'dark' ? 'text-[#8ab4f8]' : 'text-[#1a73e8]'
+                        theme === 'dark' ? 'text-orange-400' : 'text-orange-600'
                     )} />
                     <span className={cn(
                         'text-sm font-medium',
-                        theme === 'dark' ? 'text-[#e8eaed]' : 'text-[#202124]'
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
                     )}>
                         {title}
                     </span>
@@ -83,8 +83,8 @@ export function DiscoveryFilters({ filters, onChange, onClear }: DiscoveryFilter
                         <span className={cn(
                             'px-2 py-0.5 text-xs rounded-full font-medium',
                             theme === 'dark'
-                                ? 'bg-[#8ab4f8]/20 text-[#8ab4f8]'
-                                : 'bg-[#1a73e8]/10 text-[#1a73e8]'
+                                ? 'bg-orange-500/20 text-orange-400'
+                                : 'bg-orange-100 text-orange-600'
                         )}>
                             {count}
                         </span>
@@ -92,14 +92,14 @@ export function DiscoveryFilters({ filters, onChange, onClear }: DiscoveryFilter
                 </div>
                 <ChevronDown className={cn(
                     'w-4 h-4 transition-transform',
-                    theme === 'dark' ? 'text-[#9aa0a6]' : 'text-[#5f6368]',
+                    theme === 'dark' ? 'text-neutral-500' : 'text-gray-400',
                     expandedSection === id && 'rotate-180'
                 )} />
             </button>
             {expandedSection === id && (
                 <div className={cn(
                     'px-4 pb-4 pt-1',
-                    theme === 'dark' ? 'bg-[#2d2d30]' : 'bg-[#f8f9fa]'
+                    theme === 'dark' ? 'bg-white/[0.02]' : 'bg-gray-50'
                 )}>
                     {children}
                 </div>
@@ -122,11 +122,11 @@ export function DiscoveryFilters({ filters, onChange, onClear }: DiscoveryFilter
                 'px-3 py-1.5 rounded-full text-xs font-medium transition-all border',
                 selected
                     ? theme === 'dark'
-                        ? 'bg-[#8ab4f8] text-[#202124] border-[#8ab4f8]'
-                        : 'bg-[#1a73e8] text-white border-[#1a73e8]'
+                        ? 'bg-orange-500 text-white border-orange-500'
+                        : 'bg-orange-600 text-white border-orange-600'
                     : theme === 'dark'
-                        ? 'bg-transparent text-[#e8eaed] border-[#5f6368] hover:border-[#8ab4f8] hover:bg-[#8ab4f8]/10'
-                        : 'bg-white text-[#5f6368] border-[#dadce0] hover:border-[#1a73e8] hover:bg-[#e8f0fe]'
+                        ? 'bg-transparent text-neutral-300 border-neutral-700 hover:border-orange-500 hover:bg-orange-500/10'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-orange-500 hover:bg-orange-50'
             )}
         >
             {selected && <Check className="w-3 h-3 inline mr-1" />}
@@ -138,22 +138,22 @@ export function DiscoveryFilters({ filters, onChange, onClear }: DiscoveryFilter
         <div className={cn(
             'rounded-xl overflow-hidden border',
             theme === 'dark'
-                ? 'bg-[#292a2d] border-[#3c4043]'
-                : 'bg-white border-[#dadce0]'
+                ? 'bg-[#0c0c0c] border-neutral-800'
+                : 'bg-white border-gray-200'
         )}>
             {/* Header */}
             <div className={cn(
                 'flex items-center justify-between px-4 py-3 border-b',
-                theme === 'dark' ? 'border-[#3c4043]' : 'border-[#e8eaed]'
+                theme === 'dark' ? 'border-neutral-800' : 'border-gray-200'
             )}>
                 <div className="flex items-center gap-2">
                     <Filter className={cn(
                         'w-4 h-4',
-                        theme === 'dark' ? 'text-[#8ab4f8]' : 'text-[#1a73e8]'
+                        theme === 'dark' ? 'text-orange-400' : 'text-orange-600'
                     )} />
                     <span className={cn(
                         'text-sm font-semibold',
-                        theme === 'dark' ? 'text-[#e8eaed]' : 'text-[#202124]'
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
                     )}>
                         Filters
                     </span>
@@ -164,8 +164,8 @@ export function DiscoveryFilters({ filters, onChange, onClear }: DiscoveryFilter
                         className={cn(
                             'text-xs font-medium flex items-center gap-1 px-2 py-1 rounded-md transition-colors',
                             theme === 'dark'
-                                ? 'text-[#f28b82] hover:bg-[#f28b82]/10'
-                                : 'text-[#d93025] hover:bg-[#d93025]/10'
+                                ? 'text-red-400 hover:bg-red-500/10'
+                                : 'text-red-600 hover:bg-red-50'
                         )}
                     >
                         <X className="w-3 h-3" />
@@ -264,11 +264,11 @@ export function DiscoveryFilters({ filters, onChange, onClear }: DiscoveryFilter
                                 'flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all border',
                                 filters.techMaturity === level
                                     ? theme === 'dark'
-                                        ? 'bg-[#8ab4f8] text-[#202124] border-[#8ab4f8]'
-                                        : 'bg-[#1a73e8] text-white border-[#1a73e8]'
+                                        ? 'bg-orange-500 text-white border-orange-500'
+                                        : 'bg-orange-600 text-white border-orange-600'
                                     : theme === 'dark'
-                                        ? 'bg-transparent text-[#e8eaed] border-[#5f6368] hover:border-[#8ab4f8]'
-                                        : 'bg-white text-[#5f6368] border-[#dadce0] hover:border-[#1a73e8]'
+                                        ? 'bg-transparent text-neutral-300 border-neutral-700 hover:border-orange-500'
+                                        : 'bg-white text-gray-600 border-gray-200 hover:border-orange-500'
                             )}
                         >
                             {level.charAt(0).toUpperCase() + level.slice(1)}
@@ -299,22 +299,22 @@ export function DiscoveryFilters({ filters, onChange, onClear }: DiscoveryFilter
                                     revenueRange: { ...filters.revenueRange, min: Number(e.target.value) }
                                 })}
                                 className={cn(
-                                    'w-full px-3 py-2 rounded-lg text-sm border transition-colors',
+                                    'w-full px-3 py-2 rounded-lg text-sm border transition-colors outline-none',
                                     theme === 'dark'
-                                        ? 'bg-[#3c4043] border-[#5f6368] text-[#e8eaed] focus:border-[#8ab4f8]'
-                                        : 'bg-white border-[#dadce0] text-[#202124] focus:border-[#1a73e8]'
+                                        ? 'bg-neutral-900 border-neutral-700 text-white focus:border-orange-500'
+                                        : 'bg-white border-gray-200 text-gray-900 focus:border-orange-500'
                                 )}
                                 min={0}
                             />
                         </div>
                         <div className={cn(
                             'mt-5',
-                            theme === 'dark' ? 'text-[#9aa0a6]' : 'text-[#5f6368]'
+                            theme === 'dark' ? 'text-neutral-500' : 'text-gray-400'
                         )}>—</div>
                         <div className="flex-1">
                             <label className={cn(
                                 'text-xs mb-1 block',
-                                theme === 'dark' ? 'text-[#9aa0a6]' : 'text-[#5f6368]'
+                                theme === 'dark' ? 'text-neutral-500' : 'text-gray-500'
                             )}>
                                 Max (£M)
                             </label>
@@ -326,10 +326,10 @@ export function DiscoveryFilters({ filters, onChange, onClear }: DiscoveryFilter
                                     revenueRange: { ...filters.revenueRange, max: Number(e.target.value) }
                                 })}
                                 className={cn(
-                                    'w-full px-3 py-2 rounded-lg text-sm border transition-colors',
+                                    'w-full px-3 py-2 rounded-lg text-sm border transition-colors outline-none',
                                     theme === 'dark'
-                                        ? 'bg-[#3c4043] border-[#5f6368] text-[#e8eaed] focus:border-[#8ab4f8]'
-                                        : 'bg-white border-[#dadce0] text-[#202124] focus:border-[#1a73e8]'
+                                        ? 'bg-neutral-900 border-neutral-700 text-white focus:border-orange-500'
+                                        : 'bg-white border-gray-200 text-gray-900 focus:border-orange-500'
                                 )}
                                 min={0}
                             />
@@ -351,19 +351,19 @@ export function DiscoveryFilters({ filters, onChange, onClear }: DiscoveryFilter
                             className={cn(
                                 'flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors',
                                 filters.platforms.includes(platform.value)
-                                    ? theme === 'dark' ? 'bg-[#8ab4f8]/10' : 'bg-[#e8f0fe]'
-                                    : theme === 'dark' ? 'hover:bg-[#3c4043]' : 'hover:bg-[#f1f3f4]'
+                                    ? theme === 'dark' ? 'bg-orange-500/10' : 'bg-orange-50'
+                                    : theme === 'dark' ? 'hover:bg-white/[0.04]' : 'hover:bg-gray-50'
                             )}
                         >
                             <input
                                 type="checkbox"
                                 checked={filters.platforms.includes(platform.value)}
                                 onChange={() => toggleArrayValue('platforms', platform.value)}
-                                className="w-4 h-4 rounded accent-[#1a73e8]"
+                                className="w-4 h-4 rounded accent-orange-500"
                             />
                             <span className={cn(
                                 'text-sm',
-                                theme === 'dark' ? 'text-[#e8eaed]' : 'text-[#202124]'
+                                theme === 'dark' ? 'text-white' : 'text-gray-900'
                             )}>
                                 {platform.label}
                             </span>

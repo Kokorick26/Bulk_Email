@@ -194,7 +194,7 @@ export function LeadDiscovery() {
                 {showFilters && (
                     <div className={cn(
                         'w-80 flex-shrink-0 border-r overflow-hidden',
-                        theme === 'dark' ? 'border-[#3c4043]' : 'border-[#e8eaed]'
+                        theme === 'dark' ? 'border-neutral-800' : 'border-gray-200'
                     )}>
                         <ScrollArea className="h-full">
                             <div className="p-4">
@@ -213,26 +213,26 @@ export function LeadDiscovery() {
                     {/* Header */}
                     <div className={cn(
                         'flex-shrink-0 px-6 py-5 border-b',
-                        theme === 'dark' ? 'border-[#3c4043]' : 'border-[#e8eaed]'
+                        theme === 'dark' ? 'border-neutral-800' : 'border-gray-200'
                     )}>
                         <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-3">
                                 <div className={cn(
                                     'w-10 h-10 rounded-xl flex items-center justify-center',
-                                    'bg-gradient-to-br from-[#1a73e8] to-[#8ab4f8]'
+                                    'bg-gradient-to-br from-orange-500 to-orange-600'
                                 )}>
                                     <Target className="w-5 h-5 text-white" />
                                 </div>
                                 <div>
                                     <h1 className={cn(
                                         'text-xl font-semibold',
-                                        theme === 'dark' ? 'text-[#e8eaed]' : 'text-[#202124]'
+                                        theme === 'dark' ? 'text-white' : 'text-gray-900'
                                     )}>
                                         AI Sales Discovery
                                     </h1>
                                     <p className={cn(
                                         'text-sm',
-                                        theme === 'dark' ? 'text-[#9aa0a6]' : 'text-[#5f6368]'
+                                        theme === 'dark' ? 'text-neutral-400' : 'text-gray-500'
                                     )}>
                                         Find your ideal clients with AI-powered research
                                     </p>
@@ -247,11 +247,11 @@ export function LeadDiscovery() {
                                         'flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
                                         showFilters
                                             ? theme === 'dark'
-                                                ? 'bg-[#8ab4f8]/20 text-[#8ab4f8]'
-                                                : 'bg-[#e8f0fe] text-[#1a73e8]'
+                                                ? 'bg-orange-500/20 text-orange-400'
+                                                : 'bg-orange-50 text-orange-600'
                                             : theme === 'dark'
-                                                ? 'text-[#9aa0a6] hover:bg-[#3c4043]'
-                                                : 'text-[#5f6368] hover:bg-[#f1f3f4]'
+                                                ? 'text-neutral-400 hover:bg-white/[0.04]'
+                                                : 'text-gray-500 hover:bg-gray-100'
                                     )}
                                 >
                                     <Filter className="w-4 h-4" />
@@ -260,8 +260,8 @@ export function LeadDiscovery() {
                                         <span className={cn(
                                             'px-1.5 py-0.5 rounded-full text-xs',
                                             theme === 'dark'
-                                                ? 'bg-[#8ab4f8] text-[#202124]'
-                                                : 'bg-[#1a73e8] text-white'
+                                                ? 'bg-orange-500 text-white'
+                                                : 'bg-orange-600 text-white'
                                         )}>
                                             {activeFilterCount}
                                         </span>
@@ -275,8 +275,8 @@ export function LeadDiscovery() {
                                             className={cn(
                                                 'flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
                                                 theme === 'dark'
-                                                    ? 'text-[#9aa0a6] hover:bg-[#3c4043]'
-                                                    : 'text-[#5f6368] hover:bg-[#f1f3f4]'
+                                                    ? 'text-neutral-400 hover:bg-white/[0.04]'
+                                                    : 'text-gray-500 hover:bg-gray-100'
                                             )}
                                         >
                                             <Download className="w-4 h-4" />
@@ -287,8 +287,8 @@ export function LeadDiscovery() {
                                             className={cn(
                                                 'flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
                                                 theme === 'dark'
-                                                    ? 'text-[#9aa0a6] hover:bg-[#3c4043]'
-                                                    : 'text-[#5f6368] hover:bg-[#f1f3f4]'
+                                                    ? 'text-neutral-400 hover:bg-white/[0.04]'
+                                                    : 'text-gray-500 hover:bg-gray-100'
                                             )}
                                         >
                                             <RotateCcw className="w-4 h-4" />
@@ -303,13 +303,13 @@ export function LeadDiscovery() {
                         <div className={cn(
                             'relative rounded-2xl border-2 transition-all overflow-hidden',
                             theme === 'dark'
-                                ? 'bg-[#292a2d] border-[#3c4043] focus-within:border-[#8ab4f8]'
-                                : 'bg-white border-[#dadce0] focus-within:border-[#1a73e8] focus-within:shadow-lg'
+                                ? 'bg-neutral-900 border-neutral-700 focus-within:border-orange-500'
+                                : 'bg-white border-gray-200 focus-within:border-orange-500 focus-within:shadow-lg'
                         )}>
                             <div className="flex items-start gap-3 p-4">
                                 <Sparkles className={cn(
                                     'w-5 h-5 mt-1 flex-shrink-0',
-                                    theme === 'dark' ? 'text-[#8ab4f8]' : 'text-[#1a73e8]'
+                                    theme === 'dark' ? 'text-orange-400' : 'text-orange-600'
                                 )} />
                                 <textarea
                                     ref={textareaRef}
@@ -319,8 +319,8 @@ export function LeadDiscovery() {
                                     className={cn(
                                         'flex-1 resize-none border-0 bg-transparent outline-none text-sm leading-relaxed min-h-[24px]',
                                         theme === 'dark'
-                                            ? 'text-[#e8eaed] placeholder:text-[#9aa0a6]'
-                                            : 'text-[#202124] placeholder:text-[#5f6368]'
+                                            ? 'text-white placeholder:text-neutral-500'
+                                            : 'text-gray-900 placeholder:text-gray-400'
                                     )}
                                     rows={1}
                                     disabled={isSearching}
@@ -337,9 +337,7 @@ export function LeadDiscovery() {
                                     className={cn(
                                         'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all',
                                         'disabled:opacity-50 disabled:cursor-not-allowed',
-                                        theme === 'dark'
-                                            ? 'bg-[#8ab4f8] text-[#202124] hover:bg-[#aecbfa]'
-                                            : 'bg-[#1a73e8] text-white hover:bg-[#1557b0]'
+                                        'bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:opacity-90'
                                     )}
                                 >
                                     {isSearching ? (
@@ -360,16 +358,16 @@ export function LeadDiscovery() {
                             {!hasSearched && !isSearching && (
                                 <div className={cn(
                                     'px-4 pb-4 pt-2 border-t',
-                                    theme === 'dark' ? 'border-[#3c4043]' : 'border-[#f1f3f4]'
+                                    theme === 'dark' ? 'border-neutral-800' : 'border-gray-100'
                                 )}>
                                     <div className="flex items-center gap-2 mb-2">
                                         <Lightbulb className={cn(
                                             'w-3.5 h-3.5',
-                                            theme === 'dark' ? 'text-[#f9ab00]' : 'text-[#ea8600]'
+                                            theme === 'dark' ? 'text-amber-400' : 'text-amber-600'
                                         )} />
                                         <span className={cn(
                                             'text-xs font-medium',
-                                            theme === 'dark' ? 'text-[#9aa0a6]' : 'text-[#5f6368]'
+                                            theme === 'dark' ? 'text-neutral-400' : 'text-gray-500'
                                         )}>
                                             Try these examples:
                                         </span>
@@ -382,8 +380,8 @@ export function LeadDiscovery() {
                                                 className={cn(
                                                     'text-xs px-3 py-1.5 rounded-full transition-colors truncate max-w-[300px]',
                                                     theme === 'dark'
-                                                        ? 'bg-[#3c4043] text-[#bdc1c6] hover:bg-[#5f6368]'
-                                                        : 'bg-[#f1f3f4] text-[#5f6368] hover:bg-[#e8eaed]'
+                                                        ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
+                                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                                 )}
                                             >
                                                 {example.slice(0, 50)}...
@@ -418,32 +416,32 @@ export function LeadDiscovery() {
                                         <div className={cn(
                                             'mb-6 p-4 rounded-xl border',
                                             theme === 'dark'
-                                                ? 'bg-[#292a2d] border-[#3c4043]'
-                                                : 'bg-[#f8f9fa] border-[#e8eaed]'
+                                                ? 'bg-neutral-900 border-neutral-800'
+                                                : 'bg-gray-50 border-gray-200'
                                         )}>
                                             <div className="flex items-start gap-3">
                                                 <Sparkles className={cn(
                                                     'w-5 h-5 mt-0.5',
-                                                    theme === 'dark' ? 'text-[#8ab4f8]' : 'text-[#1a73e8]'
+                                                    theme === 'dark' ? 'text-orange-400' : 'text-orange-600'
                                                 )} />
                                                 <div>
                                                     <p className={cn(
                                                         'text-sm',
-                                                        theme === 'dark' ? 'text-[#e8eaed]' : 'text-[#202124]'
+                                                        theme === 'dark' ? 'text-white' : 'text-gray-900'
                                                     )}>
                                                         {searchSummary}
                                                     </p>
                                                     <div className="flex items-center gap-4 mt-2">
                                                         <span className={cn(
                                                             'text-xs',
-                                                            theme === 'dark' ? 'text-[#9aa0a6]' : 'text-[#5f6368]'
+                                                            theme === 'dark' ? 'text-neutral-400' : 'text-gray-500'
                                                         )}>
                                                             <TrendingUp className="w-3 h-3 inline mr-1" />
                                                             {totalEvaluated} companies evaluated
                                                         </span>
                                                         <span className={cn(
                                                             'text-xs',
-                                                            theme === 'dark' ? 'text-[#9aa0a6]' : 'text-[#5f6368]'
+                                                            theme === 'dark' ? 'text-neutral-400' : 'text-gray-500'
                                                         )}>
                                                             <Zap className="w-3 h-3 inline mr-1" />
                                                             {processingTime}s processing time
@@ -471,33 +469,28 @@ export function LeadDiscovery() {
                                         <div className="text-center py-16">
                                             <div className={cn(
                                                 'w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center',
-                                                theme === 'dark' ? 'bg-[#3c4043]' : 'bg-[#f1f3f4]'
+                                                theme === 'dark' ? 'bg-neutral-800' : 'bg-gray-100'
                                             )}>
                                                 <Search className={cn(
                                                     'w-8 h-8',
-                                                    theme === 'dark' ? 'text-[#9aa0a6]' : 'text-[#5f6368]'
+                                                    theme === 'dark' ? 'text-neutral-500' : 'text-gray-400'
                                                 )} />
                                             </div>
                                             <h3 className={cn(
                                                 'text-lg font-medium mb-2',
-                                                theme === 'dark' ? 'text-[#e8eaed]' : 'text-[#202124]'
+                                                theme === 'dark' ? 'text-white' : 'text-gray-900'
                                             )}>
                                                 No matching leads found
                                             </h3>
                                             <p className={cn(
                                                 'text-sm',
-                                                theme === 'dark' ? 'text-[#9aa0a6]' : 'text-[#5f6368]'
+                                                theme === 'dark' ? 'text-neutral-400' : 'text-gray-500'
                                             )}>
                                                 Try adjusting your search criteria or broadening your filters to find more potential matches.
                                             </p>
                                             <button
                                                 onClick={handleReset}
-                                                className={cn(
-                                                    'mt-4 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-                                                    theme === 'dark'
-                                                        ? 'bg-[#8ab4f8] text-[#202124] hover:bg-[#aecbfa]'
-                                                        : 'bg-[#1a73e8] text-white hover:bg-[#1557b0]'
-                                                )}
+                                                className="mt-4 px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:opacity-90"
                                             >
                                                 Start New Search
                                             </button>
@@ -511,19 +504,19 @@ export function LeadDiscovery() {
                                 <div className="w-full text-center py-12">
                                     <div className={cn(
                                         'w-20 h-20 mx-auto mb-6 rounded-2xl flex items-center justify-center',
-                                        'bg-gradient-to-br from-[#1a73e8] to-[#8ab4f8]'
+                                        'bg-gradient-to-br from-orange-500 to-orange-600'
                                     )}>
                                         <Target className="w-10 h-10 text-white" />
                                     </div>
                                     <h2 className={cn(
                                         'text-2xl font-semibold mb-3',
-                                        theme === 'dark' ? 'text-[#e8eaed]' : 'text-[#202124]'
+                                        theme === 'dark' ? 'text-white' : 'text-gray-900'
                                     )}>
                                         Discover Your Ideal Clients
                                     </h2>
                                     <p className={cn(
                                         'text-sm mb-8 max-w-md mx-auto',
-                                        theme === 'dark' ? 'text-[#9aa0a6]' : 'text-[#5f6368]'
+                                        theme === 'dark' ? 'text-neutral-400' : 'text-gray-500'
                                     )}>
                                         Describe your ideal customer in natural language, and our AI will find the top 5
                                         best-matching companies with detailed explanations of why they're a great fit.
@@ -553,23 +546,23 @@ export function LeadDiscovery() {
                                                 className={cn(
                                                     'p-4 rounded-xl border',
                                                     theme === 'dark'
-                                                        ? 'bg-[#292a2d] border-[#3c4043]'
-                                                        : 'bg-white border-[#e8eaed]'
+                                                        ? 'bg-neutral-900 border-neutral-800'
+                                                        : 'bg-white border-gray-200'
                                                 )}
                                             >
                                                 <feature.icon className={cn(
                                                     'w-6 h-6 mx-auto mb-2',
-                                                    theme === 'dark' ? 'text-[#8ab4f8]' : 'text-[#1a73e8]'
+                                                    theme === 'dark' ? 'text-orange-400' : 'text-orange-600'
                                                 )} />
                                                 <h4 className={cn(
                                                     'text-sm font-medium mb-1',
-                                                    theme === 'dark' ? 'text-[#e8eaed]' : 'text-[#202124]'
+                                                    theme === 'dark' ? 'text-white' : 'text-gray-900'
                                                 )}>
                                                     {feature.title}
                                                 </h4>
                                                 <p className={cn(
                                                     'text-xs',
-                                                    theme === 'dark' ? 'text-[#9aa0a6]' : 'text-[#5f6368]'
+                                                    theme === 'dark' ? 'text-neutral-400' : 'text-gray-500'
                                                 )}>
                                                     {feature.desc}
                                                 </p>
@@ -580,11 +573,11 @@ export function LeadDiscovery() {
                                     <div className="flex items-center justify-center gap-2">
                                         <ArrowRight className={cn(
                                             'w-4 h-4',
-                                            theme === 'dark' ? 'text-[#9aa0a6]' : 'text-[#5f6368]'
+                                            theme === 'dark' ? 'text-neutral-400' : 'text-gray-500'
                                         )} />
                                         <span className={cn(
                                             'text-sm',
-                                            theme === 'dark' ? 'text-[#9aa0a6]' : 'text-[#5f6368]'
+                                            theme === 'dark' ? 'text-neutral-400' : 'text-gray-500'
                                         )}>
                                             Enter a prompt above to get started
                                         </span>

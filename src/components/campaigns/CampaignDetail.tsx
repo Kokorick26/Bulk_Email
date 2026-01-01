@@ -241,19 +241,19 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
             {/* Sidebar Navigation */}
             <div className={cn(
                 'w-64 flex-shrink-0 flex flex-col border-r',
-                theme === 'dark' ? 'bg-[var(--slate-rich)] border-white/5' : 'bg-gray-50 border-gray-200'
+                theme === 'dark' ? 'bg-[#0c0c0c] border-neutral-800' : 'bg-gray-50 border-gray-200'
             )}>
                 {/* Back Link */}
                 <div className={cn(
                     'p-4 border-b',
-                    theme === 'dark' ? 'border-white/5' : 'border-gray-200'
+                    theme === 'dark' ? 'border-neutral-800' : 'border-gray-200'
                 )}>
                     <button
                         onClick={onBack}
                         className={cn(
                             'flex items-center gap-2 text-sm font-medium transition-colors w-full px-2 py-1.5 rounded-lg',
                             theme === 'dark'
-                                ? 'text-[var(--text-muted)] hover:text-white hover:bg-white/5'
+                                ? 'text-neutral-400 hover:text-white hover:bg-white/[0.04]'
                                 : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'
                         )}
                     >
@@ -272,10 +272,10 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
                                 'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-left',
                                 activeTab === tab.id
                                     ? theme === 'dark'
-                                        ? 'bg-[var(--terracotta)]/10 text-[var(--terracotta)]'
-                                        : 'bg-blue-50 text-blue-600'
+                                        ? 'bg-orange-500/10 text-orange-400'
+                                        : 'bg-orange-50 text-orange-600'
                                     : theme === 'dark'
-                                        ? 'text-[var(--text-muted)] hover:bg-white/5 hover:text-[var(--text-secondary)]'
+                                        ? 'text-neutral-400 hover:bg-white/[0.04] hover:text-neutral-200'
                                         : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                             )}
                         >
@@ -296,7 +296,7 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
                 {/* Header Actions */}
                 <div className={cn(
                     'flex items-center justify-between px-6 py-4 border-b flex-shrink-0',
-                    theme === 'dark' ? 'border-white/5 bg-[var(--slate-deep)]' : 'border-gray-200 bg-white'
+                    theme === 'dark' ? 'border-neutral-800 bg-[#080808]' : 'border-gray-200 bg-white'
                 )}>
                     <div>
                         <h1 className={cn(
@@ -333,12 +333,7 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
                             <Button
                                 onClick={handleResumeCampaign}
                                 size="sm"
-                                className={cn(
-                                    'gap-2',
-                                    theme === 'dark'
-                                        ? 'bg-[var(--terracotta)] hover:bg-[var(--terracotta-dark)] text-white'
-                                        : 'bg-blue-600 hover:bg-blue-700 text-white'
-                                )}
+                                className="gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:opacity-90"
                             >
                                 <Play className="w-4 h-4" />
                                 Resume

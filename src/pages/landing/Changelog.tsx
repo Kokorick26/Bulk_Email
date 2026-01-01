@@ -15,7 +15,8 @@ const changes = [
             "Real-time email verification on export"
         ],
         tag: "Major Release",
-        icon: Sparkles
+        icon: Sparkles,
+        color: "orange"
     },
     {
         version: "v2.3.1",
@@ -28,7 +29,8 @@ const changes = [
             "Keyboard shortcuts for archiving (E) and replying (R)"
         ],
         tag: "Improvement",
-        icon: TrendingUp
+        icon: TrendingUp,
+        color: "purple"
     },
     {
         version: "v2.3.0",
@@ -41,18 +43,19 @@ const changes = [
             "Detailed deliverability analytics dashboard"
         ],
         tag: "Feature",
-        icon: Zap
+        icon: Zap,
+        color: "pink"
     }
 ];
 
 export default function Changelog() {
     return (
-        <div className="pt-32 pb-32 px-6 bg-[var(--slate-deep)] min-h-screen text-[var(--text-primary)]">
+        <div className="pt-32 pb-32 px-6 bg-brand-dark min-h-screen text-white font-body">
             {/* Background Effects */}
             <div className="fixed inset-0 pointer-events-none">
-                <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-[var(--terracotta)]/5 rounded-full blur-[150px]" />
-                <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-[var(--gold)]/3 rounded-full blur-[120px]" />
-                <div className="absolute inset-0 dot-grid-dark opacity-20" />
+                <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-brand-orange/5 rounded-full blur-[150px]" />
+                <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-brand-purple/5 rounded-full blur-[120px]" />
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] opacity-20" />
             </div>
 
             <div className="max-w-3xl mx-auto relative z-10">
@@ -61,10 +64,10 @@ export default function Changelog() {
                     animate={{ opacity: 1, y: 0 }}
                     className="mb-20 text-center md:text-left"
                 >
-                    <span className="text-label text-[var(--terracotta)] block mb-4">What's New</span>
-                    <h1 className="text-display-sm text-white mb-6">Changelog</h1>
-                    <p className="text-xl text-[var(--text-secondary)] leading-relaxed">
-                        New updates and improvements to Kokorick AI.
+                    <span className="text-sm font-bold tracking-widest text-brand-orange uppercase block mb-4">What's New</span>
+                    <h1 className="text-5xl font-heading font-bold text-white mb-6">Changelog</h1>
+                    <p className="text-xl text-gray-400 leading-relaxed">
+                        New updates and improvements to Warmlo.
                     </p>
                 </motion.div>
 
@@ -79,41 +82,41 @@ export default function Changelog() {
                             className="relative pl-12 md:pl-16"
                         >
                             {/* Dot with Icon */}
-                            <div className={`absolute -left-[18px] top-0 w-9 h-9 rounded-full flex items-center justify-center ring-4 ring-[var(--slate-deep)] ${change.tag === 'Major Release'
-                                ? 'bg-[var(--terracotta)]'
-                                : change.tag === 'Feature'
-                                    ? 'bg-[var(--gold)]'
-                                    : 'bg-[var(--sage)]'
+                            <div className={`absolute -left-[18px] top-0 w-9 h-9 rounded-full flex items-center justify-center ring-4 ring-[#050505] ${change.color === 'orange'
+                                ? 'bg-brand-orange'
+                                : change.color === 'pink'
+                                    ? 'bg-brand-pink'
+                                    : 'bg-brand-purple'
                                 }`}>
                                 <change.icon className="w-4 h-4 text-white" />
                             </div>
 
                             <div className="flex flex-col md:flex-row md:items-center gap-4 mb-4">
-                                <div className="text-sm font-mono text-[var(--text-muted)] bg-white/5 px-3 py-1 rounded-lg border border-white/5 w-fit">{change.date}</div>
-                                <div className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full w-fit ${change.tag === 'Major Release'
-                                    ? 'bg-[var(--terracotta)]/10 text-[var(--terracotta)] border border-[var(--terracotta)]/20'
-                                    : change.tag === 'Feature'
-                                        ? 'bg-[var(--gold)]/10 text-[var(--gold)] border border-[var(--gold)]/20'
-                                        : 'bg-[var(--sage)]/10 text-[var(--sage)] border border-[var(--sage)]/20'
+                                <div className="text-sm font-mono text-gray-500 bg-white/5 px-3 py-1 rounded-lg border border-white/5 w-fit">{change.date}</div>
+                                <div className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full w-fit ${change.color === 'orange'
+                                    ? 'bg-brand-orange/10 text-brand-orange border border-brand-orange/20'
+                                    : change.color === 'pink'
+                                        ? 'bg-brand-pink/10 text-brand-pink border border-brand-pink/20'
+                                        : 'bg-brand-purple/10 text-brand-purple border border-brand-purple/20'
                                     }`}>
                                     {change.tag}
                                 </div>
                             </div>
 
-                            <h2 className="text-2xl font-bold mb-3 text-white" style={{ fontFamily: 'Syne, sans-serif' }}>
+                            <h2 className="text-2xl font-bold mb-3 text-white font-heading">
                                 {change.title}
-                                <span className="text-[var(--text-muted)] font-normal ml-3 text-base">{change.version}</span>
+                                <span className="text-gray-500 font-normal ml-3 text-base font-body">{change.version}</span>
                             </h2>
-                            <p className="text-[var(--text-secondary)] leading-relaxed mb-6">{change.desc}</p>
+                            <p className="text-gray-400 leading-relaxed mb-6">{change.desc}</p>
 
                             <ul className="space-y-3">
                                 {change.bullets.map((bullet, j) => (
-                                    <li key={j} className="flex items-start gap-3 text-sm text-[var(--text-secondary)]">
-                                        <span className={`block w-1.5 h-1.5 rounded-full mt-2 ${change.tag === 'Major Release'
-                                            ? 'bg-[var(--terracotta)]'
-                                            : change.tag === 'Feature'
-                                                ? 'bg-[var(--gold)]'
-                                                : 'bg-[var(--sage)]'
+                                    <li key={j} className="flex items-start gap-3 text-sm text-gray-300">
+                                        <span className={`block w-1.5 h-1.5 rounded-full mt-2 ${change.color === 'orange'
+                                            ? 'bg-brand-orange'
+                                            : change.color === 'pink'
+                                                ? 'bg-brand-pink'
+                                                : 'bg-brand-purple'
                                             }`} />
                                         <span>{bullet}</span>
                                     </li>

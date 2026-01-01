@@ -1,159 +1,71 @@
-/* ════════════════════════════════════════════════════════════════════════════
-   KOKORICK AI - Professional Design System
-   A sophisticated, editorial-inspired aesthetic with warm terracotta accents
-   ════════════════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════════════
+   WARMLO - Enterprise Design System
+   Professional, Clean, Premium SaaS Aesthetic
+   ═══════════════════════════════════════════════════════════════════════════════ */
 
-/* Import distinctive fonts - Syne (headlines) + Satoshi-like via DM Sans */
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ════════════════════════════════════════════════════════════════════════════
-   CSS CUSTOM PROPERTIES - Design Tokens
-   ════════════════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════════════
+   CSS CUSTOM PROPERTIES
+   ═══════════════════════════════════════════════════════════════════════════════ */
 
 @layer base {
     :root {
-        /* ─────────────────────────────────────────────────────────────────────
-           LIGHT THEME - Dashboard (Gmail-inspired but elevated)
-           ───────────────────────────────────────────────────────────────────── */
+        /* Core Colors */
         --background: 0 0% 100%;
-        --foreground: 220 15% 15%;
-
+        --foreground: 222 47% 11%;
         --card: 0 0% 100%;
-        --card-foreground: 220 15% 15%;
-
+        --card-foreground: 222 47% 11%;
         --popover: 0 0% 100%;
-        --popover-foreground: 220 15% 15%;
-
-        /* Primary - Rich Blue */
-        --primary: 220 85% 50%;
+        --popover-foreground: 222 47% 11%;
+        --primary: 24 95% 53%;
         --primary-foreground: 0 0% 100%;
-
         --secondary: 220 14% 96%;
-        --secondary-foreground: 220 15% 15%;
-
+        --secondary-foreground: 222 47% 11%;
         --muted: 220 14% 96%;
         --muted-foreground: 220 9% 46%;
-
-        --accent: 220 14% 96%;
-        --accent-foreground: 220 15% 15%;
-
+        --accent: 24 95% 53%;
+        --accent-foreground: 0 0% 100%;
         --destructive: 0 84% 60%;
         --destructive-foreground: 0 0% 100%;
-
-        --border: 220 14% 90%;
-        --input: 220 14% 90%;
-        --ring: 220 85% 50%;
+        --border: 220 13% 91%;
+        --input: 220 13% 91%;
+        --ring: 24 95% 53%;
         --radius: 0.5rem;
-
-        /* Gmail-style colors (elevated) */
-        --gmail-red: #d93025;
-        --gmail-blue: #1a73e8;
-        --gmail-hover: #f1f3f4;
-        --gmail-border: #e0e3e7;
-        --gmail-text: #1f2937;
-        --gmail-text-secondary: #6b7280;
-        --gmail-sidebar-hover: #f3f4f6;
-        --gmail-sidebar-active: #dbeafe;
-        --gmail-compose-bg: #bfdbfe;
     }
 
-    /* ─────────────────────────────────────────────────────────────────────────
-       DARK THEME - Dashboard with elevated premium feel
-       ───────────────────────────────────────────────────────────────────────── */
     .dark {
-        --background: 222 25% 6%;
-        --foreground: 210 20% 95%;
-
-        --card: 222 25% 8%;
-        --card-foreground: 210 20% 95%;
-
-        --popover: 222 25% 8%;
-        --popover-foreground: 210 20% 95%;
-
-        /* Primary - Warm Terracotta */
-        --primary: 16 70% 55%;
+        --background: 220 20% 4%;
+        --foreground: 210 40% 98%;
+        --card: 220 18% 7%;
+        --card-foreground: 210 40% 98%;
+        --popover: 220 18% 7%;
+        --popover-foreground: 210 40% 98%;
+        --primary: 24 95% 53%;
         --primary-foreground: 0 0% 100%;
-
-        --secondary: 222 20% 12%;
-        --secondary-foreground: 210 20% 95%;
-
-        --muted: 222 20% 12%;
-        --muted-foreground: 220 10% 55%;
-
-        --accent: 222 20% 14%;
-        --accent-foreground: 210 20% 95%;
-
+        --secondary: 220 15% 12%;
+        --secondary-foreground: 210 40% 98%;
+        --muted: 220 15% 12%;
+        --muted-foreground: 215 20% 55%;
+        --accent: 24 95% 53%;
+        --accent-foreground: 0 0% 100%;
         --destructive: 0 62.8% 50%;
         --destructive-foreground: 0 0% 100%;
-
-        --border: 222 20% 15%;
-        --input: 222 20% 12%;
-        --ring: 16 70% 55%;
-
-        /* Premium Dark Overrides */
-        --gmail-red: #f87171;
-        --gmail-blue: #60a5fa;
-        --gmail-hover: rgba(255, 255, 255, 0.04);
-        --gmail-border: rgba(255, 255, 255, 0.08);
-        --gmail-text: #f9fafb;
-        --gmail-text-secondary: #9ca3af;
-        --gmail-sidebar-hover: rgba(255, 255, 255, 0.05);
-        --gmail-sidebar-active: rgba(217, 119, 87, 0.15);
-        --gmail-compose-bg: #1c1f26;
-    }
-
-    /* ─────────────────────────────────────────────────────────────────────────
-       LANDING PAGE - Premium Editorial Dark Theme
-       ───────────────────────────────────────────────────────────────────────── */
-    :root {
-        /* Core Palette - Warm Terracotta meets Deep Slate */
-        --slate-deep: #0a0c0f;
-        --slate-rich: #12151a;
-        --slate-mid: #1a1e25;
-        --slate-light: #252a33;
-        --slate-muted: #3a424f;
-
-        /* Terracotta Accent Scale */
-        --terracotta: #d97757;
-        --terracotta-light: #e8937a;
-        --terracotta-dark: #c46144;
-        --terracotta-glow: rgba(217, 119, 87, 0.3);
-
-        /* Supporting Colors */
-        --gold: #d4a574;
-        --gold-light: #e5c49f;
-        --sage: #7a9a8a;
-        --sage-light: #9ab8aa;
-        --cream: #f5f1eb;
-        --cream-warm: #ebe4da;
-
-        /* Text Colors */
-        --text-primary: #f9fafb;
-        --text-secondary: #a0aab8;
-        --text-muted: #6b7684;
-
-        /* Editorial Landing Palette */
-        --ivory: #f8f6f2;
-        --ivory-warm: #f0ebe3;
-        --paper: #fdfcfa;
-        --ink: #1a1a1a;
-        --ink-muted: #5a5a5a;
-        --ink-soft: #8a8a8a;
-        --coral: #d97757;
-        --coral-dark: #c46144;
-        --azure: #4a7c9e;
-        --sage-landing: #6b8f7a;
-        --amber: #c5914b;
+        --border: 220 15% 14%;
+        --input: 220 15% 12%;
+        --ring: 24 95% 53%;
     }
 }
 
-/* ════════════════════════════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════════════════════
    BASE STYLES
-   ════════════════════════════════════════════════════════════════════════════ */
+   ═══════════════════════════════════════════════════════════════════════════════ */
 
 @layer base {
     * {
@@ -162,478 +74,94 @@
 
     html {
         scroll-behavior: smooth;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        font-feature-settings: "cv11", "ss01", "ss03";
     }
 
     body {
-        @apply bg-background text-foreground antialiased;
-        font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
+        @apply bg-background text-foreground;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        font-size: 14px;
+        line-height: 1.5;
     }
 
-    /* Syne for all headings */
-    h1,
-    h2,
-    h3,
-    h4,
-    h5,
-    h6 {
-        font-family: 'Syne', sans-serif;
-        font-weight: 600;
-    }
-
-    /* JetBrains Mono for code elements */
-    code,
-    pre,
-    .font-mono {
-        font-family: 'JetBrains Mono', monospace;
-    }
-
-    /* Premium selection styling */
     ::selection {
-        background: var(--terracotta);
-        color: white;
+        background: hsl(24 95% 53% / 0.3);
+        color: inherit;
     }
 
-    .dark ::selection {
-        background: var(--terracotta);
-        color: white;
-    }
-}
-
-/* ════════════════════════════════════════════════════════════════════════════
-   LANDING PAGE TYPOGRAPHY
-   ════════════════════════════════════════════════════════════════════════════ */
-
-@layer utilities {
-
-    /* Display Headlines */
-    .text-display {
-        font-family: 'Syne', sans-serif;
-        font-size: clamp(3rem, 7vw, 5.5rem);
-        font-weight: 700;
-        line-height: 1.05;
-        letter-spacing: -0.03em;
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
     }
 
-    .text-display-sm {
-        font-family: 'Syne', sans-serif;
-        font-size: clamp(2rem, 5vw, 3.5rem);
-        font-weight: 700;
-        line-height: 1.1;
-        letter-spacing: -0.02em;
+    ::-webkit-scrollbar-track {
+        background: transparent;
     }
 
-    /* Labels & Overlines */
-    .text-label {
-        font-family: 'DM Sans', sans-serif;
-        font-size: 0.75rem;
-        font-weight: 600;
-        letter-spacing: 0.15em;
-        text-transform: uppercase;
+    ::-webkit-scrollbar-thumb {
+        background: hsl(var(--muted-foreground) / 0.3);
+        border-radius: 10px;
     }
 
-    .text-overline {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.625rem;
-        font-weight: 500;
-        letter-spacing: 0.2em;
-        text-transform: uppercase;
+    ::-webkit-scrollbar-thumb:hover {
+        background: hsl(var(--muted-foreground) / 0.5);
     }
 }
 
-/* ════════════════════════════════════════════════════════════════════════════
-   LANDING PAGE COMPONENTS
-   ════════════════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════════════
+   COMPONENTS
+   ═══════════════════════════════════════════════════════════════════════════════ */
 
 @layer components {
 
-    /* Container */
-    .container-editorial {
-        @apply max-w-7xl mx-auto px-6 lg:px-8;
+    /* Primary Gradient Button */
+    .gradient-warm {
+        background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
     }
 
-    /* Sharp-edged Brutalist Button */
-    .btn-brutal {
-        @apply inline-flex items-center gap-3 px-8 py-4 font-semibold text-white transition-all duration-200;
-        background: var(--terracotta);
-        border: 2px solid var(--terracotta);
-        box-shadow: 4px 4px 0 var(--ink);
+    .gradient-warm-violet {
+        background: linear-gradient(135deg, #f97316 0%, #ec4899 100%);
     }
 
-    .btn-brutal:hover {
-        box-shadow: 6px 6px 0 var(--ink);
-        transform: translate(-2px, -2px);
-        background: var(--terracotta-dark);
+    /* Text Gradient */
+    .text-gradient-warm {
+        background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
     }
 
-    .btn-brutal-outline {
-        @apply inline-flex items-center gap-3 px-8 py-4 font-semibold transition-all duration-200;
-        background: transparent;
-        color: var(--ink);
-        border: 2px solid var(--ink);
-        box-shadow: 4px 4px 0 var(--ink);
+    /* Card Styles */
+    .card-base {
+        @apply rounded-xl;
+        background: hsl(var(--card));
+        border: 1px solid hsl(var(--border));
     }
 
-    .btn-brutal-outline:hover {
-        background: var(--ink);
-        color: var(--ivory);
-        box-shadow: 6px 6px 0 var(--slate-mid);
-        transform: translate(-2px, -2px);
+    /* Input Base */
+    .input-base {
+        @apply w-full px-3 py-2 rounded-lg text-sm transition-all outline-none;
+        background: hsl(var(--muted));
+        border: 1px solid transparent;
     }
 
-    /* Premium Glass Button */
-    .btn-glass {
-        @apply inline-flex items-center gap-2 px-6 py-3 font-medium rounded-full transition-all duration-300;
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        color: white;
-    }
-
-    .btn-glass:hover {
-        background: rgba(255, 255, 255, 0.1);
-        border-color: rgba(255, 255, 255, 0.2);
-        transform: translateY(-2px);
-    }
-
-    /* Terracotta Primary Button */
-    .btn-terracotta {
-        @apply inline-flex items-center gap-2 px-6 py-3.5 font-semibold rounded-xl transition-all duration-300;
-        background: linear-gradient(135deg, var(--terracotta), var(--terracotta-dark));
-        color: white;
-        box-shadow: 0 4px 20px var(--terracotta-glow),
-            0 0 0 1px rgba(255, 255, 255, 0.1) inset;
-    }
-
-    .btn-terracotta:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 30px var(--terracotta-glow),
-            0 0 0 1px rgba(255, 255, 255, 0.15) inset;
-    }
-
-    /* Brutalist Card */
-    .card-brutal {
-        background: var(--paper);
-        border: 2px solid var(--ink);
-        box-shadow: 6px 6px 0 var(--ink);
-        transition: all 0.2s ease;
-    }
-
-    .card-brutal:hover {
-        box-shadow: 8px 8px 0 var(--ink);
-        transform: translate(-2px, -2px);
-    }
-
-    /* Badge */
-    .badge-coral {
-        @apply inline-flex items-center px-3 py-1 text-xs font-bold uppercase tracking-wider;
-        background: var(--coral);
-        color: white;
-    }
-
-    /* Glass Card */
-    .card-glass {
-        background: rgba(255, 255, 255, 0.03);
-        backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: 1rem;
-    }
-
-    .card-glass-hover:hover {
-        background: rgba(255, 255, 255, 0.05);
-        border-color: rgba(255, 255, 255, 0.1);
+    .input-base:focus {
+        border-color: hsl(var(--primary));
+        box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);
     }
 }
 
-/* ════════════════════════════════════════════════════════════════════════════
-   LANDING PAGE BACKGROUNDS & PATTERNS
-   ════════════════════════════════════════════════════════════════════════════ */
-
-@layer utilities {
-
-    /* Subtle Grid Pattern */
-    .line-grid {
-        background-image:
-            linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
-        background-size: 60px 60px;
-    }
-
-    /* Diagonal Stripes */
-    .stripes {
-        background: repeating-linear-gradient(-45deg,
-                transparent,
-                transparent 40px,
-                rgba(217, 119, 87, 0.02) 40px,
-                rgba(217, 119, 87, 0.02) 80px);
-    }
-
-    /* Dot Grid */
-    .dot-grid {
-        background-image: radial-gradient(circle, rgba(0, 0, 0, 0.06) 1.5px, transparent 1.5px);
-        background-size: 32px 32px;
-    }
-
-    /* Dark Dot Grid */
-    .dot-grid-dark {
-        background-image: radial-gradient(circle, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-        background-size: 24px 24px;
-    }
-
-    /* Noise Texture */
-    .noise-overlay {
-        position: relative;
-    }
-
-    .noise-overlay::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-        opacity: 0.03;
-        pointer-events: none;
-    }
-}
-
-/* ════════════════════════════════════════════════════════════════════════════
-   DASHBOARD UTILITIES (Gmail-inspired but elevated)
-   ════════════════════════════════════════════════════════════════════════════ */
-
-@layer utilities {
-    .gmail-shadow {
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
-    }
-
-    .gmail-shadow-hover {
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.08);
-    }
-
-    .gmail-card {
-        @apply bg-white border border-gray-200 rounded-xl;
-    }
-
-    .dark .gmail-card {
-        background: var(--slate-rich);
-        border-color: rgba(255, 255, 255, 0.06);
-    }
-
-    .gmail-btn {
-        @apply px-6 py-2.5 rounded-full font-medium transition-all duration-200;
-    }
-
-    .gmail-btn-primary {
-        @apply bg-blue-600 text-white hover:bg-blue-700;
-    }
-
-    .dark .gmail-btn-primary {
-        background: var(--terracotta);
-    }
-
-    .dark .gmail-btn-primary:hover {
-        background: var(--terracotta-dark);
-    }
-
-    .gmail-btn-secondary {
-        @apply bg-gray-100 text-gray-700 hover:bg-gray-200;
-    }
-
-    .dark .gmail-btn-secondary {
-        background: var(--slate-mid);
-        color: var(--text-secondary);
-    }
-
-    .dark .gmail-btn-secondary:hover {
-        background: var(--slate-light);
-    }
-
-    .gmail-input {
-        @apply bg-gray-100 border-0 rounded-xl px-4 py-3 text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all;
-    }
-
-    .dark .gmail-input {
-        background: var(--slate-mid);
-        color: var(--text-primary);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-    }
-
-    .dark .gmail-input:focus {
-        background: var(--slate-deep);
-        border-color: var(--terracotta);
-        box-shadow: 0 0 0 3px var(--terracotta-glow);
-    }
-
-    .gmail-sidebar-item {
-        @apply flex items-center gap-4 px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-150;
-    }
-
-    .gmail-sidebar-item-active {
-        @apply bg-blue-50 text-blue-700;
-    }
-
-    .dark .gmail-sidebar-item-active {
-        background: rgba(217, 119, 87, 0.1);
-        color: var(--terracotta);
-        border-left: 3px solid var(--terracotta);
-    }
-
-    .gmail-sidebar-item-hover {
-        @apply hover:bg-gray-100;
-    }
-
-    .dark .gmail-sidebar-item-hover {
-        @apply hover:bg-white/5;
-    }
-}
-
-/* ════════════════════════════════════════════════════════════════════════════
-   CUSTOM SCROLLBAR
-   ════════════════════════════════════════════════════════════════════════════ */
-
-::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-
-::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.15);
-    border-radius: 99px;
-}
-
-.dark ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.25);
-}
-
-.dark ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.15);
-}
-
-/* ════════════════════════════════════════════════════════════════════════════
-   GMAIL-STYLE COMPONENTS (Dashboard)
-   ════════════════════════════════════════════════════════════════════════════ */
-
-.gmail-compose-btn {
-    @apply flex items-center gap-3 px-6 py-3.5 rounded-2xl font-medium transition-all duration-200;
-    background-color: #dbeafe;
-    color: #1e40af;
-}
-
-.dark .gmail-compose-btn {
-    background: linear-gradient(135deg, var(--terracotta), var(--terracotta-dark));
-    color: white;
-    box-shadow: 0 4px 16px var(--terracotta-glow);
-}
-
-.gmail-compose-btn:hover {
-    background-color: #bfdbfe;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.dark .gmail-compose-btn:hover {
-    box-shadow: 0 6px 24px var(--terracotta-glow);
-    transform: translateY(-1px);
-}
-
-.gmail-email-row {
-    @apply flex items-center px-5 py-3 cursor-pointer transition-all duration-150;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-.dark .gmail-email-row {
-    border-bottom-color: rgba(255, 255, 255, 0.04);
-}
-
-.gmail-email-row:hover {
-    @apply bg-gray-50;
-}
-
-.dark .gmail-email-row:hover {
-    background: rgba(255, 255, 255, 0.03);
-}
-
-.gmail-email-row-unread {
-    @apply bg-blue-50/50;
-}
-
-.dark .gmail-email-row-unread {
-    background: rgba(217, 119, 87, 0.05);
-}
-
-.gmail-search {
-    @apply flex items-center gap-3 px-5 py-3 rounded-xl transition-all duration-200;
-    background-color: #f3f4f6;
-    max-width: 720px;
-}
-
-.dark .gmail-search {
-    background: var(--slate-mid);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.gmail-search:focus-within {
-    @apply bg-white shadow-lg;
-}
-
-.dark .gmail-search:focus-within {
-    background: var(--slate-deep);
-    border-color: var(--terracotta);
-    box-shadow: 0 0 0 3px var(--terracotta-glow);
-}
-
-.gmail-tab {
-    @apply flex items-center gap-2 px-5 py-3 text-sm font-medium text-gray-500 transition-all cursor-pointer;
-    border-bottom: 2px solid transparent;
-}
-
-.gmail-tab:hover {
-    @apply bg-gray-50;
-}
-
-.dark .gmail-tab:hover {
-    background: rgba(255, 255, 255, 0.03);
-}
-
-.gmail-tab-active {
-    @apply text-blue-600;
-    border-bottom-color: currentColor;
-}
-
-.dark .gmail-tab-active {
-    color: var(--terracotta);
-}
-
-.gmail-avatar {
-    @apply w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold;
-}
-
-.gmail-checkbox {
-    @apply w-5 h-5 border-2 border-gray-400 rounded cursor-pointer hover:border-gray-500;
-}
-
-.dark .gmail-checkbox {
-    border-color: rgba(255, 255, 255, 0.2);
-}
-
-.dark .gmail-checkbox:hover {
-    border-color: var(--terracotta);
-}
-
-/* ════════════════════════════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════════════════════════
    ANIMATIONS
-   ════════════════════════════════════════════════════════════════════════════ */
+   ═══════════════════════════════════════════════════════════════════════════════ */
 
-@keyframes gmail-slide-in {
+@keyframes fade-in-up {
     from {
         opacity: 0;
-        transform: translateY(-12px);
+        transform: translateY(10px);
     }
 
     to {
@@ -642,136 +170,48 @@
     }
 }
 
-.gmail-animate-in {
-    animation: gmail-slide-in 0.3s ease-out forwards;
-}
-
-@keyframes float {
-
-    0%,
-    100% {
-        transform: translateY(0);
+@keyframes scale-in {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
     }
 
-    50% {
-        transform: translateY(-10px);
-    }
-}
-
-.animate-float {
-    animation: float 6s ease-in-out infinite;
-}
-
-@keyframes pulse-subtle {
-
-    0%,
-    100% {
+    to {
         opacity: 1;
-    }
-
-    50% {
-        opacity: 0.7;
+        transform: scale(1);
     }
 }
 
-.animate-pulse-subtle {
-    animation: pulse-subtle 3s ease-in-out infinite;
+.animate-fade-in-up {
+    animation: fade-in-up 0.3s ease-out forwards;
 }
 
-@keyframes gradient-shift {
-
-    0%,
-    100% {
-        background-position: 0% 50%;
-    }
-
-    50% {
-        background-position: 100% 50%;
-    }
+.animate-scale-in {
+    animation: scale-in 0.2s ease-out forwards;
 }
 
-.animate-gradient {
-    background-size: 200% 200%;
-    animation: gradient-shift 8s ease infinite;
-}
-
-/* ════════════════════════════════════════════════════════════════════════════
-   LOGIN/AUTH FORM STYLES
-   ════════════════════════════════════════════════════════════════════════════ */
-
-.input {
-    width: 100%;
-    padding: 0.875rem 1rem;
-    background-color: var(--slate-mid);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 0.75rem;
-    color: white;
-    font-size: 0.9375rem;
-    font-family: 'DM Sans', sans-serif;
-    transition: all 0.2s;
-}
-
-.input::placeholder {
-    color: var(--text-muted);
-}
-
-.input:focus {
-    outline: none;
-    border-color: var(--terracotta);
-    background-color: var(--slate-deep);
-    box-shadow: 0 0 0 3px var(--terracotta-glow);
-}
-
-/* ════════════════════════════════════════════════════════════════════════════
-   AI CHAT BUBBLE
-   ════════════════════════════════════════════════════════════════════════════ */
-
-.ai-bubble {
-    @apply p-4 rounded-2xl text-sm leading-relaxed max-w-[90%];
-    background: var(--slate-light);
-    color: var(--text-primary);
-}
-
-.ai-bubble-user {
-    background: linear-gradient(135deg, var(--terracotta), var(--terracotta-dark));
-    color: white;
-    margin-left: auto;
-}
-
-/* ════════════════════════════════════════════════════════════════════════════
-   PROGRESS BAR
-   ════════════════════════════════════════════════════════════════════════════ */
-
-.gmail-progress {
-    @apply h-1.5 w-full rounded-full overflow-hidden;
-    background: rgba(255, 255, 255, 0.08);
-}
-
-.gmail-progress-bar {
-    @apply h-full transition-all duration-500;
-    background: linear-gradient(90deg, var(--terracotta), var(--terracotta-light));
-}
-
-/* ════════════════════════════════════════════════════════════════════════════
-   UTILITY CLASSES
-   ════════════════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════════════
+   UTILITIES
+   ═══════════════════════════════════════════════════════════════════════════════ */
 
 @layer utilities {
-    .text-gradient-terracotta {
-        background: linear-gradient(135deg, var(--terracotta), var(--gold));
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
+    .text-balance {
+        text-wrap: balance;
     }
 
-    .border-gradient {
-        border: 1px solid transparent;
-        background: linear-gradient(var(--slate-rich), var(--slate-rich)) padding-box,
-            linear-gradient(135deg, rgba(217, 119, 87, 0.3), rgba(212, 165, 116, 0.1)) border-box;
+    /* Glass Effect */
+    .glass {
+        background: hsl(var(--background) / 0.8);
+        backdrop-filter: blur(12px);
+        border: 1px solid hsl(var(--border) / 0.5);
     }
 
-    .glow-terracotta {
-        box-shadow: 0 0 40px var(--terracotta-glow),
-            0 0 80px rgba(217, 119, 87, 0.1);
+    /* Focus Ring */
+    .focus-ring {
+        @apply outline-none transition-shadow;
+    }
+
+    .focus-ring:focus-visible {
+        box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--primary));
     }
 }

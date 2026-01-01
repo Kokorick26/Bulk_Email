@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     Plus, Server, RefreshCw, Check, AlertTriangle, Cloud,
-    Mail, Clock, Settings, Activity, ArrowRight,
-    Search, Filter, MoreHorizontal, LayoutGrid, List as ListIcon
+    Mail, Clock, Settings, Activity, ArrowRight, X, Send, Edit3,
+    Search, Filter, MoreHorizontal, LayoutGrid, List as ListIcon, Eye
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { useTheme } from '../../../lib/ThemeContext';
 import { Button } from '../../ui/Button';
-import type { Lead } from '../types';
+import type { Lead, SequenceStep } from '../types';
 
 interface SmtpAccount {
     id: string;
@@ -23,17 +23,22 @@ interface SmtpAccount {
 interface AccountsTabProps {
     campaignId: string;
     leads: Lead[];
-    sequence?: any;
+    sequence?: { steps: SequenceStep[] } | null;
     onLeadsUpdate?: (leads: Lead[]) => void;
     className?: string;
 }
 
 export function AccountsTab({ campaignId, leads, sequence, onLeadsUpdate, className }: AccountsTabProps) {
     const { theme } = useTheme();
+    const isDark = theme === 'dark';
     const [accounts, setAccounts] = useState<SmtpAccount[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedAccountId, setSelectedAccountId] = useState<string | 'all'>('all');
+    const [selectedEmail, setSelectedEmail] = useState<any | null>(null);
+    const [editMode, setEditMode] = useState(false);
+    const [editSubject, setEditSubject] = useState('');
+    const [editBody, setEditBody] = useState('');
 
     // Fetch SMTP accounts
     const fetchSmtpAccounts = useCallback(async () => {
@@ -58,6 +63,28 @@ export function AccountsTab({ campaignId, leads, sequence, onLeadsUpdate, classN
         fetchSmtpAccounts();
     }, [fetchSmtpAccounts]);
 
+    // Get first step subject/body from sequence
+    const getEmailContent = (lead: Lead) => {
+        const firstStep = sequence?.steps?.[0];
+        if (!firstStep) {
+            return { subject: '(No sequence)', body: '(No email content defined)' };
+        }
+
+        // Replace merge tags with lead data
+        const replaceTags = (text: string) => {
+            return text
+                .replace(/\{\{firstName\}\}/g, lead.firstName || '')
+                .replace(/\{\{lastName\}\}/g, lead.lastName || '')
+                .replace(/\{\{email\}\}/g, lead.email || '')
+                .replace(/\{\{company\}\}/g, lead.company || '');
+        };
+
+        return {
+            subject: replaceTags(firstStep.subject || ''),
+            body: replaceTags(firstStep.body || '')
+        };
+    };
+
     // Combined Queue Data
     const queueData = useMemo(() => {
         const pending = leads.filter(l => l.status === 'pending');
@@ -78,12 +105,16 @@ export function AccountsTab({ campaignId, leads, sequence, onLeadsUpdate, classN
         return sortedLeads.map((lead, idx) => {
             // If lead doesn't have an assigned account, use round-robin logic for display
             const assignedId = lead.sendingAccountId || (accounts.length > 0 ? accounts[idx % accounts.length].id : null);
+            const emailContent = getEmailContent(lead);
             return {
                 ...lead,
-                assignedAccount: assignedId ? accountMap[assignedId] : null
+                assignedAccount: assignedId ? accountMap[assignedId] : null,
+                previewSubject: emailContent.subject,
+                previewBody: emailContent.body,
+                estimatedTime: `T+${idx * 15}m`
             };
         });
-    }, [leads, accounts]);
+    }, [leads, accounts, sequence]);
 
     const filteredQueue = useMemo(() => {
         return queueData.filter(item => {
@@ -95,7 +126,6 @@ export function AccountsTab({ campaignId, leads, sequence, onLeadsUpdate, classN
             const matchesSearch = email.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 fullName.includes(searchQuery.toLowerCase());
 
-            // Use the calculated assignedAccount from queueData instead of sendingAccountId which might be null
             const accountId = item.assignedAccount?.id;
             const matchesAccount = selectedAccountId === 'all' || accountId === selectedAccountId;
 
@@ -103,25 +133,38 @@ export function AccountsTab({ campaignId, leads, sequence, onLeadsUpdate, classN
         });
     }, [queueData, searchQuery, selectedAccountId]);
 
+    const handlePreview = (item: any) => {
+        setSelectedEmail(item);
+        setEditSubject(item.previewSubject);
+        setEditBody(item.previewBody);
+        setEditMode(false);
+    };
+
+    const handleSaveEdit = () => {
+        // TODO: Save custom email content for this lead
+        // For now just close the modal
+        setEditMode(false);
+        setSelectedEmail(null);
+    };
+
     if (loading) {
         return (
             <div className="flex flex-col items-center justify-center py-24 space-y-4 opacity-50">
-                <Activity className="w-8 h-8 animate-pulse text-[#d97757]" />
-                <p className="font-[Syne] font-bold tracking-widest text-xs uppercase italic">Synchronizing Fleet...</p>
+                <Activity className="w-8 h-8 animate-pulse text-orange-500" />
+                <p className="font-medium text-sm">Loading accounts...</p>
             </div>
         );
     }
 
     return (
         <div className={cn(
-            'max-w-6xl mx-auto flex flex-col animate-in fade-in duration-500 h-[calc(100vh-200px)] overflow-hidden',
+            'max-w-6xl mx-auto flex flex-col h-[calc(100vh-200px)] overflow-hidden',
             className
-        )}
-        >
-            {/* Account Tabs (Inbox-style horizontal bar at top) */}
+        )}>
+            {/* Account Tabs */}
             <div className={cn(
                 'flex items-center gap-2 px-1 border-b overflow-x-auto shrink-0',
-                theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
+                isDark ? 'border-neutral-800' : 'border-gray-200'
             )}>
                 {accounts.map(account => {
                     const accountQueue = queueData.filter(q => q.assignedAccount?.id === account.id).length;
@@ -132,17 +175,17 @@ export function AccountsTab({ campaignId, leads, sequence, onLeadsUpdate, classN
                             className={cn(
                                 'flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all -mb-px whitespace-nowrap',
                                 selectedAccountId === account.id
-                                    ? theme === 'dark' ? 'border-[#d97757] text-[#d97757]' : 'border-blue-500 text-blue-500'
-                                    : theme === 'dark'
-                                        ? 'border-transparent text-gray-500 hover:text-gray-300 hover:border-white/10'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    ? 'border-orange-500 text-orange-500'
+                                    : isDark
+                                        ? 'border-transparent text-neutral-500 hover:text-neutral-300'
+                                        : 'border-transparent text-gray-500 hover:text-gray-700'
                             )}
                         >
                             <div className={cn(
                                 'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold',
                                 selectedAccountId === account.id
-                                    ? theme === 'dark' ? 'bg-[#d97757] text-white' : 'bg-blue-500 text-white'
-                                    : theme === 'dark' ? 'bg-[#252a33] text-gray-400' : 'bg-gray-200 text-gray-600'
+                                    ? 'bg-orange-500 text-white'
+                                    : isDark ? 'bg-neutral-800 text-neutral-400' : 'bg-gray-200 text-gray-600'
                             )}>
                                 {account.fromEmail.charAt(0).toUpperCase()}
                             </div>
@@ -151,8 +194,8 @@ export function AccountsTab({ campaignId, leads, sequence, onLeadsUpdate, classN
                                 <span className={cn(
                                     'text-[10px] px-1.5 py-0.5 rounded-full font-bold',
                                     selectedAccountId === account.id
-                                        ? 'bg-[#d97757]/20 text-[#d97757]'
-                                        : theme === 'dark' ? 'bg-gray-700 text-gray-400' : 'bg-gray-200 text-gray-500'
+                                        ? 'bg-orange-500/20 text-orange-500'
+                                        : isDark ? 'bg-neutral-700 text-neutral-400' : 'bg-gray-200 text-gray-500'
                                 )}>
                                     {accountQueue}
                                 </span>
@@ -161,14 +204,11 @@ export function AccountsTab({ campaignId, leads, sequence, onLeadsUpdate, classN
                     );
                 })}
 
-                {/* Add Account Button */}
                 <button
                     onClick={() => window.location.href = '/email-accounts'}
                     className={cn(
                         'flex items-center gap-2 px-3 py-3 text-sm transition-colors -mb-px',
-                        theme === 'dark'
-                            ? 'text-gray-500 hover:text-gray-300'
-                            : 'text-gray-400 hover:text-gray-600'
+                        isDark ? 'text-neutral-500 hover:text-neutral-300' : 'text-gray-400 hover:text-gray-600'
                     )}
                 >
                     <Plus className="w-4 h-4" />
@@ -181,7 +221,7 @@ export function AccountsTab({ campaignId, leads, sequence, onLeadsUpdate, classN
                 <div className="relative">
                     <Search className={cn(
                         'absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4',
-                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                        isDark ? 'text-neutral-500' : 'text-gray-400'
                     )} />
                     <input
                         type="text"
@@ -189,90 +229,84 @@ export function AccountsTab({ campaignId, leads, sequence, onLeadsUpdate, classN
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className={cn(
-                            'w-full pl-10 pr-4 py-2.5 rounded-lg text-sm border',
-                            theme === 'dark'
-                                ? 'bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 focus:border-[#d97757]'
-                                : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-blue-500'
+                            'w-full pl-10 pr-4 py-2.5 rounded-lg text-sm border focus:outline-none',
+                            isDark
+                                ? 'bg-neutral-900 border-neutral-800 text-white placeholder:text-neutral-500 focus:border-orange-500'
+                                : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-orange-500'
                         )}
                     />
                 </div>
             </div>
 
-
-            {/* Queue List - Scrollable */}
+            {/* Queue List */}
             <div className="flex-1 overflow-auto">
                 {filteredQueue.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-32 opacity-30 space-y-4">
                         <Cloud className="w-12 h-12 stroke-[1px]" />
                         <div className="text-center">
-                            <p className="font-[Syne] font-bold text-lg">No emails in queue</p>
+                            <p className="font-semibold text-lg">No emails in queue</p>
                             <p className="text-xs">Adjust your filters or add more leads to the campaign.</p>
                         </div>
                     </div>
                 ) : (
-                    <div className={cn(
-                        'divide-y',
-                        theme === 'dark' ? 'divide-gray-800' : 'divide-gray-100'
-                    )}>
-                        {filteredQueue.map((item, idx) => (
+                    <div className={cn('divide-y', isDark ? 'divide-neutral-800' : 'divide-gray-100')}>
+                        {filteredQueue.map((item) => (
                             <div
                                 key={item.id}
+                                onClick={() => handlePreview(item)}
                                 className={cn(
-                                    'group flex items-center gap-4 px-4 py-3 transition-all',
-                                    theme === 'dark' ? 'hover:bg-[#1a1e25]' : 'hover:bg-blue-50/50'
+                                    'group flex items-center gap-4 px-4 py-3 transition-all cursor-pointer',
+                                    isDark ? 'hover:bg-neutral-900' : 'hover:bg-gray-50'
                                 )}
                             >
-                                {/* Checkbox placeholder */}
-                                <div className={cn(
-                                    'w-5 h-5 rounded border flex items-center justify-center cursor-pointer',
-                                    theme === 'dark' ? 'border-gray-700 hover:border-gray-500' : 'border-gray-300 hover:border-gray-400'
-                                )}>
-                                </div>
-
                                 {/* Lead Info */}
                                 <div className="flex items-center gap-3 w-[280px] overflow-hidden">
                                     <div className={cn(
                                         'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm',
-                                        theme === 'dark'
-                                            ? 'bg-[#d97757]/10 text-[#d97757]'
-                                            : 'bg-blue-50 text-blue-600'
+                                        isDark ? 'bg-orange-500/10 text-orange-500' : 'bg-orange-50 text-orange-600'
                                     )}>
                                         {(item.email || 'U')[0].toUpperCase()}
                                     </div>
                                     <div className="truncate">
-                                        <p className={cn(
-                                            'text-sm font-medium truncate',
-                                            theme === 'dark' ? 'text-white' : 'text-gray-900'
-                                        )}>
+                                        <p className={cn('text-sm font-medium truncate', isDark ? 'text-white' : 'text-gray-900')}>
                                             {item.email}
                                         </p>
-                                        <p className="text-[11px] opacity-50 truncate uppercase tracking-tight">
+                                        <p className="text-xs opacity-50 truncate">
                                             {item.firstName} {item.lastName}
                                         </p>
                                     </div>
                                 </div>
 
-                                {/* Sending Account */}
+                                {/* Sender Account */}
                                 <div className="flex items-center gap-2 flex-1 opacity-70 group-hover:opacity-100 transition-opacity">
                                     <div className={cn(
-                                        'text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded',
-                                        theme === 'dark' ? 'bg-[#252a33] text-gray-400' : 'bg-gray-100 text-gray-500'
+                                        'text-[10px] font-medium uppercase tracking-wide px-2 py-1 rounded',
+                                        isDark ? 'bg-neutral-800 text-neutral-400' : 'bg-gray-100 text-gray-500'
                                     )}>
-                                        Sender Node
+                                        Sender
                                     </div>
                                     <p className="text-sm truncate">
-                                        {item.assignedAccount?.name || item.assignedAccount?.fromEmail || 'Auto-Selecting'}
+                                        {item.assignedAccount?.fromEmail || 'Auto'}
                                     </p>
                                 </div>
 
-                                {/* Status & Timing */}
+                                {/* Subject Preview */}
+                                <div className={cn('flex-1 truncate text-sm', isDark ? 'text-neutral-400' : 'text-gray-500')}>
+                                    {item.previewSubject || '(No subject)'}
+                                </div>
+
+                                {/* Timing + Preview Button */}
                                 <div className="flex items-center gap-3 ml-auto shrink-0">
-                                    <div className="flex items-center gap-2">
-                                        <Clock className="w-3 h-3 text-emerald-500" />
-                                        <span className="text-xs font-mono font-bold text-emerald-500">
-                                            {item.scheduledTime ? new Date(item.scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : `T+${idx * 15}m`}
-                                        </span>
+                                    <div className={cn('flex items-center gap-1.5 text-xs font-medium', isDark ? 'text-emerald-400' : 'text-emerald-600')}>
+                                        <Clock className="w-3 h-3" />
+                                        {item.scheduledTime ? new Date(item.scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : item.estimatedTime}
                                     </div>
+                                    <button className={cn(
+                                        'p-1.5 rounded transition-colors opacity-0 group-hover:opacity-100',
+                                        isDark ? 'hover:bg-neutral-800 text-neutral-400' : 'hover:bg-gray-200 text-gray-500'
+                                    )}>
+                                        <Eye className="w-4 h-4" />
+                                    </button>
                                 </div>
                             </div>
                         ))}
@@ -280,28 +314,156 @@ export function AccountsTab({ campaignId, leads, sequence, onLeadsUpdate, classN
                 )}
             </div>
 
-            {/* Footer - Fixed at bottom */}
+            {/* Footer */}
             <div className={cn(
                 'shrink-0 px-4 py-3 border-t flex items-center justify-between',
-                theme === 'dark' ? 'bg-[#0a0c0f] border-gray-800' : 'bg-gray-50 border-gray-100'
+                isDark ? 'bg-[#0a0a0a] border-neutral-800' : 'bg-gray-50 border-gray-100'
             )}>
-                <div className="text-[11px] font-medium opacity-50">
+                <div className="text-xs opacity-50">
                     Showing {filteredQueue.length} of {queueData.length} queued emails
                 </div>
-                <div className="flex items-center gap-2">
-                    <Button
-                        variant="outline"
-                        onClick={() => fetchSmtpAccounts()}
-                        className={cn(
-                            'h-8 px-3 rounded-lg text-xs',
-                            theme === 'dark' ? 'border-gray-700' : ''
-                        )}
-                    >
-                        <RefreshCw className="w-3 h-3 mr-1.5" />
-                        Sync
-                    </Button>
-                </div>
+                <Button
+                    variant="outline"
+                    onClick={() => fetchSmtpAccounts()}
+                    className={cn('h-8 px-3 rounded-lg text-xs', isDark ? 'border-neutral-700' : '')}
+                >
+                    <RefreshCw className="w-3 h-3 mr-1.5" />
+                    Sync
+                </Button>
             </div>
+
+            {/* Email Preview Modal */}
+            {selectedEmail && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+                    <div className={cn(
+                        'w-full max-w-2xl rounded-xl overflow-hidden shadow-2xl',
+                        isDark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white border border-gray-200'
+                    )}>
+                        {/* Modal Header */}
+                        <div className={cn('flex items-center justify-between px-6 py-4 border-b', isDark ? 'border-neutral-800' : 'border-gray-100')}>
+                            <div className="flex items-center gap-3">
+                                <Mail className={cn('w-5 h-5', isDark ? 'text-orange-500' : 'text-orange-600')} />
+                                <div>
+                                    <p className={cn('text-sm font-medium', isDark ? 'text-white' : 'text-gray-900')}>
+                                        Email to {selectedEmail.email}
+                                    </p>
+                                    <p className={cn('text-xs', isDark ? 'text-neutral-500' : 'text-gray-400')}>
+                                        From: {selectedEmail.assignedAccount?.fromEmail || 'Auto-assigned'}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {!editMode && (
+                                    <button
+                                        onClick={() => setEditMode(true)}
+                                        className={cn(
+                                            'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
+                                            isDark ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        )}
+                                    >
+                                        <Edit3 className="w-3.5 h-3.5" />
+                                        Edit
+                                    </button>
+                                )}
+                                <button
+                                    onClick={() => setSelectedEmail(null)}
+                                    className={cn('p-1.5 rounded transition-colors', isDark ? 'hover:bg-neutral-800' : 'hover:bg-gray-100')}
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="p-6 space-y-4">
+                            {/* Subject */}
+                            <div>
+                                <label className={cn('text-xs font-medium mb-1.5 block', isDark ? 'text-neutral-400' : 'text-gray-500')}>
+                                    Subject
+                                </label>
+                                {editMode ? (
+                                    <input
+                                        type="text"
+                                        value={editSubject}
+                                        onChange={(e) => setEditSubject(e.target.value)}
+                                        className={cn(
+                                            'w-full px-3 py-2 rounded-lg text-sm border focus:outline-none',
+                                            isDark
+                                                ? 'bg-neutral-800 border-neutral-700 text-white focus:border-orange-500'
+                                                : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-orange-500'
+                                        )}
+                                    />
+                                ) : (
+                                    <p className={cn('text-sm font-medium', isDark ? 'text-white' : 'text-gray-900')}>
+                                        {selectedEmail.previewSubject || '(No subject)'}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Body */}
+                            <div>
+                                <label className={cn('text-xs font-medium mb-1.5 block', isDark ? 'text-neutral-400' : 'text-gray-500')}>
+                                    Message
+                                </label>
+                                {editMode ? (
+                                    <textarea
+                                        value={editBody}
+                                        onChange={(e) => setEditBody(e.target.value)}
+                                        rows={12}
+                                        className={cn(
+                                            'w-full px-3 py-2 rounded-lg text-sm border focus:outline-none resize-none',
+                                            isDark
+                                                ? 'bg-neutral-800 border-neutral-700 text-white focus:border-orange-500'
+                                                : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-orange-500'
+                                        )}
+                                    />
+                                ) : (
+                                    <div className={cn(
+                                        'p-4 rounded-lg text-sm whitespace-pre-wrap leading-relaxed max-h-80 overflow-y-auto',
+                                        isDark ? 'bg-neutral-800 text-neutral-300' : 'bg-gray-50 text-gray-700'
+                                    )}>
+                                        {selectedEmail.previewBody || '(No content)'}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className={cn('flex items-center justify-end gap-3 px-6 py-4 border-t', isDark ? 'border-neutral-800' : 'border-gray-100')}>
+                            {editMode ? (
+                                <>
+                                    <button
+                                        onClick={() => setEditMode(false)}
+                                        className={cn(
+                                            'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
+                                            isDark ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        )}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleSaveEdit}
+                                        className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-orange-500 text-white hover:bg-orange-600 transition-colors"
+                                    >
+                                        <Check className="w-4 h-4" />
+                                        Save Changes
+                                    </button>
+                                </>
+                            ) : (
+                                <button
+                                    onClick={() => setSelectedEmail(null)}
+                                    className={cn(
+                                        'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
+                                        isDark ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                    )}
+                                >
+                                    Close
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

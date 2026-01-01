@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Check, X, Sparkles, HelpCircle, ArrowRight, ArrowUpRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Check, X, Sparkles, HelpCircle, ArrowRight, Zap } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
 
 export default function Pricing() {
     const [annual, setAnnual] = useState(true);
@@ -61,122 +61,140 @@ export default function Pricing() {
     ];
 
     return (
-        <div className="pt-32 pb-32 px-6 bg-[var(--slate-deep)] min-h-screen relative overflow-hidden text-[var(--text-primary)]" style={{ fontFamily: 'DM Sans, sans-serif' }}>
-            {/* Background Effects */}
-            <div className="fixed inset-0 pointer-events-none">
-                <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-[var(--terracotta)]/5 rounded-full blur-[150px]" />
-                <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-[var(--gold)]/3 rounded-full blur-[120px]" />
-                <div className="absolute inset-0 dot-grid-dark opacity-20" />
-            </div>
+        <div className="min-h-screen bg-brand-dark text-white font-body selection:bg-brand-orange selection:text-white overflow-x-hidden">
+            {/* Background Grid */}
+            <div className="fixed inset-0 z-0 opacity-20 pointer-events-none" 
+                style={{ 
+                    backgroundImage: 'linear-gradient(#333 1px, transparent 1px), linear-gradient(90deg, #333 1px, transparent 1px)', 
+                    backgroundSize: '40px 40px' 
+                }} 
+            />
 
-            <div className="max-w-7xl mx-auto relative z-10">
-                <div className="text-center mb-20">
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-[var(--text-secondary)] text-sm font-medium mb-6 backdrop-blur-sm"
-                    >
-                        <Sparkles className="w-4 h-4 text-[var(--gold)]" />
-                        <span>Simple, transparent pricing</span>
-                    </motion.div>
-
-                    <h1 className="text-display text-white mb-8">
-                        Simple pricing for <span className="text-gradient-terracotta">infinite scale</span>.
-                    </h1>
-                    <p className="text-xl text-[var(--text-secondary)] mb-10 max-w-2xl mx-auto leading-relaxed">
-                        Start for free. Upgrade when you're ready to close more deals. No hidden fees, no per-seat pricing.
-                    </p>
-
-                    {/* Toggle */}
-                    <div className="inline-flex items-center p-1.5 bg-[var(--slate-rich)] rounded-full border border-white/10 backdrop-blur-sm">
-                        <button
-                            onClick={() => setAnnual(true)}
-                            className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 ${annual ? 'bg-[var(--terracotta)] text-white shadow-lg shadow-[var(--terracotta)]/20' : 'text-[var(--text-muted)] hover:text-white'}`}
-                        >
-                            Yearly <span className="text-[10px] text-emerald-900 font-bold ml-1 bg-emerald-400 px-1.5 py-0.5 rounded-full uppercase tracking-wide">Save 20%</span>
-                        </button>
-                        <button
-                            onClick={() => setAnnual(false)}
-                            className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 ${!annual ? 'bg-[var(--terracotta)] text-white shadow-lg shadow-[var(--terracotta)]/20' : 'text-[var(--text-muted)] hover:text-white'}`}
-                        >
-                            Monthly
-                        </button>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto items-start">
-                    {plans.map((plan, i) => (
+            <div className="relative z-10 pt-32 pb-20">
+                <div className="container px-6 mx-auto">
+                    <div className="text-center max-w-4xl mx-auto mb-20">
                         <motion.div
-                            key={plan.name}
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: i * 0.1 }}
-                            whileHover={{ y: -5 }}
-                            className={`relative p-8 rounded-2xl border flex flex-col h-full backdrop-blur-md ${plan.popular
-                                ? 'bg-gradient-to-b from-[var(--terracotta)]/10 to-[var(--slate-deep)] border-[var(--terracotta)]/50 shadow-[0_0_50px_-10px_rgba(217,119,87,0.3)] scale-105 z-10'
-                                : 'bg-[var(--slate-rich)] border-white/10 hover:border-white/20'
-                                } transition-all duration-300 group`}
+                            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-orange/10 border border-brand-orange/20 text-brand-orange text-xs font-mono uppercase tracking-wider mb-8"
                         >
-                            {plan.popular && (
-                                <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-gradient-to-r from-[var(--terracotta)] to-[var(--terracotta-dark)] rounded-full text-xs font-bold uppercase tracking-wider text-white shadow-lg flex items-center gap-1 ring-1 ring-white/20">
-                                    <Sparkles className="w-3 h-3 fill-white" />
-                                    Most Popular
-                                </div>
-                            )}
+                            <Sparkles className="w-3 h-3" />
+                            <span>Simple Pricing</span>
+                        </motion.div>
 
-                            <div className="mb-8 relative z-10">
-                                <h3 className="text-xl font-bold mb-2 text-white" style={{ fontFamily: 'Syne, sans-serif' }}>{plan.name}</h3>
-                                <p className="text-sm text-[var(--text-muted)] mb-6 min-h-[40px] leading-snug font-medium">{plan.desc}</p>
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-5xl font-bold text-white tracking-tight" style={{ fontFamily: 'Syne, sans-serif' }}>${plan.price}</span>
-                                    <span className="text-[var(--text-muted)] font-medium">/mo</span>
-                                </div>
-                                {annual && plan.price > 0 && (
-                                    <div className="text-xs text-emerald-400 mt-2 font-bold bg-emerald-500/10 border border-emerald-500/20 inline-block px-2 py-1 rounded-full">
-                                        Billed ${plan.price * 12} yearly
+                        <motion.h1 
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.1 }}
+                            className="text-5xl md:text-7xl font-heading font-bold mb-8 leading-tight"
+                        >
+                            PAY FOR RESULTS, <br />
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-orange to-brand-pink">NOT SEATS</span>
+                        </motion.h1>
+                        
+                        <motion.p 
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.2 }}
+                            className="text-xl text-gray-400 mb-10 max-w-2xl mx-auto"
+                        >
+                            Start for free. Upgrade when you're ready to close more deals. No hidden fees, no per-seat pricing.
+                        </motion.p>
+
+                        {/* Toggle */}
+                        <motion.div 
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.3 }}
+                            className="inline-flex items-center p-1 bg-white/5 rounded-full border border-white/10 backdrop-blur-sm"
+                        >
+                            <button
+                                onClick={() => setAnnual(true)}
+                                className={`px-6 py-2 rounded-full text-sm font-bold transition-all duration-300 ${annual ? 'bg-brand-orange text-white shadow-lg shadow-brand-orange/20' : 'text-gray-400 hover:text-white'}`}
+                            >
+                                Yearly <span className="text-[10px] text-black font-bold ml-1 bg-white px-1.5 py-0.5 rounded-full uppercase tracking-wide">Save 20%</span>
+                            </button>
+                            <button
+                                onClick={() => setAnnual(false)}
+                                className={`px-6 py-2 rounded-full text-sm font-bold transition-all duration-300 ${!annual ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}
+                            >
+                                Monthly
+                            </button>
+                        </motion.div>
+                    </div>
+
+                    {/* Pricing Cards */}
+                    <div className="grid md:grid-cols-3 gap-8 max-w-7xl mx-auto">
+                        {plans.map((plan, i) => (
+                            <motion.div
+                                key={plan.name}
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: i * 0.1 }}
+                                className={`relative p-8 rounded-3xl border flex flex-col ${
+                                    plan.popular 
+                                        ? 'bg-[#0A0A0A] border-brand-orange shadow-[0_0_40px_-10px_rgba(255,85,51,0.3)]' 
+                                        : 'bg-white/5 border-white/10 hover:border-white/20'
+                                }`}
+                            >
+                                {plan.popular && (
+                                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-brand-orange text-white text-xs font-bold uppercase tracking-wider rounded-full shadow-lg">
+                                        Most Popular
                                     </div>
                                 )}
-                            </div>
 
-                            <div className="flex-1 space-y-4 mb-8 relative z-10">
-                                <div className={`h-px w-full mb-6 ${plan.popular ? 'bg-[var(--terracotta)]/20' : 'bg-white/10'}`} />
-                                {plan.features.map(f => (
-                                    <div key={f} className="flex items-start gap-3 text-sm group/item">
-                                        <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${plan.popular ? 'bg-[var(--terracotta)] text-white shadow-lg shadow-[var(--terracotta)]/30' : 'bg-white/10 text-white'}`}>
-                                            <Check className="w-3 h-3" />
-                                        </div>
-                                        <span className="text-[var(--text-secondary)] font-medium group-hover/item:text-white transition-colors">{f}</span>
-                                    </div>
-                                ))}
-                                {plan.notIncluded.map(f => (
-                                    <div key={f} className="flex items-start gap-3 text-sm opacity-40">
-                                        <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 bg-white/5 text-[var(--text-muted)]">
-                                            <X className="w-3 h-3" />
-                                        </div>
-                                        <span className="text-[var(--text-muted)]">{f}</span>
-                                    </div>
-                                ))}
-                            </div>
+                                <div className="mb-8">
+                                    <h3 className="text-xl font-heading font-bold text-white mb-2">{plan.name}</h3>
+                                    <p className="text-gray-400 text-sm h-10">{plan.desc}</p>
+                                </div>
 
-                            <Link to={plan.price === 0 ? "/signup" : "/signup?plan=" + plan.name.toLowerCase()} className="w-full mt-auto relative z-10">
-                                <button
-                                    className={`w-full py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${plan.popular
-                                        ? 'bg-[var(--terracotta)] text-white hover:bg-[var(--terracotta-dark)] shadow-[0_0_20px_rgba(217,119,87,0.3)]'
-                                        : 'bg-white/5 text-white border border-white/10 hover:bg-white/10'
-                                        }`}
+                                <div className="mb-8">
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-4xl font-bold text-white">${plan.price}</span>
+                                        <span className="text-gray-500">/mo</span>
+                                    </div>
+                                    {annual && plan.price > 0 && (
+                                        <div className="text-xs text-brand-orange mt-2 font-medium">
+                                            Billed ${plan.price * 12} yearly
+                                        </div>
+                                    )}
+                                </div>
+
+                                <Button 
+                                    className={`w-full mb-8 font-bold ${
+                                        plan.popular 
+                                            ? 'bg-brand-orange hover:bg-brand-orange/90 text-white' 
+                                            : 'bg-white text-black hover:bg-gray-200'
+                                    }`}
                                 >
-                                    {plan.price === 0 ? 'Start Free' : 'Get Started'}
-                                    <ArrowRight className="w-4 h-4" />
-                                </button>
-                            </Link>
-                        </motion.div>
-                    ))}
-                </div>
+                                    {plan.price === 0 ? 'Get Started Free' : 'Start 14-Day Trial'}
+                                </Button>
 
-                <div className="mt-20 text-center text-[var(--text-muted)] text-sm relative z-10">
-                    <p className="flex items-center justify-center gap-2">
-                        Questions? <Link to="/contact" className="text-[var(--terracotta)] font-semibold hover:text-[var(--terracotta-light)] transition-colors">Talk to an expert</Link>
-                    </p>
+                                <div className="space-y-4 flex-1">
+                                    {plan.features.map((feature, j) => (
+                                        <div key={j} className="flex items-start gap-3 text-sm text-gray-300">
+                                            <Check className={`w-4 h-4 mt-0.5 ${plan.popular ? 'text-brand-orange' : 'text-white'}`} />
+                                            <span>{feature}</span>
+                                        </div>
+                                    ))}
+                                    {plan.notIncluded.map((feature, j) => (
+                                        <div key={j} className="flex items-start gap-3 text-sm text-gray-600">
+                                            <X className="w-4 h-4 mt-0.5" />
+                                            <span>{feature}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </motion.div>
+                        ))}
+                    </div>
+
+                    {/* FAQ Link */}
+                    <div className="mt-20 text-center">
+                        <p className="text-gray-400">
+                            Have questions? <a href="/contact" className="text-brand-orange hover:underline">Contact our sales team</a>
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
