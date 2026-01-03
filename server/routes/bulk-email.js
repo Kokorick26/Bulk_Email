@@ -43,7 +43,12 @@ router.get('/smtp-accounts', auth, async (req, res) => {
 // Create SMTP account
 router.post('/smtp-accounts', auth, async (req, res) => {
     try {
-        const { name, host, port, username, password, fromEmail, fromName, isDefault, imapHost, imapPort, imapUser, imapPassword, imapTls } = req.body;
+        const { 
+            name, host, port, username, password, fromEmail, fromName, isDefault, 
+            imapHost, imapPort, imapUser, imapPassword, imapTls,
+            // Sender profile fields for email footer
+            senderFullName, senderPosition, senderCompany, senderPhone, senderWebsite, senderLinkedIn, senderAddress, senderSignature
+        } = req.body;
 
         if (!name || !host || !port || !username || !password || !fromEmail) {
             return res.status(400).json({ error: 'All fields are required' });
@@ -81,6 +86,15 @@ router.post('/smtp-accounts', auth, async (req, res) => {
             imapUser: imapUser || null,
             imapPassword: imapPassword || null,
             imapTls: imapTls !== false,
+            // Sender profile for email footer
+            senderFullName: senderFullName || fromName || name,
+            senderPosition: senderPosition || null,
+            senderCompany: senderCompany || null,
+            senderPhone: senderPhone || null,
+            senderWebsite: senderWebsite || null,
+            senderLinkedIn: senderLinkedIn || null,
+            senderAddress: senderAddress || null,
+            senderSignature: senderSignature || null,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         };

@@ -3,8 +3,11 @@ import { Link } from 'react-router-dom';
 
 const Footer = () => {
     return (
-        <footer className="bg-brand-dark border-t border-white/10 py-12 md:py-20">
-            <div className="container px-6 mx-auto">
+        <footer className="bg-brand-dark border-t border-white/10 py-12 md:py-20 relative overflow-hidden">
+            {/* Background Noise */}
+            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay pointer-events-none"></div>
+            
+            <div className="container px-6 mx-auto relative z-10">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-16">
                     <div className="col-span-2 md:col-span-1">
                         <Link to="/" className="flex items-center gap-3 mb-6 group">

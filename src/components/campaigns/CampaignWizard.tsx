@@ -5,6 +5,7 @@ import {
     Upload, Plus, Trash2, Calendar, Globe, Zap,
     ArrowRight, Target, Send, Eye
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from '../../lib/utils';
 import { useTheme } from '../../lib/ThemeContext';
 import type { Lead, SequenceStep, CampaignSchedule, CampaignOptions } from './types';
@@ -118,7 +119,7 @@ export function CampaignWizard({ onBack, onComplete, className }: CampaignWizard
         )}>
             {/* Simple Header */}
             <header className={cn(
-                'flex items-center justify-between px-6 py-4 border-b',
+                'flex items-center justify-between px-6 py-4 border-b relative',
                 isDark ? 'bg-[#0a0a0a] border-neutral-800' : 'bg-white border-gray-200'
             )}>
                 <div className="flex items-center gap-4">
@@ -138,8 +139,8 @@ export function CampaignWizard({ onBack, onComplete, className }: CampaignWizard
                     </h1>
                 </div>
 
-                {/* Simple Step Indicator */}
-                <div className="flex items-center gap-2">
+                {/* Center: Step Indicator */}
+                <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-2">
                     {STEPS.map((step, idx) => (
                         <div key={step.id} className="flex items-center">
                             <button
@@ -171,9 +172,57 @@ export function CampaignWizard({ onBack, onComplete, className }: CampaignWizard
                     ))}
                 </div>
 
-                <span className={cn('text-sm', isDark ? 'text-neutral-500' : 'text-gray-400')}>
-                    Step {currentStep} of 6
-                </span>
+                {/* Right side: Step Counter + Continue Button */}
+                <div className="flex items-center gap-4">
+                    <span className={cn('text-sm', isDark ? 'text-neutral-500' : 'text-gray-400')}>
+                        Step {currentStep} of 6
+                    </span>
+                    {currentStep < 6 ? (
+                        <button
+                            onClick={handleNext}
+                            disabled={!canProceed()}
+                            className={cn(
+                                'group relative overflow-hidden flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold uppercase tracking-wide transition-all duration-300 border border-transparent',
+                                canProceed()
+                                    ? 'bg-orange-500 text-white hover:border-orange-400/50'
+                                    : isDark
+                                        ? 'bg-neutral-800 text-neutral-500 cursor-not-allowed'
+                                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            )}
+                        >
+                            <span className="relative z-10 flex items-center gap-2">
+                                Continue
+                                <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                            </span>
+                            {canProceed() && (
+                                <div className="absolute inset-0 bg-gradient-to-r from-orange-600 to-orange-500 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
+                            )}
+                        </button>
+                    ) : (
+                        <button
+                            onClick={handleComplete}
+                            disabled={isCreating}
+                            className="group relative overflow-hidden flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold uppercase tracking-wide bg-emerald-500 text-white hover:border-emerald-400/50 transition-all duration-300 border border-transparent"
+                        >
+                            <span className="relative z-10 flex items-center gap-2">
+                                {isCreating ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Creating...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Send className="w-4 h-4" />
+                                        Launch
+                                    </>
+                                )}
+                            </span>
+                            {!isCreating && (
+                                <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-emerald-500 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
+                            )}
+                        </button>
+                    )}
+                </div>
             </header>
 
             {/* Main Content */}
@@ -191,63 +240,7 @@ export function CampaignWizard({ onBack, onComplete, className }: CampaignWizard
                 </div>
             </main>
 
-            {/* Simple Footer */}
-            <footer className={cn(
-                'flex items-center justify-between px-6 py-4 border-t',
-                isDark ? 'bg-[#0a0a0a] border-neutral-800' : 'bg-white border-gray-200'
-            )}>
-                <span className={cn('text-sm', isDark ? 'text-neutral-500' : 'text-gray-400')}>
-                    {STEPS[currentStep - 1].title}
-                </span>
-                <div className="flex items-center gap-3 mr-20">
-                    {currentStep > 1 && currentStep < 6 && (
-                        <button
-                            onClick={() => setCurrentStep(6)}
-                            className={cn(
-                                'text-sm font-medium',
-                                isDark ? 'text-neutral-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
-                            )}
-                        >
-                            Skip to review
-                        </button>
-                    )}
-                    {currentStep < 6 ? (
-                        <button
-                            onClick={handleNext}
-                            disabled={!canProceed()}
-                            className={cn(
-                                'flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                                canProceed()
-                                    ? 'bg-orange-500 text-white hover:bg-orange-600'
-                                    : isDark
-                                        ? 'bg-neutral-800 text-neutral-500 cursor-not-allowed'
-                                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            )}
-                        >
-                            Continue
-                            <ChevronRight className="w-4 h-4" />
-                        </button>
-                    ) : (
-                        <button
-                            onClick={handleComplete}
-                            disabled={isCreating}
-                            className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium bg-emerald-500 text-white hover:bg-emerald-600 transition-colors"
-                        >
-                            {isCreating ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                    Creating...
-                                </>
-                            ) : (
-                                <>
-                                    <Send className="w-4 h-4" />
-                                    Launch Campaign
-                                </>
-                            )}
-                        </button>
-                    )}
-                </div>
-            </footer>
+
         </div>
     );
 }
@@ -286,7 +279,67 @@ function StepName({ isDark, value, onChange }: { isDark: boolean; value: string;
 function StepLeads({ isDark, leads, onUpdate }: { isDark: boolean; leads: Lead[]; onUpdate: (l: Lead[]) => void }) {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [manualEmail, setManualEmail] = useState('');
+    const [manualFirstName, setManualFirstName] = useState('');
+    const [manualLastName, setManualLastName] = useState('');
     const [isDragging, setIsDragging] = useState(false);
+    const [pendingLeadsCount, setPendingLeadsCount] = useState(0);
+    const [pendingListName, setPendingListName] = useState('');
+    const [showLeadListsModal, setShowLeadListsModal] = useState(false);
+    const [leadLists, setLeadLists] = useState<Array<{ id: string; name: string; leads: Lead[]; createdAt: string }>>([]);
+    const [loadingLists, setLoadingLists] = useState(false);
+
+    // Check for pending leads from Lead Lists or Discovery
+    useEffect(() => {
+        // Check immediately
+        const checkPendingLeads = () => {
+            const pending = JSON.parse(localStorage.getItem('pendingCampaignLeads') || '[]');
+            const listName = localStorage.getItem('pendingCampaignListName') || '';
+            setPendingLeadsCount(pending.length);
+            setPendingListName(listName);
+        };
+
+        checkPendingLeads();
+
+        // Also check when window regains focus (in case user came from another tab)
+        window.addEventListener('focus', checkPendingLeads);
+        return () => window.removeEventListener('focus', checkPendingLeads);
+    }, []);
+
+    const importPendingLeads = () => {
+        const pendingLeads = JSON.parse(localStorage.getItem('pendingCampaignLeads') || '[]');
+        if (pendingLeads.length > 0) {
+            onUpdate([...leads, ...pendingLeads]);
+            localStorage.removeItem('pendingCampaignLeads');
+            localStorage.removeItem('pendingCampaignListName');
+            setPendingLeadsCount(0);
+            setPendingListName('');
+            toast.success(`Imported ${pendingLeads.length} leads!`);
+        }
+    };
+
+    const fetchLeadLists = async () => {
+        setLoadingLists(true);
+        try {
+            const token = localStorage.getItem('bulkEmailToken');
+            const response = await fetch('/api/bulk-email/lead-lists', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setLeadLists(data.lists || []);
+            }
+        } catch (error) {
+            toast.error('Failed to load lead lists');
+        } finally {
+            setLoadingLists(false);
+        }
+    };
+
+    const importFromLeadList = (list: { name: string; leads: Lead[] }) => {
+        onUpdate([...leads, ...list.leads]);
+        setShowLeadListsModal(false);
+        toast.success(`Imported ${list.leads.length} leads from "${list.name}"`);
+    };
 
     const handleFileUpload = (file: File) => {
         const reader = new FileReader();
@@ -320,21 +373,84 @@ function StepLeads({ isDark, leads, onUpdate }: { isDark: boolean; leads: Lead[]
 
     const addManual = () => {
         if (!manualEmail.includes('@')) return;
-        onUpdate([...leads, { id: `lead-${Date.now()}`, email: manualEmail, status: 'pending', customFields: {}, addedAt: new Date().toISOString() }]);
+        onUpdate([...leads, { 
+            id: `lead-${Date.now()}`, 
+            email: manualEmail, 
+            firstName: manualFirstName,
+            lastName: manualLastName,
+            status: 'pending', 
+            customFields: {}, 
+            addedAt: new Date().toISOString() 
+        }]);
         setManualEmail('');
+        setManualFirstName('');
+        setManualLastName('');
     };
 
 
     return (
         <div className="space-y-6">
-            <div>
-                <h2 className={cn('text-xl font-semibold mb-2', isDark ? 'text-white' : 'text-gray-900')}>
-                    Add your leads
-                </h2>
-                <p className={cn('text-sm', isDark ? 'text-neutral-400' : 'text-gray-500')}>
-                    Import a CSV or add emails manually.
-                </p>
+            <div className="flex items-start justify-between">
+                <div>
+                    <h2 className={cn('text-xl font-semibold mb-2', isDark ? 'text-white' : 'text-gray-900')}>
+                        Add your leads
+                    </h2>
+                    <p className={cn('text-sm', isDark ? 'text-neutral-400' : 'text-gray-500')}>
+                        Import a CSV or add emails manually.
+                    </p>
+                </div>
+                <button
+                    onClick={() => {
+                        setShowLeadListsModal(true);
+                        fetchLeadLists();
+                    }}
+                    className={cn(
+                        'px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2',
+                        isDark 
+                            ? 'bg-orange-500/10 border border-orange-500/50 text-orange-400 hover:bg-orange-500/20'
+                            : 'bg-orange-50 border border-orange-200 text-orange-600 hover:bg-orange-100'
+                    )}
+                >
+                    <Users className="w-4 h-4" />
+                    Add from Leads
+                </button>
             </div>
+
+            {/* Import from Lead Lists or Discovery */}
+            {pendingLeadsCount > 0 && (
+                <div className={cn(
+                    'p-4 rounded-lg border flex items-center justify-between',
+                    isDark ? 'bg-orange-500/10 border-orange-500/30' : 'bg-orange-50 border-orange-200'
+                )}>
+                    <div className="flex items-center gap-3">
+                        <div className={cn(
+                            'w-10 h-10 rounded-full flex items-center justify-center',
+                            isDark ? 'bg-orange-500/20' : 'bg-orange-100'
+                        )}>
+                            <Users className={cn('w-5 h-5', isDark ? 'text-orange-400' : 'text-orange-600')} />
+                        </div>
+                        <div>
+                            <p className={cn('text-sm font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
+                                {pendingLeadsCount} lead{pendingLeadsCount !== 1 ? 's' : ''} ready to import
+                                {pendingListName && <span className={cn('ml-2 text-xs font-normal', isDark ? 'text-neutral-400' : 'text-gray-500')}>from "{pendingListName}"</span>}
+                            </p>
+                            <p className={cn('text-xs', isDark ? 'text-neutral-400' : 'text-gray-500')}>
+                                {pendingListName ? 'From Lead Lists' : 'From Discovery or Lead Lists'}
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={importPendingLeads}
+                        className={cn(
+                            'px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2',
+                            'bg-orange-500 text-white hover:bg-orange-600'
+                        )}
+                    >
+                        <Upload className="w-4 h-4" />
+                        Import Leads
+                    </button>
+                </div>
+            )}
 
             {/* Drop Zone */}
             <div
@@ -362,29 +478,58 @@ function StepLeads({ isDark, leads, onUpdate }: { isDark: boolean; leads: Lead[]
             </div>
 
             {/* Manual Entry */}
-            <div className="flex gap-2">
-                <input
-                    type="email"
-                    value={manualEmail}
-                    onChange={(e) => setManualEmail(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && addManual()}
-                    placeholder="Or type an email address..."
-                    className={cn(
-                        'flex-1 px-4 py-3 rounded-lg text-sm transition-colors',
-                        isDark ? 'bg-neutral-900 border border-neutral-800 text-white focus:border-orange-500' : 'bg-white border border-gray-200 text-gray-900 focus:border-orange-500'
-                    )}
-                    style={{ outline: 'none' }}
-                />
-                <button
-                    onClick={addManual}
-                    disabled={!manualEmail.includes('@')}
-                    className={cn(
-                        'px-4 rounded-lg transition-colors',
-                        manualEmail.includes('@') ? 'bg-orange-500 text-white hover:bg-orange-600' : isDark ? 'bg-neutral-800 text-neutral-500' : 'bg-gray-100 text-gray-400'
-                    )}
-                >
-                    <Plus className="w-5 h-5" />
-                </button>
+            <div className="space-y-3">
+                <p className={cn('text-sm font-medium', isDark ? 'text-neutral-300' : 'text-gray-700')}>
+                    Or add manually
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                    <input
+                        type="text"
+                        value={manualFirstName}
+                        onChange={(e) => setManualFirstName(e.target.value)}
+                        placeholder="First name (optional)"
+                        className={cn(
+                            'px-4 py-3 rounded-lg text-sm transition-colors',
+                            isDark ? 'bg-neutral-900 border border-neutral-800 text-white focus:border-orange-500' : 'bg-white border border-gray-200 text-gray-900 focus:border-orange-500'
+                        )}
+                        style={{ outline: 'none' }}
+                    />
+                    <input
+                        type="text"
+                        value={manualLastName}
+                        onChange={(e) => setManualLastName(e.target.value)}
+                        placeholder="Last name (optional)"
+                        className={cn(
+                            'px-4 py-3 rounded-lg text-sm transition-colors',
+                            isDark ? 'bg-neutral-900 border border-neutral-800 text-white focus:border-orange-500' : 'bg-white border border-gray-200 text-gray-900 focus:border-orange-500'
+                        )}
+                        style={{ outline: 'none' }}
+                    />
+                </div>
+                <div className="flex gap-2">
+                    <input
+                        type="email"
+                        value={manualEmail}
+                        onChange={(e) => setManualEmail(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && addManual()}
+                        placeholder="Email address *"
+                        className={cn(
+                            'flex-1 px-4 py-3 rounded-lg text-sm transition-colors',
+                            isDark ? 'bg-neutral-900 border border-neutral-800 text-white focus:border-orange-500' : 'bg-white border border-gray-200 text-gray-900 focus:border-orange-500'
+                        )}
+                        style={{ outline: 'none' }}
+                    />
+                    <button
+                        onClick={addManual}
+                        disabled={!manualEmail.includes('@')}
+                        className={cn(
+                            'px-4 rounded-lg transition-colors',
+                            manualEmail.includes('@') ? 'bg-orange-500 text-white hover:bg-orange-600' : isDark ? 'bg-neutral-800 text-neutral-500' : 'bg-gray-100 text-gray-400'
+                        )}
+                    >
+                        <Plus className="w-5 h-5" />
+                    </button>
+                </div>
             </div>
 
             {/* Leads Preview */}
@@ -416,6 +561,118 @@ function StepLeads({ isDark, leads, onUpdate }: { isDark: boolean; leads: Lead[]
                                 +{leads.length - 8} more leads
                             </div>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* Lead Lists Modal */}
+            {showLeadListsModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowLeadListsModal(false)}>
+                    <div 
+                        onClick={(e) => e.stopPropagation()}
+                        className={cn(
+                            'w-full max-w-2xl rounded-xl shadow-2xl max-h-[80vh] flex flex-col',
+                            isDark ? 'bg-[#0a0a0a] border border-neutral-800' : 'bg-white border border-gray-200'
+                        )}
+                    >
+                        {/* Modal Header */}
+                        <div className={cn('px-6 py-4 flex items-center justify-between border-b', isDark ? 'border-neutral-800' : 'border-gray-200')}>
+                            <div>
+                                <h3 className={cn('text-lg font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
+                                    Import from Lead Lists
+                                </h3>
+                                <p className={cn('text-sm mt-0.5', isDark ? 'text-neutral-400' : 'text-gray-500')}>
+                                    Select a list to import leads
+                                </p>
+                            </div>
+                            <button 
+                                onClick={() => setShowLeadListsModal(false)}
+                                className={cn(
+                                    'p-2 rounded-lg transition-colors',
+                                    isDark ? 'hover:bg-neutral-800 text-neutral-400' : 'hover:bg-gray-100 text-gray-500'
+                                )}
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="flex-1 overflow-y-auto p-6">
+                            {loadingLists ? (
+                                <div className="flex flex-col items-center justify-center py-12">
+                                    <Loader2 className={cn('w-8 h-8 animate-spin', isDark ? 'text-neutral-500' : 'text-gray-400')} />
+                                    <p className={cn('text-sm mt-3', isDark ? 'text-neutral-400' : 'text-gray-500')}>
+                                        Loading lead lists...
+                                    </p>
+                                </div>
+                            ) : leadLists.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-12">
+                                    <Users className={cn('w-12 h-12 mb-3', isDark ? 'text-neutral-700' : 'text-gray-300')} />
+                                    <p className={cn('text-sm font-medium', isDark ? 'text-neutral-400' : 'text-gray-500')}>
+                                        No lead lists found
+                                    </p>
+                                    <p className={cn('text-xs mt-1', isDark ? 'text-neutral-500' : 'text-gray-400')}>
+                                        Create a lead list first to import leads
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {leadLists.map((list) => (
+                                        <button
+                                            key={list.id}
+                                            onClick={() => importFromLeadList(list)}
+                                            className={cn(
+                                                'w-full p-4 rounded-lg border text-left transition-all hover:scale-[1.01]',
+                                                isDark 
+                                                    ? 'bg-neutral-900 border-neutral-800 hover:border-orange-500/50 hover:bg-neutral-800/50' 
+                                                    : 'bg-white border-gray-200 hover:border-orange-300 hover:bg-orange-50/50'
+                                            )}
+                                        >
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <h4 className={cn('font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
+                                                            {list.name}
+                                                        </h4>
+                                                        <span className={cn(
+                                                            'px-2 py-0.5 rounded-full text-xs font-medium',
+                                                            isDark ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-100 text-orange-600'
+                                                        )}>
+                                                            {list.leads.length} leads
+                                                        </span>
+                                                    </div>
+                                                    <p className={cn('text-xs mt-1', isDark ? 'text-neutral-500' : 'text-gray-400')}>
+                                                        Created {new Date(list.createdAt).toLocaleDateString()}
+                                                    </p>
+                                                    {list.leads.length > 0 && (
+                                                        <div className={cn('mt-2 text-xs', isDark ? 'text-neutral-400' : 'text-gray-500')}>
+                                                            {list.leads.slice(0, 3).map(lead => lead.email).join(', ')}
+                                                            {list.leads.length > 3 && ` +${list.leads.length - 3} more`}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <ArrowRight className={cn('w-5 h-5 ml-3 flex-shrink-0', isDark ? 'text-neutral-600' : 'text-gray-400')} />
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className={cn('px-6 py-4 border-t', isDark ? 'border-neutral-800' : 'border-gray-200')}>
+                            <button
+                                onClick={() => setShowLeadListsModal(false)}
+                                className={cn(
+                                    'w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors',
+                                    isDark 
+                                        ? 'bg-neutral-800 text-white hover:bg-neutral-700' 
+                                        : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
+                                )}
+                            >
+                                Cancel
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

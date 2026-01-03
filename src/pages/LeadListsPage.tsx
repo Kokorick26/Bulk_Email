@@ -180,6 +180,17 @@ export function LeadListsPage({ onNavigateToCampaign }: LeadListsPageProps) {
         }
     };
 
+    // Save leads for campaign creation
+    const saveToCampaign = () => {
+        if (!selectedList || selectedList.leads.length === 0) {
+            alert('No leads to send to campaign');
+            return;
+        }
+        localStorage.setItem('pendingCampaignLeads', JSON.stringify(selectedList.leads));
+        localStorage.setItem('pendingCampaignListName', selectedList.name);
+        alert(`${selectedList.leads.length} leads from "${selectedList.name}" are ready! Now create a campaign to import them.`);
+    };
+
     // Create new campaign with leads from current list
     const [newCampaignName, setNewCampaignName] = useState('');
     const [creatingCampaign, setCreatingCampaign] = useState(false);
@@ -785,14 +796,11 @@ export function LeadListsPage({ onNavigateToCampaign }: LeadListsPageProps) {
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => {
-                                        fetchCampaigns();
-                                        setShowExportModal(true);
-                                    }}
+                                    onClick={saveToCampaign}
                                     disabled={selectedList.leads.length === 0}
                                     className={cn(
-                                        'gap-2',
-                                        theme === 'dark' ? 'border-gray-700' : 'border-gray-300'
+                                        'gap-2 bg-orange-500/10 border-orange-500/50 text-orange-400 hover:bg-orange-500/20',
+                                        theme === 'dark' ? 'border-orange-500/50' : 'border-orange-400'
                                     )}
                                 >
                                     <Send className="w-4 h-4" />

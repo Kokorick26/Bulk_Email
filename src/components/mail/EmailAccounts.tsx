@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     ChevronLeft, Search, Plus, MoreHorizontal, Mail, Check,
-    FileSpreadsheet, Loader2, Trash2
+    FileSpreadsheet, Loader2, Trash2, X, User, Building2, Phone, Globe, Linkedin, MapPin, Save
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../../lib/utils';
 import { useTheme } from '../../lib/ThemeContext';
 import { Button } from '../ui/Button';
 import { Checkbox } from '../ui/Checkbox';
+import { ScrollArea } from '../ui/ScrollArea';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -55,6 +56,15 @@ interface SmtpAccount {
     emailsSent?: number;
     warmupEmails?: number;
     healthScore?: number;
+    // Sender profile fields for email footer
+    senderFullName?: string;
+    senderPosition?: string;
+    senderCompany?: string;
+    senderPhone?: string;
+    senderWebsite?: string;
+    senderLinkedIn?: string;
+    senderAddress?: string;
+    senderSignature?: string;
 }
 
 interface EmailAccountsProps {
@@ -72,6 +82,58 @@ export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsP
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedAccounts, setSelectedAccounts] = useState<Set<string>>(new Set());
     const [saving, setSaving] = useState(false);
+    
+    // Sidebar state for account details
+    const [selectedAccount, setSelectedAccount] = useState<SmtpAccount | null>(null);
+    const [sidebarSaving, setSidebarSaving] = useState(false);
+    const [senderProfile, setSenderProfile] = useState({
+        senderFullName: '',
+        senderPosition: '',
+        senderCompany: '',
+        senderPhone: '',
+        senderWebsite: '',
+        senderLinkedIn: '',
+        senderAddress: '',
+        senderSignature: '',
+    });
+
+    // Open account sidebar
+    const openAccountSidebar = (account: SmtpAccount) => {
+        setSelectedAccount(account);
+        setSenderProfile({
+            senderFullName: account.senderFullName || account.fromName || '',
+            senderPosition: account.senderPosition || '',
+            senderCompany: account.senderCompany || '',
+            senderPhone: account.senderPhone || '',
+            senderWebsite: account.senderWebsite || '',
+            senderLinkedIn: account.senderLinkedIn || '',
+            senderAddress: account.senderAddress || '',
+            senderSignature: account.senderSignature || '',
+        });
+    };
+
+    // Save sender profile
+    const saveSenderProfile = async () => {
+        if (!selectedAccount) return;
+        setSidebarSaving(true);
+        try {
+            const token = localStorage.getItem('bulkEmailToken');
+            const res = await fetch(`${API_BASE}/smtp-accounts/${selectedAccount.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({
+                    ...senderProfile,
+                }),
+            });
+            if (!res.ok) throw new Error('Failed to save');
+            toast.success('Sender profile updated!');
+            onRefresh();
+        } catch {
+            toast.error('Failed to save sender profile');
+        } finally {
+            setSidebarSaving(false);
+        }
+    };
 
     // Form state
     const [form, setForm] = useState({
@@ -287,143 +349,363 @@ export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsP
     // List View
     if (view === 'list') {
         return (
-            <div className={cn('min-h-full', className)}>
-                {/* Header */}
-                <div className="flex items-center justify-between mb-6">
-                    <h1 className={cn('text-xl font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
-                        Email Accounts
-                    </h1>
-                    <Button
-                        onClick={() => setView('add-options')}
-                        className="gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white"
-                    >
-                        <Plus className="w-4 h-4" />
-                        Add Account
-                    </Button>
-                </div>
-
-                {/* Search */}
-                <div className="mb-6">
-                    <div className={cn(
-                        'flex items-center gap-2 h-10 px-3 rounded-lg w-72',
-                        isDark ? 'bg-neutral-900' : 'bg-gray-100'
-                    )}>
-                        <Search className={cn('w-4 h-4', isDark ? 'text-neutral-500' : 'text-gray-400')} />
-                        <input
-                            type="text"
-                            placeholder="Search accounts..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className={cn(
-                                'flex-1 bg-transparent border-0 outline-none text-[13px]',
-                                isDark ? 'text-white placeholder:text-neutral-500' : 'text-gray-900 placeholder:text-gray-400'
-                            )}
-                        />
-                    </div>
-                </div>
-
-                {/* Table */}
-                <div className={cn('rounded-xl border', isDark ? 'border-neutral-800' : 'border-gray-200')}>
+            <div className={cn('min-h-full flex', className)}>
+                {/* Main Content */}
+                <div className="flex-1">
                     {/* Header */}
-                    <div className={cn(
-                        'grid grid-cols-[auto_1fr_100px_120px_100px_50px] gap-4 px-5 py-3 border-b text-[11px] font-semibold uppercase tracking-wider',
-                        isDark ? 'border-neutral-800 text-neutral-500' : 'border-gray-200 text-gray-400'
-                    )}>
-                        <div className="flex items-center"><Checkbox /></div>
-                        <div>Email</div>
-                        <div>Sent</div>
-                        <div>Warmup</div>
-                        <div>Health</div>
-                        <div></div>
+                    <div className="flex items-center justify-between mb-6">
+                        <h1 className={cn('text-xl font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
+                            Email Accounts
+                        </h1>
+                        <Button
+                            onClick={() => setView('add-options')}
+                            className="gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white"
+                        >
+                            <Plus className="w-4 h-4" />
+                            Add Account
+                        </Button>
                     </div>
 
-                    {/* Body */}
-                    {filteredAccounts.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-16">
-                            <Mail className={cn('w-10 h-10 mb-3', isDark ? 'text-neutral-600' : 'text-gray-300')} />
-                            <p className={cn('font-medium mb-1', isDark ? 'text-neutral-300' : 'text-gray-700')}>
-                                No accounts yet
-                            </p>
-                            <p className={cn('text-sm mb-4', isDark ? 'text-neutral-500' : 'text-gray-500')}>
-                                Add your first email account
-                            </p>
-                            <Button
-                                onClick={() => setView('add-options')}
-                                className="gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white"
-                            >
-                                <Plus className="w-4 h-4" />
-                                Add Account
-                            </Button>
+                    {/* Search */}
+                    <div className="mb-6">
+                        <div className={cn(
+                            'flex items-center gap-2 h-10 px-3 rounded-lg w-72',
+                            isDark ? 'bg-neutral-900' : 'bg-gray-100'
+                        )}>
+                            <Search className={cn('w-4 h-4', isDark ? 'text-neutral-500' : 'text-gray-400')} />
+                            <input
+                                type="text"
+                                placeholder="Search accounts..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className={cn(
+                                    'flex-1 bg-transparent border-0 outline-none text-[13px]',
+                                    isDark ? 'text-white placeholder:text-neutral-500' : 'text-gray-900 placeholder:text-gray-400'
+                                )}
+                            />
                         </div>
-                    ) : (
-                        <AnimatePresence>
-                            {filteredAccounts.map((account, index) => (
-                                <motion.div
-                                    key={account.id}
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    transition={{ delay: index * 0.02 }}
-                                    className={cn(
-                                        'grid grid-cols-[auto_1fr_100px_120px_100px_50px] gap-4 px-5 py-3 items-center border-b last:border-b-0',
-                                        isDark
-                                            ? 'border-neutral-800 hover:bg-neutral-800/50'
-                                            : 'border-gray-100 hover:bg-gray-50'
-                                    )}
+                    </div>
+
+                    {/* Table */}
+                    <div className={cn('rounded-xl border', isDark ? 'border-neutral-800' : 'border-gray-200')}>
+                        {/* Header */}
+                        <div className={cn(
+                            'grid grid-cols-[auto_1fr_100px_120px_100px_50px] gap-4 px-5 py-3 border-b text-[11px] font-semibold uppercase tracking-wider',
+                            isDark ? 'border-neutral-800 text-neutral-500' : 'border-gray-200 text-gray-400'
+                        )}>
+                            <div className="flex items-center"><Checkbox /></div>
+                            <div>Email</div>
+                            <div>Sent</div>
+                            <div>Warmup</div>
+                            <div>Health</div>
+                            <div></div>
+                        </div>
+
+                        {/* Body */}
+                        {filteredAccounts.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-16">
+                                <Mail className={cn('w-10 h-10 mb-3', isDark ? 'text-neutral-600' : 'text-gray-300')} />
+                                <p className={cn('font-medium mb-1', isDark ? 'text-neutral-300' : 'text-gray-700')}>
+                                    No accounts yet
+                                </p>
+                                <p className={cn('text-sm mb-4', isDark ? 'text-neutral-500' : 'text-gray-500')}>
+                                    Add your first email account
+                                </p>
+                                <Button
+                                    onClick={() => setView('add-options')}
+                                    className="gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white"
                                 >
-                                    <div>
-                                        <Checkbox
-                                            checked={selectedAccounts.has(account.id)}
-                                            onCheckedChange={(checked) => {
-                                                const newSet = new Set(selectedAccounts);
-                                                if (checked) newSet.add(account.id);
-                                                else newSet.delete(account.id);
-                                                setSelectedAccounts(newSet);
-                                            }}
-                                        />
-                                    </div>
-                                    <div className={cn('text-[13px] font-medium truncate', isDark ? 'text-white' : 'text-gray-900')}>
-                                        {account.fromEmail}
-                                    </div>
-                                    <div className={cn('text-[13px]', isDark ? 'text-neutral-400' : 'text-gray-600')}>
-                                        {account.emailsSent || 0}
-                                    </div>
-                                    <div className={cn('text-[13px]', isDark ? 'text-neutral-400' : 'text-gray-600')}>
-                                        {account.warmupEmails || 0}
-                                    </div>
-                                    <div className={cn('text-[13px]', isDark ? 'text-neutral-400' : 'text-gray-600')}>
-                                        {account.healthScore || 100}%
-                                    </div>
-                                    <div>
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <button className={cn(
-                                                    'p-2 rounded-lg transition-colors',
-                                                    isDark ? 'hover:bg-neutral-700 text-neutral-400' : 'hover:bg-gray-100 text-gray-500'
-                                                )}>
-                                                    <MoreHorizontal className="w-4 h-4" />
-                                                </button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className={cn('rounded-xl p-1', isDark ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-200')}>
-                                                <DropdownMenuItem className={cn('rounded-lg text-[13px]', isDark ? 'text-neutral-300 hover:bg-neutral-700' : 'text-gray-700 hover:bg-gray-50')}>
-                                                    Edit
-                                                </DropdownMenuItem>
-                                                <DropdownMenuSeparator className={isDark ? 'bg-neutral-700' : 'bg-gray-100'} />
-                                                <DropdownMenuItem
-                                                    onClick={() => handleDeleteAccount(account.id)}
-                                                    className={cn('rounded-lg text-[13px]', isDark ? 'text-red-400 hover:bg-red-500/10' : 'text-red-600 hover:bg-red-50')}
-                                                >
-                                                    <Trash2 className="w-4 h-4 mr-2" />
-                                                    Delete
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </div>
-                                </motion.div>
-                            ))}
-                        </AnimatePresence>
-                    )}
+                                    <Plus className="w-4 h-4" />
+                                    Add Account
+                                </Button>
+                            </div>
+                        ) : (
+                            <AnimatePresence>
+                                {filteredAccounts.map((account, index) => (
+                                    <motion.div
+                                        key={account.id}
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                        transition={{ delay: index * 0.02 }}
+                                        onClick={() => openAccountSidebar(account)}
+                                        className={cn(
+                                            'grid grid-cols-[auto_1fr_100px_120px_100px_50px] gap-4 px-5 py-3 items-center border-b last:border-b-0 cursor-pointer',
+                                            selectedAccount?.id === account.id
+                                                ? isDark ? 'bg-orange-500/10 border-l-2 border-l-orange-500' : 'bg-orange-50 border-l-2 border-l-orange-500'
+                                                : isDark ? 'border-neutral-800 hover:bg-neutral-800/50' : 'border-gray-100 hover:bg-gray-50'
+                                        )}
+                                    >
+                                        <div onClick={(e) => e.stopPropagation()}>
+                                            <Checkbox
+                                                checked={selectedAccounts.has(account.id)}
+                                                onCheckedChange={(checked) => {
+                                                    const newSet = new Set(selectedAccounts);
+                                                    if (checked) newSet.add(account.id);
+                                                    else newSet.delete(account.id);
+                                                    setSelectedAccounts(newSet);
+                                                }}
+                                            />
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className={cn('text-[13px] font-medium truncate', isDark ? 'text-white' : 'text-gray-900')}>
+                                                {account.fromEmail}
+                                            </span>
+                                            {account.senderFullName && (
+                                                <span className={cn('text-[11px] truncate', isDark ? 'text-neutral-500' : 'text-gray-400')}>
+                                                    {account.senderFullName}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className={cn('text-[13px]', isDark ? 'text-neutral-400' : 'text-gray-600')}>
+                                            {account.emailsSent || 0}
+                                        </div>
+                                        <div className={cn('text-[13px]', isDark ? 'text-neutral-400' : 'text-gray-600')}>
+                                            {account.warmupEmails || 0}
+                                        </div>
+                                        <div className={cn('text-[13px]', isDark ? 'text-neutral-400' : 'text-gray-600')}>
+                                            {account.healthScore || 100}%
+                                        </div>
+                                        <div onClick={(e) => e.stopPropagation()}>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <button className={cn(
+                                                        'p-2 rounded-lg transition-colors',
+                                                        isDark ? 'hover:bg-neutral-700 text-neutral-400' : 'hover:bg-gray-100 text-gray-500'
+                                                    )}>
+                                                        <MoreHorizontal className="w-4 h-4" />
+                                                    </button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end" className={cn('rounded-xl p-1', isDark ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-200')}>
+                                                    <DropdownMenuItem 
+                                                        onClick={() => openAccountSidebar(account)}
+                                                        className={cn('rounded-lg text-[13px]', isDark ? 'text-neutral-300 hover:bg-neutral-700' : 'text-gray-700 hover:bg-gray-50')}
+                                                    >
+                                                        Edit Profile
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator className={isDark ? 'bg-neutral-700' : 'bg-gray-100'} />
+                                                    <DropdownMenuItem
+                                                        onClick={() => handleDeleteAccount(account.id)}
+                                                        className={cn('rounded-lg text-[13px]', isDark ? 'text-red-400 hover:bg-red-500/10' : 'text-red-600 hover:bg-red-50')}
+                                                    >
+                                                        <Trash2 className="w-4 h-4 mr-2" />
+                                                        Delete
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </AnimatePresence>
+                        )}
+                    </div>
                 </div>
+
+                {/* Sidebar for Sender Profile */}
+                <AnimatePresence>
+                    {selectedAccount && (
+                        <motion.div
+                            initial={{ width: 0, opacity: 0 }}
+                            animate={{ width: 380, opacity: 1 }}
+                            exit={{ width: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className={cn(
+                                'flex-shrink-0 border-l overflow-hidden ml-6',
+                                isDark ? 'bg-neutral-900/50 border-neutral-800' : 'bg-gray-50 border-gray-200'
+                            )}
+                        >
+                            <div className="w-[380px] h-full flex flex-col">
+                                {/* Sidebar Header */}
+                                <div className={cn(
+                                    'flex items-center justify-between px-5 py-4 border-b',
+                                    isDark ? 'border-neutral-800' : 'border-gray-200'
+                                )}>
+                                    <div>
+                                        <h2 className={cn('text-base font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
+                                            Sender Profile
+                                        </h2>
+                                        <p className={cn('text-xs mt-0.5', isDark ? 'text-neutral-500' : 'text-gray-500')}>
+                                            {selectedAccount.fromEmail}
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={() => setSelectedAccount(null)}
+                                        className={cn(
+                                            'p-2 rounded-lg transition-colors',
+                                            isDark ? 'hover:bg-neutral-800 text-neutral-400' : 'hover:bg-gray-100 text-gray-500'
+                                        )}
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+
+                                {/* Sidebar Content */}
+                                <ScrollArea className="flex-1">
+                                    <div className="p-5 space-y-4">
+                                        {/* Info Banner */}
+                                        <div className={cn(
+                                            'p-3 rounded-lg text-xs',
+                                            isDark ? 'bg-orange-500/10 text-orange-300' : 'bg-orange-50 text-orange-700'
+                                        )}>
+                                            This info will be used for email footers with placeholders like {'{{senderName}}'}, {'{{senderCompany}}'}.
+                                        </div>
+
+                                        {/* Full Name */}
+                                        <div>
+                                            <label className={cn('flex items-center gap-2 text-xs font-medium mb-1.5', isDark ? 'text-neutral-400' : 'text-gray-600')}>
+                                                <User className="w-3.5 h-3.5" />
+                                                Full Name
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={senderProfile.senderFullName}
+                                                onChange={(e) => setSenderProfile(p => ({ ...p, senderFullName: e.target.value }))}
+                                                placeholder="John Doe"
+                                                className={cn(
+                                                    'w-full h-9 px-3 rounded-lg border text-sm outline-none',
+                                                    isDark ? 'bg-neutral-800 border-neutral-700 text-white focus:border-orange-500' : 'bg-white border-gray-200 text-gray-900 focus:border-orange-500'
+                                                )}
+                                            />
+                                        </div>
+
+                                        {/* Position */}
+                                        <div>
+                                            <label className={cn('flex items-center gap-2 text-xs font-medium mb-1.5', isDark ? 'text-neutral-400' : 'text-gray-600')}>
+                                                Position / Title
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={senderProfile.senderPosition}
+                                                onChange={(e) => setSenderProfile(p => ({ ...p, senderPosition: e.target.value }))}
+                                                placeholder="Sales Manager"
+                                                className={cn(
+                                                    'w-full h-9 px-3 rounded-lg border text-sm outline-none',
+                                                    isDark ? 'bg-neutral-800 border-neutral-700 text-white focus:border-orange-500' : 'bg-white border-gray-200 text-gray-900 focus:border-orange-500'
+                                                )}
+                                            />
+                                        </div>
+
+                                        {/* Company */}
+                                        <div>
+                                            <label className={cn('flex items-center gap-2 text-xs font-medium mb-1.5', isDark ? 'text-neutral-400' : 'text-gray-600')}>
+                                                <Building2 className="w-3.5 h-3.5" />
+                                                Company
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={senderProfile.senderCompany}
+                                                onChange={(e) => setSenderProfile(p => ({ ...p, senderCompany: e.target.value }))}
+                                                placeholder="Acme Inc."
+                                                className={cn(
+                                                    'w-full h-9 px-3 rounded-lg border text-sm outline-none',
+                                                    isDark ? 'bg-neutral-800 border-neutral-700 text-white focus:border-orange-500' : 'bg-white border-gray-200 text-gray-900 focus:border-orange-500'
+                                                )}
+                                            />
+                                        </div>
+
+                                        {/* Phone */}
+                                        <div>
+                                            <label className={cn('flex items-center gap-2 text-xs font-medium mb-1.5', isDark ? 'text-neutral-400' : 'text-gray-600')}>
+                                                <Phone className="w-3.5 h-3.5" />
+                                                Phone
+                                            </label>
+                                            <input
+                                                type="tel"
+                                                value={senderProfile.senderPhone}
+                                                onChange={(e) => setSenderProfile(p => ({ ...p, senderPhone: e.target.value }))}
+                                                placeholder="+1 (555) 123-4567"
+                                                className={cn(
+                                                    'w-full h-9 px-3 rounded-lg border text-sm outline-none',
+                                                    isDark ? 'bg-neutral-800 border-neutral-700 text-white focus:border-orange-500' : 'bg-white border-gray-200 text-gray-900 focus:border-orange-500'
+                                                )}
+                                            />
+                                        </div>
+
+                                        {/* Website */}
+                                        <div>
+                                            <label className={cn('flex items-center gap-2 text-xs font-medium mb-1.5', isDark ? 'text-neutral-400' : 'text-gray-600')}>
+                                                <Globe className="w-3.5 h-3.5" />
+                                                Website
+                                            </label>
+                                            <input
+                                                type="url"
+                                                value={senderProfile.senderWebsite}
+                                                onChange={(e) => setSenderProfile(p => ({ ...p, senderWebsite: e.target.value }))}
+                                                placeholder="https://example.com"
+                                                className={cn(
+                                                    'w-full h-9 px-3 rounded-lg border text-sm outline-none',
+                                                    isDark ? 'bg-neutral-800 border-neutral-700 text-white focus:border-orange-500' : 'bg-white border-gray-200 text-gray-900 focus:border-orange-500'
+                                                )}
+                                            />
+                                        </div>
+
+                                        {/* LinkedIn */}
+                                        <div>
+                                            <label className={cn('flex items-center gap-2 text-xs font-medium mb-1.5', isDark ? 'text-neutral-400' : 'text-gray-600')}>
+                                                <Linkedin className="w-3.5 h-3.5" />
+                                                LinkedIn
+                                            </label>
+                                            <input
+                                                type="url"
+                                                value={senderProfile.senderLinkedIn}
+                                                onChange={(e) => setSenderProfile(p => ({ ...p, senderLinkedIn: e.target.value }))}
+                                                placeholder="https://linkedin.com/in/johndoe"
+                                                className={cn(
+                                                    'w-full h-9 px-3 rounded-lg border text-sm outline-none',
+                                                    isDark ? 'bg-neutral-800 border-neutral-700 text-white focus:border-orange-500' : 'bg-white border-gray-200 text-gray-900 focus:border-orange-500'
+                                                )}
+                                            />
+                                        </div>
+
+                                        {/* Address */}
+                                        <div>
+                                            <label className={cn('flex items-center gap-2 text-xs font-medium mb-1.5', isDark ? 'text-neutral-400' : 'text-gray-600')}>
+                                                <MapPin className="w-3.5 h-3.5" />
+                                                Address
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={senderProfile.senderAddress}
+                                                onChange={(e) => setSenderProfile(p => ({ ...p, senderAddress: e.target.value }))}
+                                                placeholder="123 Main St, City"
+                                                className={cn(
+                                                    'w-full h-9 px-3 rounded-lg border text-sm outline-none',
+                                                    isDark ? 'bg-neutral-800 border-neutral-700 text-white focus:border-orange-500' : 'bg-white border-gray-200 text-gray-900 focus:border-orange-500'
+                                                )}
+                                            />
+                                        </div>
+
+                                        {/* Placeholders Reference */}
+                                        <div className={cn('p-3 rounded-lg', isDark ? 'bg-neutral-800' : 'bg-gray-100')}>
+                                            <p className={cn('text-xs font-medium mb-2', isDark ? 'text-neutral-300' : 'text-gray-700')}>
+                                                Placeholders for templates:
+                                            </p>
+                                            <div className="flex flex-wrap gap-1">
+                                                {['{{senderName}}', '{{senderPosition}}', '{{senderCompany}}', '{{senderPhone}}', '{{senderWebsite}}'].map(p => (
+                                                    <code key={p} className={cn('px-1.5 py-0.5 rounded text-[10px] font-mono', isDark ? 'bg-neutral-700 text-orange-400' : 'bg-gray-200 text-orange-600')}>
+                                                        {p}
+                                                    </code>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </ScrollArea>
+
+                                {/* Sidebar Footer */}
+                                <div className={cn('px-5 py-4 border-t', isDark ? 'border-neutral-800' : 'border-gray-200')}>
+                                    <Button
+                                        onClick={saveSenderProfile}
+                                        disabled={sidebarSaving}
+                                        className="w-full gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white"
+                                    >
+                                        {sidebarSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                        Save Profile
+                                    </Button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         );
     }

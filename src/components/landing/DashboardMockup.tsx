@@ -2,47 +2,42 @@ import React from 'react';
 import { 
     Megaphone, Inbox, Target, Users, Server, 
     Plus, Search, MoreHorizontal, 
-    Send, Clock, FileText, CheckCircle, Archive,
-    BarChart2, TrendingUp, MousePointer, Eye,
-    ChevronRight, ArrowUpRight
+    Send, Clock, Eye,
+    TrendingUp, MousePointer, ArrowUpRight, ChevronRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 
 export default function DashboardMockup() {
     return (
-        <div className="rounded-xl border border-white/10 bg-[#0A0A0A] shadow-2xl overflow-hidden flex h-[600px] text-sm font-sans select-none relative">
+        <div className="rounded-xl border border-white/10 bg-[#050505] shadow-2xl shadow-black/50 overflow-hidden flex h-[600px] text-sm select-none relative">
+            {/* Noise Texture */}
+            <div className="absolute inset-0 opacity-[0.015] pointer-events-none z-0" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 256 256\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' /%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise)\' /%3E%3C/svg%3E")' }} />
+
             {/* ═══════════════════════════════════════════════════════════════════
-                SIDEBAR
+                COLLAPSED SIDEBAR
                 ═══════════════════════════════════════════════════════════════════ */}
-            <div className="w-64 border-r border-white/5 bg-[#050505] flex flex-col">
-                {/* Sidebar Header */}
-                <div className="h-16 flex items-center px-5 gap-3 border-b border-white/5">
-                    <div className="w-8 h-8 rounded-lg bg-brand-orange flex items-center justify-center text-white font-bold text-lg shadow-[0_0_15px_rgba(255,85,51,0.3)]">
+            <div className="w-16 border-r border-white/5 bg-[#050505] flex flex-col items-center relative z-10">
+                {/* Sidebar Header - Just Logo */}
+                <div className="h-16 flex items-center justify-center border-b border-white/5 bg-white/[0.01] w-full">
+                    <div className="w-9 h-9 rounded-lg bg-brand-orange flex items-center justify-center text-white font-bold text-lg shadow-[0_0_20px_rgba(255,85,51,0.4)]">
                         W
                     </div>
-                    <span className="font-heading font-bold text-white text-lg tracking-tight">Warmlo</span>
                 </div>
 
-                {/* Navigation */}
-                <div className="p-3 space-y-1">
-                    <NavItem icon={Megaphone} label="Campaigns" active />
-                    <NavItem icon={Inbox} label="Inbox" badge="3" />
-                    <NavItem icon={Target} label="Discovery" />
-                    <NavItem icon={Users} label="Lead Lists" />
-                    <NavItem icon={Server} label="Accounts" />
+                {/* Navigation - Icons Only */}
+                <div className="py-4 space-y-2 w-full flex flex-col items-center">
+                    <NavItemCollapsed icon={Megaphone} active />
+                    <NavItemCollapsed icon={Inbox} badge="3" />
+                    <NavItemCollapsed icon={Target} />
+                    <NavItemCollapsed icon={Users} />
+                    <NavItemCollapsed icon={Server} />
                 </div>
 
-                {/* Sidebar Footer */}
-                <div className="mt-auto p-4 border-t border-white/5">
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-orange to-brand-pink flex items-center justify-center text-xs font-bold text-white">
-                            JD
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <div className="text-xs font-medium text-white truncate">John Doe</div>
-                            <div className="text-[10px] text-gray-500 truncate">Pro Plan</div>
-                        </div>
+                {/* Sidebar Footer - Avatar Only */}
+                <div className="mt-auto p-4 border-t border-white/5 bg-white/[0.01] w-full flex justify-center">
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-orange via-brand-pink to-brand-purple flex items-center justify-center text-xs font-bold text-white shadow-[0_0_15px_rgba(255,85,51,0.3)]">
+                        JD
                     </div>
                 </div>
             </div>
@@ -50,13 +45,13 @@ export default function DashboardMockup() {
             {/* ═══════════════════════════════════════════════════════════════════
                 MAIN CONTENT - CAMPAIGNS VIEW
                 ═══════════════════════════════════════════════════════════════════ */}
-            <div className="flex-1 flex min-w-0 bg-[#0c0c0c]">
+            <div className="flex-1 flex min-w-0 bg-[#050505] relative z-10">
                 
-                {/* LEFT PANEL - LIST */}
+                {/* LEFT PANEL - Campaign List */}
                 <div className="w-[320px] flex-shrink-0 flex flex-col border-r border-white/5 bg-[#0c0c0c]">
                     {/* Header */}
                     <div className="p-4 border-b border-white/5">
-                        <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center justify-between mb-3">
                             <h2 className="text-[15px] font-semibold text-white">Campaigns</h2>
                             <button className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium bg-gradient-to-r from-brand-orange to-brand-orange/80 text-white hover:opacity-90 transition-opacity shadow-lg shadow-brand-orange/20">
                                 <Plus className="w-3.5 h-3.5" />
@@ -64,120 +59,108 @@ export default function DashboardMockup() {
                             </button>
                         </div>
                         {/* Search */}
-                        <div className="flex items-center gap-2 h-9 px-3 rounded-lg bg-white/[0.04] border border-white/5">
+                        <div className="flex items-center gap-2 h-9 px-3 rounded-lg bg-white/[0.04]">
                             <Search className="w-4 h-4 text-gray-500" />
                             <input 
                                 type="text" 
                                 placeholder="Search campaigns..." 
-                                className="bg-transparent border-none outline-none text-xs text-white placeholder:text-gray-600 w-full"
+                                className="bg-transparent border-none outline-none text-[13px] text-white placeholder:text-gray-500 w-full"
                                 readOnly
                             />
                         </div>
                     </div>
 
-                    {/* List */}
-                    <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                    {/* Campaign List */}
+                    <div className="flex-1 overflow-y-auto p-2 space-y-0.5 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                         <CampaignItem 
                             title="SaaS Outreach Q1" 
                             status="active" 
-                            sent="1,240" 
-                            openRate="42%" 
+                            leads="1,240"
+                            progress={65}
                             active 
                         />
                         <CampaignItem 
                             title="Webinar Invites" 
                             status="completed" 
-                            sent="850" 
-                            openRate="68%" 
+                            leads="850"
+                            progress={100}
                         />
                         <CampaignItem 
                             title="Follow-up Sequence" 
                             status="paused" 
-                            sent="320" 
-                            openRate="35%" 
+                            leads="320"
+                            progress={35}
                         />
                         <CampaignItem 
                             title="Cold Leads - Tech" 
                             status="draft" 
-                            sent="0" 
-                            openRate="-" 
+                            leads="0"
+                            progress={0}
                         />
                         <CampaignItem 
                             title="Partnership Outreach" 
                             status="active" 
-                            sent="45" 
-                            openRate="82%" 
+                            leads="145"
+                            progress={12}
                         />
                     </div>
                 </div>
 
-                {/* RIGHT PANEL - DETAILS */}
-                <div className="flex-1 flex flex-col min-w-0 bg-[#0A0A0A]">
+                {/* RIGHT PANEL - Campaign Details */}
+                <div className="flex-1 flex flex-col min-w-0 bg-[#080808]">
                     {/* Detail Header */}
-                    <div className="h-16 border-b border-white/5 flex items-center justify-between px-6 bg-[#0c0c0c]">
+                    <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-[#0c0c0c]">
                         <div>
-                            <div className="flex items-center gap-3">
-                                <h1 className="text-lg font-bold text-white">SaaS Outreach Q1</h1>
+                            <div className="flex items-center gap-2.5">
+                                <h1 className="text-[17px] font-semibold text-white">SaaS Outreach Q1</h1>
                                 <StatusBadge status="active" />
                             </div>
-                            <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
-                                <Clock className="w-3 h-3" />
-                                <span>Started 2 days ago</span>
-                                <span>•</span>
-                                <span>Daily limit: 500</span>
+                            <div className="text-[12px] text-gray-500 mt-0.5 flex items-center gap-2">
+                                <Clock className="w-3.5 h-3.5" />
+                                <span>Created Dec 31, 2025 • 1,240 recipients</span>
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
-                            <button className="p-2 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors">
-                                <MoreHorizontal className="w-5 h-5" />
+                            <button className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium bg-gradient-to-r from-brand-orange to-brand-orange/80 text-white hover:opacity-90 transition-opacity">
+                                <Eye className="w-3.5 h-3.5" />
+                                View Details
+                            </button>
+                            <button className="w-8 h-8 flex items-center justify-center rounded-lg border border-white/10 text-gray-400 hover:bg-white/5 transition-colors">
+                                <MoreHorizontal className="w-4 h-4" />
                             </button>
                         </div>
                     </div>
 
                     {/* Stats Grid */}
-                    <div className="p-6 grid grid-cols-4 gap-4">
-                        <StatCard label="Sent" value="1,240" icon={Send} color="text-blue-400" />
-                        <StatCard label="Open Rate" value="42.5%" icon={Eye} color="text-brand-orange" trend="+2.4%" />
-                        <StatCard label="Reply Rate" value="8.2%" icon={MessageCircle} color="text-emerald-400" trend="+1.1%" />
-                        <StatCard label="Clicked" value="12.4%" icon={MousePointer} color="text-purple-400" />
-                    </div>
+                    <div className="p-6">
+                        <div className="grid grid-cols-4 gap-4 mb-6">
+                            <StatCard label="Progress" value="65%" icon={TrendingUp} color="text-orange-500" />
+                            <StatCard label="Emails Sent" value="1,240" sub="of 1,240" icon={Send} color="text-blue-400" />
+                            <StatCard label="Replied" value="0" sub="0% reply rate" icon={ArrowUpRight} color="text-emerald-400" />
+                            <StatCard label="Clicked" value="0" sub="0% click rate" icon={MousePointer} color="text-purple-400" />
+                        </div>
 
-                    {/* Chart Area (Simulated) */}
-                    <div className="px-6 pb-6 flex-1">
-                        <div className="h-full rounded-xl border border-white/5 bg-white/[0.02] p-4 relative overflow-hidden">
-                            <div className="flex items-center justify-between mb-6">
-                                <h3 className="text-sm font-medium text-white">Engagement Over Time</h3>
-                                <div className="flex gap-2">
-                                    <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                                        <div className="w-2 h-2 rounded-full bg-brand-orange"></div>
-                                        Opens
-                                    </div>
-                                    <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                                        <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                                        Replies
-                                    </div>
+                        {/* Quick Overview Card */}
+                        <div className="p-5 rounded-xl border border-white/5 bg-[#0c0c0c]">
+                            <h3 className="text-[13px] font-semibold text-white mb-4">Quick Overview</h3>
+                            <div className="space-y-3 mb-5">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[12px] text-gray-400">Status</span>
+                                    <StatusBadge status="active" />
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[12px] text-gray-400">Total Recipients</span>
+                                    <span className="text-[13px] font-medium text-white">1,240</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[12px] text-gray-400">Created</span>
+                                    <span className="text-[13px] font-medium text-white">Dec 31, 2025</span>
                                 </div>
                             </div>
-                            
-                            {/* Fake Chart Bars */}
-                            <div className="flex items-end justify-between h-[200px] gap-2 px-2">
-                                {[40, 65, 45, 80, 55, 70, 90, 60, 75, 50, 85, 95].map((h, i) => (
-                                    <div key={i} className="w-full bg-white/5 rounded-t-sm relative group">
-                                        <motion.div 
-                                            initial={{ height: 0 }}
-                                            animate={{ height: `${h}%` }}
-                                            transition={{ duration: 1, delay: i * 0.05 }}
-                                            className="absolute bottom-0 left-0 right-0 bg-brand-orange/20 group-hover:bg-brand-orange/40 transition-colors rounded-t-sm"
-                                        ></motion.div>
-                                        <motion.div 
-                                            initial={{ height: 0 }}
-                                            animate={{ height: `${h * 0.3}%` }}
-                                            transition={{ duration: 1, delay: i * 0.05 + 0.2 }}
-                                            className="absolute bottom-0 left-0 right-0 bg-emerald-500/20 group-hover:bg-emerald-500/40 transition-colors rounded-t-sm"
-                                        ></motion.div>
-                                    </div>
-                                ))}
-                            </div>
+                            <button className="w-full flex items-center justify-center gap-1.5 h-9 rounded-lg text-[12px] font-medium bg-white/[0.06] text-gray-300 hover:bg-white/[0.1] transition-colors">
+                                <Eye className="w-3.5 h-3.5" />
+                                View Full Campaign Details
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -186,79 +169,17 @@ export default function DashboardMockup() {
     );
 }
 
-function NavItem({ icon: Icon, label, active, badge }: { icon: any, label: string, active?: boolean, badge?: string }) {
+function NavItemCollapsed({ icon: Icon, active, badge }: { icon: any, active?: boolean, badge?: string }) {
     return (
-        <div className={cn(
-            "flex items-center gap-3 px-3 py-2 rounded-lg cursor-default transition-colors",
-            active ? "bg-white text-black font-medium" : "text-gray-400 hover:text-white hover:bg-white/5"
-        )}>
-            <Icon className="w-4 h-4" />
-            <span className="flex-1 text-xs">{label}</span>
-            {badge && (
-                <span className="px-1.5 py-0.5 rounded-md bg-brand-orange text-white text-[10px] font-bold">
-                    {badge}
-                </span>
-            )}
-        </div>
-    );
-}
-
-function CampaignItem({ title, status, sent, openRate, active }: { title: string, status: string, sent: string, openRate: string, active?: boolean }) {
-    return (
-        <div className={cn(
-            "p-3 rounded-lg border cursor-default transition-all group",
-            active 
-                ? "bg-white/[0.06] border-white/10" 
-                : "bg-transparent border-transparent hover:bg-white/[0.02]"
-        )}>
-            <div className="flex items-center justify-between mb-2">
-                <span className={cn("text-xs font-medium truncate max-w-[140px]", active ? "text-white" : "text-gray-300")}>
-                    {title}
-                </span>
-                <StatusBadge status={status} mini />
-            </div>
-            <div className="flex items-center justify-between text-[10px] text-gray-500">
-                <span>{sent} sent</span>
-                <span className={active ? "text-brand-orange" : ""}>{openRate} open</span>
-            </div>
-        </div>
-    );
-}
-
-function StatusBadge({ status, mini }: { status: string, mini?: boolean }) {
-    const styles = {
-        active: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
-        completed: "bg-blue-500/10 text-blue-500 border-blue-500/20",
-        draft: "bg-gray-500/10 text-gray-500 border-gray-500/20",
-        paused: "bg-amber-500/10 text-amber-500 border-amber-500/20",
-    }[status] || styles.draft;
-
-    if (mini) {
-        return (
-            <div className={cn("w-2 h-2 rounded-full", styles.split(' ')[1].replace('text-', 'bg-'))} />
-        );
-    }
-
-    return (
-        <span className={cn("px-2 py-0.5 rounded text-[10px] font-medium border uppercase tracking-wider", styles)}>
-            {status}
-        </span>
-    );
-}
-
-function StatCard({ label, value, icon: Icon, color, trend }: { label: string, value: string, icon: any, color: string, trend?: string }) {
-    return (
-        <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
-            <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-gray-500">{label}</span>
-                <Icon className={cn("w-4 h-4 opacity-80", color)} />
-            </div>
-            <div className="flex items-end gap-2">
-                <span className="text-xl font-bold text-white">{value}</span>
-                {trend && (
-                    <span className="text-[10px] text-emerald-500 font-medium mb-1 flex items-center">
-                        <ArrowUpRight className="w-3 h-3" />
-                        {trend}
+        <div className="relative group">
+            <div className={cn(
+                "w-10 h-10 flex items-center justify-center rounded-lg cursor-default transition-colors relative",
+                active ? "bg-white text-black" : "text-gray-400 hover:text-white hover:bg-white/5"
+            )}>
+                <Icon className="w-5 h-5" />
+                {badge && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 flex items-center justify-center rounded-full bg-brand-orange text-white text-[9px] font-bold shadow-lg">
+                        {badge}
                     </span>
                 )}
             </div>
@@ -266,22 +187,85 @@ function StatCard({ label, value, icon: Icon, color, trend }: { label: string, v
     );
 }
 
-// Helper icon for reply rate
-function MessageCircle(props: any) {
+function CampaignItem({ title, status, leads, progress, active }: { title: string, status: string, leads: string, progress: number, active?: boolean }) {
+    const statusStyles: Record<string, { dot: string }> = {
+        draft: { dot: 'bg-gray-400' },
+        active: { dot: 'bg-emerald-400' },
+        paused: { dot: 'bg-amber-400' },
+        completed: { dot: 'bg-blue-400' },
+    };
+
     return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+        <button
+            className={cn(
+                'w-full flex items-start gap-3 p-3 rounded-lg text-left transition-all group',
+                active ? 'bg-white/[0.08]' : 'hover:bg-white/[0.04]'
+            )}
         >
-            <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
-        </svg>
-    )
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 bg-white/[0.06]">
+                <Megaphone className="w-4 h-4 text-gray-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                    <p className="text-[13px] font-medium truncate text-white">
+                        {title}
+                    </p>
+                    <span className={cn(
+                        'w-1.5 h-1.5 rounded-full shrink-0',
+                        statusStyles[status]?.dot,
+                        status === 'active' && 'animate-pulse'
+                    )} />
+                </div>
+                <div className="flex items-center gap-2 mt-1 text-[11px] text-gray-500">
+                    <span>{leads} leads</span>
+                    {progress > 0 && (
+                        <>
+                            <span>•</span>
+                            <span>{progress}% sent</span>
+                        </>
+                    )}
+                </div>
+            </div>
+            <ChevronRight className="w-4 h-4 shrink-0 mt-2.5 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500" />
+        </button>
+    );
+}
+
+function StatusBadge({ status }: { status: string }) {
+    const styles: Record<string, { bg: string; text: string; dot: string }> = {
+        active: { bg: 'bg-emerald-500/10', text: 'text-emerald-500', dot: 'bg-emerald-400' },
+        completed: { bg: 'bg-blue-500/10', text: 'text-blue-500', dot: 'bg-blue-400' },
+        draft: { bg: 'bg-gray-500/10', text: 'text-gray-500', dot: 'bg-gray-400' },
+        paused: { bg: 'bg-amber-500/10', text: 'text-amber-500', dot: 'bg-amber-400' },
+    };
+
+    const style = styles[status] || styles.draft;
+
+    return (
+        <span className={cn(
+            'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium',
+            style.bg,
+            style.text
+        )}>
+            <span className={cn('w-1 h-1 rounded-full', style.dot)} />
+            {status.charAt(0).toUpperCase() + status.slice(1)}
+        </span>
+    );
+}
+
+function StatCard({ label, value, sub, icon: Icon, color }: { label: string, value: string, sub?: string, icon: any, color: string }) {
+    return (
+        <div className="p-4 rounded-xl border border-white/5 bg-[#0c0c0c] hover:bg-white/[0.02] transition-all group backdrop-blur-sm">
+            <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-orange-500/10">
+                    <Icon className={cn("w-4 h-4", color)} />
+                </div>
+                <span className="text-[12px] font-medium text-gray-400">{label}</span>
+            </div>
+            <p className="text-2xl font-semibold text-white mb-0.5">{value}</p>
+            {sub && (
+                <p className="text-[11px] text-gray-500">{sub}</p>
+            )}
+        </div>
+    );
 }

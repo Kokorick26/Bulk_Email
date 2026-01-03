@@ -9,10 +9,10 @@ import { motion } from 'framer-motion';
 
 export default function InboxMockup({ className }: { className?: string }) {
     return (
-        <div className={cn("w-full max-w-2xl bg-[#0A0A0A] border border-white/10 rounded-xl overflow-hidden shadow-2xl font-sans flex h-[500px]", className)}>
+        <div className={cn("w-full max-w-2xl bg-[#050505] border border-white/10 rounded-xl overflow-hidden shadow-2xl font-body flex h-[500px]", className)}>
             {/* Sidebar */}
             <div className="w-16 border-r border-white/5 bg-[#050505] flex flex-col items-center py-4 gap-4">
-                <div className="w-8 h-8 rounded-lg bg-brand-pink flex items-center justify-center text-white font-bold text-sm">
+                <div className="w-8 h-8 rounded-lg bg-brand-purple flex items-center justify-center text-white font-bold text-sm">
                     W
                 </div>
                 <div className="w-full h-[1px] bg-white/5"></div>
@@ -26,19 +26,19 @@ export default function InboxMockup({ className }: { className?: string }) {
                     <Send className="w-5 h-5" />
                 </div>
                 <div className="mt-auto">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-pink to-purple-600"></div>
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-purple to-brand-pink"></div>
                 </div>
             </div>
 
             {/* Email List */}
-            <div className="w-64 border-r border-white/5 bg-[#0c0c0c] flex flex-col">
+            <div className="w-64 border-r border-white/5 bg-white/[0.02] flex flex-col">
                 <div className="p-3 border-b border-white/5">
                     <div className="relative">
                         <Search className="absolute left-2 top-2 w-3.5 h-3.5 text-gray-500" />
                         <input 
                             type="text" 
                             placeholder="Search..." 
-                            className="w-full bg-white/5 border border-white/5 rounded-md pl-8 pr-3 py-1.5 text-xs text-white placeholder:text-gray-600 focus:outline-none focus:border-brand-pink/50"
+                            className="w-full bg-white/5 border border-white/5 rounded-md pl-8 pr-3 py-1.5 text-xs text-white placeholder:text-gray-600 focus:outline-none focus:border-brand-purple/50"
                         />
                     </div>
                 </div>
@@ -52,7 +52,7 @@ export default function InboxMockup({ className }: { className?: string }) {
                     ].map((email, i) => (
                         <div key={i} className={cn(
                             "p-3 border-b border-white/5 cursor-pointer hover:bg-white/[0.02] transition-colors",
-                            email.active && "bg-white/[0.04] border-l-2 border-l-brand-pink"
+                            email.active && "bg-white/[0.04] border-l-2 border-l-brand-purple"
                         )}>
                             <div className="flex justify-between items-start mb-1">
                                 <span className={cn("text-xs font-semibold", email.active ? "text-white" : "text-gray-300")}>{email.name}</span>
@@ -66,11 +66,11 @@ export default function InboxMockup({ className }: { className?: string }) {
             </div>
 
             {/* Email View */}
-            <div className="flex-1 flex flex-col bg-[#0A0A0A]">
+            <div className="flex-1 flex flex-col bg-[#050505]">
                 {/* Header */}
                 <div className="h-14 border-b border-white/5 flex items-center justify-between px-6">
                     <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-xs font-bold">
+                        <div className="w-8 h-8 rounded-full bg-brand-purple/20 text-brand-purple flex items-center justify-center text-xs font-bold">
                             SM
                         </div>
                         <div>
@@ -87,11 +87,11 @@ export default function InboxMockup({ className }: { className?: string }) {
 
                 {/* Content */}
                 <div className="flex-1 p-6 overflow-y-auto">
-                    <div className="text-lg font-bold text-white mb-4">Re: Partnership Opportunity</div>
+                    <div className="text-lg font-bold text-white mb-4 font-heading">Re: Partnership Opportunity</div>
                     <div className="space-y-4 text-sm text-gray-300 leading-relaxed">
                         <p>Hi John,</p>
                         <p>Thanks for reaching out. I've reviewed your proposal and it looks very promising. We've been looking for a solution exactly like this to help scale our outbound efforts.</p>
-                        <p className="p-3 border-l-2 border-brand-pink bg-brand-pink/5 text-gray-200 italic">
+                        <p className="p-3 border-l-2 border-brand-purple bg-brand-purple/5 text-gray-200 italic">
                             "Warmlo combines powerful campaign management with AI-driven sales research to help you contact the right companies..."
                         </p>
                         <p>That sounds interesting. Let's schedule a call for next Tuesday at 2 PM EST to discuss the details?</p>
@@ -100,8 +100,8 @@ export default function InboxMockup({ className }: { className?: string }) {
                 </div>
 
                 {/* Reply Box */}
-                <div className="p-4 border-t border-white/5 bg-[#0c0c0c]">
-                    <div className="border border-white/10 rounded-lg bg-[#0A0A0A] overflow-hidden">
+                <div className="p-4 border-t border-white/5 bg-white/[0.02]">
+                    <div className="border border-white/10 rounded-lg bg-[#050505] overflow-hidden">
                         <div className="p-3 min-h-[80px] text-sm text-gray-400">
                             Sounds great, Sarah! I'll send over a calendar invite...
                         </div>
@@ -111,7 +111,7 @@ export default function InboxMockup({ className }: { className?: string }) {
                                 <button className="p-1.5 hover:text-white"><ImageIcon className="w-4 h-4" /></button>
                                 <button className="p-1.5 hover:text-white"><Smile className="w-4 h-4" /></button>
                             </div>
-                            <button className="bg-brand-pink hover:bg-brand-pink/90 text-white text-xs font-bold px-4 py-1.5 rounded-md flex items-center gap-2 transition-colors">
+                            <button className="bg-brand-purple hover:bg-brand-purple/90 text-white text-xs font-bold px-4 py-1.5 rounded-md flex items-center gap-2 transition-colors">
                                 Send <Send className="w-3 h-3" />
                             </button>
                         </div>

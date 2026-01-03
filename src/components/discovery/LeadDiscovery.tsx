@@ -170,8 +170,28 @@ export function LeadDiscovery() {
     };
 
     const handleAddToCampaign = (lead: DiscoveryLead) => {
-        // TODO: Implement campaign integration
-        toast.success(`${lead.companyName} added to campaign!`);
+        // Store leads in localStorage for campaign creation
+        const existingLeads = JSON.parse(localStorage.getItem('pendingCampaignLeads') || '[]');
+        const newLead = {
+            id: `discovery-${Date.now()}-${Math.random()}`,
+            email: lead.keyContacts?.[0]?.email || `contact@${lead.website}`,
+            firstName: lead.keyContacts?.[0]?.name?.split(' ')[0] || '',
+            lastName: lead.keyContacts?.[0]?.name?.split(' ').slice(1).join(' ') || '',
+            company: lead.companyName,
+            status: 'pending' as const,
+            customFields: {
+                industry: lead.industry,
+                country: lead.country,
+                companySize: lead.companySize,
+                website: lead.website,
+                confidenceScore: lead.confidenceScore,
+                reasoning: lead.aiReasoning
+            },
+            addedAt: new Date().toISOString()
+        };
+        existingLeads.push(newLead);
+        localStorage.setItem('pendingCampaignLeads', JSON.stringify(existingLeads));
+        toast.success(`${lead.companyName} added! Go to Campaigns to create a campaign.`);
     };
 
     const useExamplePrompt = (examplePrompt: string) => {
@@ -596,6 +616,31 @@ export function LeadDiscovery() {
                     isOpen={!!selectedLead}
                     onClose={() => setSelectedLead(null)}
                     onAddToCampaign={(lead, employees) => {
+                        // Store leads with selected employees
+                        const existingLeads = JSON.parse(localStorage.getItem('pendingCampaignLeads') || '[]');
+                        employees.forEach(emp => {
+                            const newLead = {
+                                id: `discovery-${Date.now()}-${Math.random()}`,
+                                email: emp.email,
+                                firstName: emp.name.split(' ')[0] || '',
+                                lastName: emp.name.split(' ').slice(1).join(' ') || '',
+                                company: lead.companyName,
+                                status: 'pending' as const,
+                                customFields: {
+                                    title: emp.title,
+                                    industry: lead.industry,
+                                    country: lead.country,
+                                    companySize: lead.companySize,
+                                    website: lead.website,
+                                    linkedIn: emp.linkedIn,
+                                    confidenceScore: lead.confidenceScore
+                                },
+                                addedAt: new Date().toISOString()
+                            };
+                            existingLeads.push(newLead);
+                        });
+                        localStorage.setItem('pendingCampaignLeads', JSON.stringify(existingLeads));
+                        toast.success(`Added ${employees.length} contacts! Go to Campaigns to create a campaign.`);
                         toast.success(`Added ${employees.length} contacts from ${lead.companyName} to campaign!`);
                         setSelectedLead(null);
                     }}

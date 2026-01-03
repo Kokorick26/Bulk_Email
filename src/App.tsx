@@ -58,15 +58,13 @@ function App() {
                 <Routes>
                     {/* Main Landing Page (Redesigned) */}
                     <Route path="/" element={<HomeRedesign />} />
-
-                    {/* Other Marketing Pages (Original Layout) */}
-                    <Route element={<MarketingLayout />}>
-                        <Route path="/features" element={<Features />} />
-                        <Route path="/pricing" element={<Pricing />} />
-                        <Route path="/about" element={<About />} />
-                        <Route path="/contact" element={<Contact />} />
-                        <Route path="/changelog" element={<Changelog />} />
-                    </Route>
+                    
+                    {/* Marketing Pages (Redesigned) */}
+                    <Route path="/features" element={<Features />} />
+                    <Route path="/pricing" element={<Pricing />} />
+                    <Route path="/about" element={<About />} />
+                    <Route path="/contact" element={<Contact />} />
+                    <Route path="/changelog" element={<Changelog />} />
 
                     {/* Auth Routes */}
                     <Route path="/login" element={<LoginRoute />} />

@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Check, X, Sparkles, HelpCircle, ArrowRight, Zap } from 'lucide-react';
+import { Check, X, Sparkles, HelpCircle, ArrowRight, Zap, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import Navbar from '@/components/landing/Navbar';
+import Footer from '@/components/landing/Footer';
+import FAQ from '@/components/landing/FAQ';
 
 export default function Pricing() {
     const [annual, setAnnual] = useState(true);
@@ -62,31 +65,37 @@ export default function Pricing() {
 
     return (
         <div className="min-h-screen bg-brand-dark text-white font-body selection:bg-brand-orange selection:text-white overflow-x-hidden">
-            {/* Background Grid */}
-            <div className="fixed inset-0 z-0 opacity-20 pointer-events-none" 
-                style={{ 
-                    backgroundImage: 'linear-gradient(#333 1px, transparent 1px), linear-gradient(90deg, #333 1px, transparent 1px)', 
-                    backgroundSize: '40px 40px' 
-                }} 
-            />
+            <Navbar />
+            
+            {/* ═══════════════════════════════════════════════════════════════════
+                BACKGROUND
+                ═══════════════════════════════════════════════════════════════════ */}
+            <div className="fixed inset-0 z-0 pointer-events-none">
+                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
+                <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[1000px] h-[1000px] bg-brand-purple/10 rounded-full blur-[120px]" />
+            </div>
 
-            <div className="relative z-10 pt-32 pb-20">
+            <main className="relative z-10 pt-32 pb-20">
                 <div className="container px-6 mx-auto">
+                    
+                    {/* ═══════════════════════════════════════════════════════════════════
+                        HERO
+                        ═══════════════════════════════════════════════════════════════════ */}
                     <div className="text-center max-w-4xl mx-auto mb-20">
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-orange/10 border border-brand-orange/20 text-brand-orange text-xs font-mono uppercase tracking-wider mb-8"
+                            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm mb-8"
                         >
-                            <Sparkles className="w-3 h-3" />
-                            <span>Simple Pricing</span>
+                            <CreditCard className="w-4 h-4 text-brand-pink" />
+                            <span className="text-xs font-mono text-gray-300 tracking-wider uppercase">Simple Pricing</span>
                         </motion.div>
 
                         <motion.h1 
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.1 }}
-                            className="text-5xl md:text-7xl font-heading font-bold mb-8 leading-tight"
+                            className="text-5xl md:text-7xl font-heading font-bold mb-8 leading-[0.9]"
                         >
                             PAY FOR RESULTS, <br />
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-orange to-brand-pink">NOT SEATS</span>
@@ -98,7 +107,7 @@ export default function Pricing() {
                             transition={{ delay: 0.2 }}
                             className="text-xl text-gray-400 mb-10 max-w-2xl mx-auto"
                         >
-                            Start for free. Upgrade when you're ready to close more deals. No hidden fees, no per-seat pricing.
+                            Unlimited team members and email accounts on every plan. Upgrade as you scale your outreach volume.
                         </motion.p>
 
                         {/* Toggle */}
@@ -106,25 +115,25 @@ export default function Pricing() {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.3 }}
-                            className="inline-flex items-center p-1 bg-white/5 rounded-full border border-white/10 backdrop-blur-sm"
+                            className="flex items-center justify-center gap-4 mb-16"
                         >
-                            <button
-                                onClick={() => setAnnual(true)}
-                                className={`px-6 py-2 rounded-full text-sm font-bold transition-all duration-300 ${annual ? 'bg-brand-orange text-white shadow-lg shadow-brand-orange/20' : 'text-gray-400 hover:text-white'}`}
+                            <span className={`text-sm font-medium ${!annual ? 'text-white' : 'text-gray-500'}`}>Monthly</span>
+                            <button 
+                                onClick={() => setAnnual(!annual)}
+                                className="w-14 h-8 rounded-full bg-white/10 border border-white/10 relative p-1 transition-colors hover:bg-white/20"
                             >
-                                Yearly <span className="text-[10px] text-black font-bold ml-1 bg-white px-1.5 py-0.5 rounded-full uppercase tracking-wide">Save 20%</span>
+                                <div className={`w-6 h-6 rounded-full bg-brand-orange shadow-lg transition-transform duration-300 ${annual ? 'translate-x-6' : 'translate-x-0'}`} />
                             </button>
-                            <button
-                                onClick={() => setAnnual(false)}
-                                className={`px-6 py-2 rounded-full text-sm font-bold transition-all duration-300 ${!annual ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}
-                            >
-                                Monthly
-                            </button>
+                            <span className={`text-sm font-medium ${annual ? 'text-white' : 'text-gray-500'}`}>
+                                Yearly <span className="text-brand-orange text-xs ml-1 font-bold uppercase">(Save 20%)</span>
+                            </span>
                         </motion.div>
                     </div>
 
-                    {/* Pricing Cards */}
-                    <div className="grid md:grid-cols-3 gap-8 max-w-7xl mx-auto">
+                    {/* ═══════════════════════════════════════════════════════════════════
+                        PRICING CARDS
+                        ═══════════════════════════════════════════════════════════════════ */}
+                    <div className="grid md:grid-cols-3 gap-8 max-w-7xl mx-auto mb-32">
                         {plans.map((plan, i) => (
                             <motion.div
                                 key={plan.name}
@@ -132,26 +141,26 @@ export default function Pricing() {
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
                                 transition={{ delay: i * 0.1 }}
-                                className={`relative p-8 rounded-3xl border flex flex-col ${
+                                className={`relative rounded-3xl p-8 flex flex-col ${
                                     plan.popular 
-                                        ? 'bg-[#0A0A0A] border-brand-orange shadow-[0_0_40px_-10px_rgba(255,85,51,0.3)]' 
-                                        : 'bg-white/5 border-white/10 hover:border-white/20'
+                                        ? 'bg-[#0A0A0A] border border-brand-orange/50 shadow-[0_0_50px_-10px_rgba(255,85,51,0.2)]' 
+                                        : 'bg-[#0A0A0A] border border-white/10'
                                 }`}
                             >
                                 {plan.popular && (
-                                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-brand-orange text-white text-xs font-bold uppercase tracking-wider rounded-full shadow-lg">
+                                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-brand-orange text-white text-xs font-bold uppercase tracking-wider shadow-lg">
                                         Most Popular
                                     </div>
                                 )}
 
                                 <div className="mb-8">
-                                    <h3 className="text-xl font-heading font-bold text-white mb-2">{plan.name}</h3>
+                                    <h3 className="text-xl font-heading font-bold mb-2">{plan.name}</h3>
                                     <p className="text-gray-400 text-sm h-10">{plan.desc}</p>
                                 </div>
 
                                 <div className="mb-8">
                                     <div className="flex items-baseline gap-1">
-                                        <span className="text-4xl font-bold text-white">${plan.price}</span>
+                                        <span className="text-4xl font-bold font-heading">${plan.price}</span>
                                         <span className="text-gray-500">/mo</span>
                                     </div>
                                     {annual && plan.price > 0 && (
@@ -162,10 +171,10 @@ export default function Pricing() {
                                 </div>
 
                                 <Button 
-                                    className={`w-full mb-8 font-bold ${
+                                    className={`w-full mb-8 h-12 font-bold tracking-wide ${
                                         plan.popular 
                                             ? 'bg-brand-orange hover:bg-brand-orange/90 text-white' 
-                                            : 'bg-white text-black hover:bg-gray-200'
+                                            : 'bg-white/10 hover:bg-white/20 text-white'
                                     }`}
                                 >
                                     {plan.price === 0 ? 'Get Started Free' : 'Start 14-Day Trial'}
@@ -174,13 +183,13 @@ export default function Pricing() {
                                 <div className="space-y-4 flex-1">
                                     {plan.features.map((feature, j) => (
                                         <div key={j} className="flex items-start gap-3 text-sm text-gray-300">
-                                            <Check className={`w-4 h-4 mt-0.5 ${plan.popular ? 'text-brand-orange' : 'text-white'}`} />
+                                            <Check className="w-4 h-4 text-brand-orange mt-0.5 shrink-0" />
                                             <span>{feature}</span>
                                         </div>
                                     ))}
                                     {plan.notIncluded.map((feature, j) => (
                                         <div key={j} className="flex items-start gap-3 text-sm text-gray-600">
-                                            <X className="w-4 h-4 mt-0.5" />
+                                            <X className="w-4 h-4 mt-0.5 shrink-0" />
                                             <span>{feature}</span>
                                         </div>
                                     ))}
@@ -189,14 +198,20 @@ export default function Pricing() {
                         ))}
                     </div>
 
-                    {/* FAQ Link */}
-                    <div className="mt-20 text-center">
-                        <p className="text-gray-400">
-                            Have questions? <a href="/contact" className="text-brand-orange hover:underline">Contact our sales team</a>
-                        </p>
+                    {/* ═══════════════════════════════════════════════════════════════════
+                        FAQ
+                        ═══════════════════════════════════════════════════════════════════ */}
+                    <div className="max-w-3xl mx-auto">
+                        <div className="text-center mb-12">
+                            <h2 className="text-3xl font-heading font-bold mb-4">Frequently Asked Questions</h2>
+                            <p className="text-gray-400">Everything you need to know about the product and billing.</p>
+                        </div>
+                        <FAQ />
                     </div>
+
                 </div>
-            </div>
+            </main>
+            <Footer />
         </div>
     );
 }

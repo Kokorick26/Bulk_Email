@@ -80,7 +80,7 @@ const Navbar = () => {
                         Login
                     </Link>
                     <Link to="/login">
-                        <Button className="group relative overflow-hidden bg-white text-black hover:text-white font-bold rounded-none px-6 h-10 uppercase tracking-wide transition-all duration-300 border border-transparent hover:border-brand-orange/50">
+                        <Button className="group relative overflow-hidden bg-white text-black hover:text-white font-bold rounded-lg px-6 h-10 uppercase tracking-wide transition-all duration-300 border border-transparent hover:border-brand-orange/50">
                             <span className="relative z-10 flex items-center gap-2">
                                 Get Started
                                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />

@@ -396,13 +396,18 @@ export function AISidebar({
     if (isMinimized) {
         return (
             <div className="fixed bottom-4 right-4 z-50">
-                <Button
+                <button
                     onClick={() => setIsMinimized(false)}
-                    className="rounded-full shadow-lg h-12 px-6"
+                    className="group relative overflow-hidden bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:shadow-lg hover:shadow-orange-500/50 font-bold rounded-full shadow-lg h-12 px-6 uppercase tracking-wide transition-all duration-300 border border-transparent hover:border-orange-400/50 flex items-center gap-2"
                 >
-                    <SparklesIcon className="w-4 h-4 mr-2" />
-                    Iris AI
-                </Button>
+                    <span className="relative z-10 flex items-center gap-2">
+                        <SparklesIcon className="w-4 h-4" />
+                        Iris AI
+                    </span>
+                    <div className="absolute inset-0 flex h-full w-full justify-center [transform:skew(-12deg)_translateX(-100%)] group-hover:duration-1000 group-hover:[transform:skew(-12deg)_translateX(100%)]">
+                        <div className="relative h-full w-8 bg-white/20" />
+                    </div>
+                </button>
             </div>
         );
     }
