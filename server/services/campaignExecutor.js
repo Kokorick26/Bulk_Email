@@ -35,14 +35,65 @@ function processSpintax(text) {
 }
 
 // Replace personalization variables
-function replaceVariables(text, data) {
+function replaceVariables(text, data, senderProfile = {}) {
     if (!text) return '';
     let result = text;
-    const safeData = { name: '', company: '', firstName: '', lastName: '', email: '', ...data };
 
+    // Merge recipient data with sender profile mapping
+    const safeData = {
+        name: '', company: '', firstName: '', lastName: '', email: '',
+        ...data,
+
+        // Sender Profile Mappings (Handle {{senderName}} style)
+        senderName: senderProfile.senderFullName || senderProfile.fromName || '',
+        senderFullName: senderProfile.senderFullName || senderProfile.fromName || '',
+        senderPosition: senderProfile.senderPosition || '',
+        senderCompany: senderProfile.senderCompany || '',
+        senderPhone: senderProfile.senderPhone || '',
+        senderWebsite: senderProfile.senderWebsite || '',
+        senderLinkedIn: senderProfile.senderLinkedIn || '',
+        senderAddress: senderProfile.senderAddress || '',
+        senderSignature: senderProfile.senderSignature || '',
+    };
+
+    // Standard Handlebars-style {{key}} replacement
     Object.keys(safeData).forEach(key => {
         const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'gi');
         result = result.replace(regex, safeData[key] || '');
+    });
+
+    // Square Bracket [Your Name] Style Replacement
+    const bracketMappings = {
+        'Your Name': safeData.senderFullName,
+        'My Name': safeData.senderFullName,
+        'Name': safeData.senderFullName,
+
+        'Your Position': safeData.senderPosition,
+        'My Position': safeData.senderPosition,
+        'Position': safeData.senderPosition,
+        'Job Title': safeData.senderPosition,
+
+        'Your Company': safeData.senderCompany,
+        'My Company': safeData.senderCompany,
+        'Company': safeData.senderCompany,
+        'Company Name': safeData.senderCompany,
+
+        'Your Phone': safeData.senderPhone,
+        'My Phone': safeData.senderPhone,
+        'Phone': safeData.senderPhone,
+
+        'Your Website': safeData.senderWebsite,
+        'My Website': safeData.senderWebsite,
+        'Website': safeData.senderWebsite,
+
+        'LinkedIn': safeData.senderLinkedIn,
+        'Address': safeData.senderAddress
+    };
+
+    Object.entries(bracketMappings).forEach(([key, value]) => {
+        // Match [Key], [key], [KEY]
+        const regex = new RegExp(`\\[${key}\\]`, 'gi');
+        result = result.replace(regex, value || '');
     });
 
     return result
@@ -220,7 +271,8 @@ async function getTransporter(smtpAccountId) {
             return {
                 transporter,
                 fromEmail: account.Item.fromEmail,
-                fromName: account.Item.fromName
+                fromName: account.Item.fromName,
+                senderProfile: account.Item // Return full item to access sender fields
             };
         }
     }
@@ -238,7 +290,8 @@ async function getTransporter(smtpAccountId) {
     return {
         transporter,
         fromEmail: process.env.SMTP_FROM || process.env.SMTP_USER,
-        fromName: process.env.SMTP_FROM_NAME || process.env.SMTP_USER?.split('@')[0] || 'Support'
+        fromName: process.env.SMTP_FROM_NAME || process.env.SMTP_USER?.split('@')[0] || 'Support',
+        senderProfile: {} // No profile for env fallback
     };
 }
 
@@ -400,7 +453,7 @@ async function getLeadsNeedingEmails(campaignId, sequence, options) {
 // Send a single email for a campaign step
 async function sendStepEmail(campaign, lead, step, stepIndex, smtpAccountId) {
     try {
-        const { transporter, fromEmail, fromName } = await getTransporter(smtpAccountId);
+        const { transporter, fromEmail, fromName, senderProfile } = await getTransporter(smtpAccountId);
 
         // Extract lead data from progress
         const leadEmail = lead.progress?.leadEmail || lead.leadEmail;
@@ -408,10 +461,10 @@ async function sendStepEmail(campaign, lead, step, stepIndex, smtpAccountId) {
 
         // Personalize content
         let subject = processSpintax(step.subject);
-        subject = replaceVariables(subject, leadData);
+        subject = replaceVariables(subject, leadData, senderProfile);
 
         let body = processSpintax(step.body);
-        body = replaceVariables(body, leadData);
+        body = replaceVariables(body, leadData, senderProfile);
 
         // Convert to HTML
         const html = `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6;color:#202124">${body.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</div>`;

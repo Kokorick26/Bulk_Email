@@ -41,12 +41,17 @@ interface Campaign {
     id: string;
     name: string;
     subject: string;
-    status: 'draft' | 'sending' | 'completed' | 'failed';
+    status: 'draft' | 'sending' | 'completed' | 'failed' | 'paused';
     totalRecipients: number;
     sentCount: number;
     failedCount: number;
+    openCount?: number;
+    clickCount?: number;
+    replyCount?: number;
     createdAt: string;
     completedAt?: string;
+    schedule?: any;
+    options?: any;
 }
 
 interface EmailStats {
@@ -76,13 +81,18 @@ export default function UnifiedDashboard() {
     const organizedCampaigns: OrganizedCampaign[] = campaigns.map(c => ({
         id: c.id,
         name: c.name,
-        status: c.status === 'sending' ? 'active' : c.status === 'completed' ? 'completed' : c.status === 'failed' ? 'failed' : 'draft',
+        status: c.status === 'sending' ? 'active' : c.status === 'paused' ? 'paused' : c.status === 'completed' ? 'completed' : c.status === 'failed' ? 'failed' : 'draft',
         createdAt: c.createdAt,
         completedAt: c.completedAt,
         totalRecipients: c.totalRecipients,
         sentCount: c.sentCount,
         failedCount: c.failedCount,
+        openCount: c.openCount || 0,
+        clickCount: c.clickCount || 0,
+        replyCount: c.replyCount || 0,
         progress: c.totalRecipients > 0 ? (c.sentCount / c.totalRecipients) * 100 : 0,
+        schedule: c.schedule,
+        options: c.options,
     }));
 
     const [aiContext, setAiContext] = useState({
@@ -238,13 +248,7 @@ export default function UnifiedDashboard() {
 
         // Email Accounts
         if (activeSection === 'accounts') {
-            return (
-                <ScrollArea className="flex-1">
-                    <div className="p-6">
-                        <EmailAccounts accounts={smtpAccounts} onRefresh={fetchData} />
-                    </div>
-                </ScrollArea>
-            );
+            return <EmailAccounts accounts={smtpAccounts} onRefresh={fetchData} />;
         }
 
         // Default: show campaigns

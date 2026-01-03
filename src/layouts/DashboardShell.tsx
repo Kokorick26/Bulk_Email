@@ -213,11 +213,10 @@ const SIDEBAR_CONTENT: Record<string, {
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Logo
+// Logo
 function WarmloLogo() {
     return (
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
-            <Mail className="w-4 h-4 text-white" />
-        </div>
+        <img src="/logo.png" alt="Warmlo" className="w-8 h-8 rounded-lg object-contain" />
     );
 }
 
@@ -236,10 +235,11 @@ function IconNavRail({
             "w-16 flex-shrink-0 flex flex-col items-center py-4 gap-2 border-r",
             isDark ? 'bg-[#0a0a0a] border-neutral-800' : 'bg-white border-gray-200'
         )}>
-            {/* Logo */}
-            <div className="mb-4">
+            {/* Logo - Removed as it's in the Header */}
+            {/* <div className="mb-4">
                 <WarmloLogo />
-            </div>
+            </div> */}
+            <div className="mt-4" />
 
             {/* Nav Items */}
             <div className="flex flex-col gap-1 w-full px-2">
@@ -500,9 +500,10 @@ function Header({ isDark, onLogout }: { isDark: boolean; onLogout: () => void })
             isDark ? 'bg-[#0a0a0a] border-neutral-800' : 'bg-white border-gray-200'
         )}>
             {/* Left */}
-            <div className="flex items-center gap-4">
-                <span className={cn("text-[15px] font-semibold", isDark ? 'text-white' : 'text-gray-900')}>
-                    Warmlo
+            <div className="flex items-center gap-3">
+                <img src="/logo.png" alt="Warmlo" className="w-6 h-6 rounded-md" />
+                <span className={cn("text-[15px] font-bold font-heading tracking-tight", isDark ? 'text-white' : 'text-gray-900')}>
+                    WARMLO
                 </span>
             </div>
 

@@ -338,40 +338,80 @@ export function CampaignsList({
                                 <h3 className={cn('text-[13px] font-semibold mb-4', isDark ? 'text-white' : 'text-gray-900')}>
                                     Quick Overview
                                 </h3>
-                                <div className="space-y-3">
-                                    <div className="flex items-center justify-between">
-                                        <span className={cn('text-[12px]', isDark ? 'text-gray-400' : 'text-gray-500')}>Status</span>
-                                        <span className={cn(
-                                            'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium',
-                                            STATUS_STYLES[selected.status]?.bg,
-                                            STATUS_STYLES[selected.status]?.text
-                                        )}>
-                                            {selected.status.charAt(0).toUpperCase() + selected.status.slice(1)}
-                                        </span>
+                                <div className="space-y-4">
+                                    {/* Primary Info */}
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <p className={cn('text-[11px] mb-1', isDark ? 'text-gray-500' : 'text-gray-400')}>Status</p>
+                                            <span className={cn(
+                                                'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium',
+                                                STATUS_STYLES[selected.status]?.bg,
+                                                STATUS_STYLES[selected.status]?.text
+                                            )}>
+                                                {selected.status.charAt(0).toUpperCase() + selected.status.slice(1)}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <p className={cn('text-[11px] mb-1', isDark ? 'text-gray-500' : 'text-gray-400')}>Created</p>
+                                            <p className={cn('text-[12px] font-medium', isDark ? 'text-white' : 'text-gray-900')}>
+                                                {formatDate(selected.createdAt)}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center justify-between">
-                                        <span className={cn('text-[12px]', isDark ? 'text-gray-400' : 'text-gray-500')}>Total Recipients</span>
-                                        <span className={cn('text-[13px] font-medium', isDark ? 'text-white' : 'text-gray-900')}>
-                                            {selected.totalRecipients}
-                                        </span>
+
+                                    {/* Engagement Stats */}
+                                    <div className="pt-4 border-t border-dashed border-gray-700/20">
+                                        <p className={cn('text-[11px] font-medium mb-3', isDark ? 'text-gray-400' : 'text-gray-500')}>Engagement</p>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {[
+                                                { label: 'Open Rate', val: selected.sentCount > 0 ? Math.round((selected.openCount || 0) / selected.sentCount * 100) : 0 },
+                                                { label: 'Click Rate', val: selected.sentCount > 0 ? Math.round((selected.clickCount || 0) / selected.sentCount * 100) : 0 },
+                                                { label: 'Reply Rate', val: selected.sentCount > 0 ? Math.round((selected.replyCount || 0) / selected.sentCount * 100) : 0 },
+                                            ].map((stat, i) => (
+                                                <div key={i} className={cn('p-2 rounded-lg text-center', isDark ? 'bg-white/[0.04]' : 'bg-gray-50')}>
+                                                    <div className={cn('text-lg font-semibold', isDark ? 'text-white' : 'text-gray-900')}>{stat.val}%</div>
+                                                    <div className={cn('text-[10px]', isDark ? 'text-gray-500' : 'text-gray-400')}>{stat.label}</div>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
-                                    <div className="flex items-center justify-between">
-                                        <span className={cn('text-[12px]', isDark ? 'text-gray-400' : 'text-gray-500')}>Created</span>
-                                        <span className={cn('text-[13px] font-medium', isDark ? 'text-white' : 'text-gray-900')}>
-                                            {formatDate(selected.createdAt)}
-                                        </span>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => onViewCampaign(selected.id)}
-                                    className={cn(
-                                        'w-full mt-5 flex items-center justify-center gap-1.5 h-9 rounded-lg text-[12px] font-medium transition-colors',
-                                        isDark ? 'bg-white/[0.06] text-gray-300 hover:bg-white/[0.1]' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+
+                                    {/* Schedule Info */}
+                                    {selected.schedule && (
+                                        <div className="pt-4 border-t border-dashed border-gray-700/20">
+                                            <p className={cn('text-[11px] font-medium mb-2', isDark ? 'text-gray-400' : 'text-gray-500')}>Schedule</p>
+                                            <div className="flex items-start gap-2">
+                                                <Clock className={cn('w-3.5 h-3.5 mt-0.5', isDark ? 'text-gray-500' : 'text-gray-400')} />
+                                                <div>
+                                                    <p className={cn('text-[12px]', isDark ? 'text-gray-300' : 'text-gray-700')}>
+                                                        {selected.schedule.days.map(d => d.slice(0, 3)).join(', ')}
+                                                    </p>
+                                                    <p className={cn('text-[11px]', isDark ? 'text-gray-500' : 'text-gray-400')}>
+                                                        {selected.schedule.startTime} - {selected.schedule.endTime} ({selected.schedule.timezone})
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
                                     )}
-                                >
-                                    <Eye className="w-3.5 h-3.5" />
-                                    View Full Campaign Details
-                                </button>
+
+                                    {/* Config Hints */}
+                                    {selected.options && (
+                                        <div className="pt-4 border-t border-dashed border-gray-700/20">
+                                            <div className="flex gap-4">
+                                                {selected.options.trackOpens && (
+                                                    <span className={cn('text-[11px] flex items-center gap-1.5', isDark ? 'text-gray-400' : 'text-gray-500')}>
+                                                        <Eye className="w-3 h-3" /> Track Opens
+                                                    </span>
+                                                )}
+                                                {selected.options.trackClicks && (
+                                                    <span className={cn('text-[11px] flex items-center gap-1.5', isDark ? 'text-gray-400' : 'text-gray-500')}>
+                                                        <MousePointer className="w-3 h-3" /> Track Clicks
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </>

@@ -1,7 +1,7 @@
 import React from 'react';
-import { 
-    Megaphone, Inbox, Target, Users, Server, 
-    Plus, Search, MoreHorizontal, 
+import {
+    Megaphone, Inbox, Target, Users, Server,
+    Plus, Search, MoreHorizontal,
     Send, Clock, Eye,
     TrendingUp, MousePointer, ArrowUpRight, ChevronRight
 } from 'lucide-react';
@@ -20,9 +20,7 @@ export default function DashboardMockup() {
             <div className="w-16 border-r border-white/5 bg-[#050505] flex flex-col items-center relative z-10">
                 {/* Sidebar Header - Just Logo */}
                 <div className="h-16 flex items-center justify-center border-b border-white/5 bg-white/[0.01] w-full">
-                    <div className="w-9 h-9 rounded-lg bg-brand-orange flex items-center justify-center text-white font-bold text-lg shadow-[0_0_20px_rgba(255,85,51,0.4)]">
-                        W
-                    </div>
+                    <img src="/logo.png" alt="Warmlo" className="w-9 h-9 rounded-lg" />
                 </div>
 
                 {/* Navigation - Icons Only */}
@@ -46,7 +44,7 @@ export default function DashboardMockup() {
                 MAIN CONTENT - CAMPAIGNS VIEW
                 ═══════════════════════════════════════════════════════════════════ */}
             <div className="flex-1 flex min-w-0 bg-[#050505] relative z-10">
-                
+
                 {/* LEFT PANEL - Campaign List */}
                 <div className="w-[320px] flex-shrink-0 flex flex-col border-r border-white/5 bg-[#0c0c0c]">
                     {/* Header */}
@@ -61,9 +59,9 @@ export default function DashboardMockup() {
                         {/* Search */}
                         <div className="flex items-center gap-2 h-9 px-3 rounded-lg bg-white/[0.04]">
                             <Search className="w-4 h-4 text-gray-500" />
-                            <input 
-                                type="text" 
-                                placeholder="Search campaigns..." 
+                            <input
+                                type="text"
+                                placeholder="Search campaigns..."
                                 className="bg-transparent border-none outline-none text-[13px] text-white placeholder:text-gray-500 w-full"
                                 readOnly
                             />
@@ -72,34 +70,34 @@ export default function DashboardMockup() {
 
                     {/* Campaign List */}
                     <div className="flex-1 overflow-y-auto p-2 space-y-0.5 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                        <CampaignItem 
-                            title="SaaS Outreach Q1" 
-                            status="active" 
+                        <CampaignItem
+                            title="SaaS Outreach Q1"
+                            status="active"
                             leads="1,240"
                             progress={65}
-                            active 
+                            active
                         />
-                        <CampaignItem 
-                            title="Webinar Invites" 
-                            status="completed" 
+                        <CampaignItem
+                            title="Webinar Invites"
+                            status="completed"
                             leads="850"
                             progress={100}
                         />
-                        <CampaignItem 
-                            title="Follow-up Sequence" 
-                            status="paused" 
+                        <CampaignItem
+                            title="Follow-up Sequence"
+                            status="paused"
                             leads="320"
                             progress={35}
                         />
-                        <CampaignItem 
-                            title="Cold Leads - Tech" 
-                            status="draft" 
+                        <CampaignItem
+                            title="Cold Leads - Tech"
+                            status="draft"
                             leads="0"
                             progress={0}
                         />
-                        <CampaignItem 
-                            title="Partnership Outreach" 
-                            status="active" 
+                        <CampaignItem
+                            title="Partnership Outreach"
+                            status="active"
                             leads="145"
                             progress={12}
                         />

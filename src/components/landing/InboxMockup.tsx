@@ -1,6 +1,6 @@
 import React from 'react';
-import { 
-    Inbox, Star, Clock, Send, File, Trash, 
+import {
+    Inbox, Star, Clock, Send, File, Trash,
     Search, MoreHorizontal, Reply, Forward,
     Paperclip, Smile, Image as ImageIcon
 } from 'lucide-react';
@@ -12,9 +12,7 @@ export default function InboxMockup({ className }: { className?: string }) {
         <div className={cn("w-full max-w-2xl bg-[#050505] border border-white/10 rounded-xl overflow-hidden shadow-2xl font-body flex h-[500px]", className)}>
             {/* Sidebar */}
             <div className="w-16 border-r border-white/5 bg-[#050505] flex flex-col items-center py-4 gap-4">
-                <div className="w-8 h-8 rounded-lg bg-brand-purple flex items-center justify-center text-white font-bold text-sm">
-                    W
-                </div>
+                <img src="/logo.png" alt="Warmlo" className="w-8 h-8 rounded-lg" />
                 <div className="w-full h-[1px] bg-white/5"></div>
                 <div className="p-2 rounded-lg bg-white/10 text-white">
                     <Inbox className="w-5 h-5" />
@@ -35,9 +33,9 @@ export default function InboxMockup({ className }: { className?: string }) {
                 <div className="p-3 border-b border-white/5">
                     <div className="relative">
                         <Search className="absolute left-2 top-2 w-3.5 h-3.5 text-gray-500" />
-                        <input 
-                            type="text" 
-                            placeholder="Search..." 
+                        <input
+                            type="text"
+                            placeholder="Search..."
                             className="w-full bg-white/5 border border-white/5 rounded-md pl-8 pr-3 py-1.5 text-xs text-white placeholder:text-gray-600 focus:outline-none focus:border-brand-purple/50"
                         />
                     </div>
@@ -95,7 +93,7 @@ export default function InboxMockup({ className }: { className?: string }) {
                             "Warmlo combines powerful campaign management with AI-driven sales research to help you contact the right companies..."
                         </p>
                         <p>That sounds interesting. Let's schedule a call for next Tuesday at 2 PM EST to discuss the details?</p>
-                        <p>Best,<br/>Sarah</p>
+                        <p>Best,<br />Sarah</p>
                     </div>
                 </div>
 

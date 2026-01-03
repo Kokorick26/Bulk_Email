@@ -3,7 +3,7 @@ import {
     ChevronLeft, ChevronRight, Check, Loader2, X,
     Sparkles, Users, Mail, Clock, Settings, FileText,
     Upload, Plus, Trash2, Calendar, Globe, Zap,
-    ArrowRight, Target, Send, Eye
+    ArrowRight, Target, Send, Eye, Info
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../../lib/utils';
@@ -373,14 +373,14 @@ function StepLeads({ isDark, leads, onUpdate }: { isDark: boolean; leads: Lead[]
 
     const addManual = () => {
         if (!manualEmail.includes('@')) return;
-        onUpdate([...leads, { 
-            id: `lead-${Date.now()}`, 
-            email: manualEmail, 
+        onUpdate([...leads, {
+            id: `lead-${Date.now()}`,
+            email: manualEmail,
             firstName: manualFirstName,
             lastName: manualLastName,
-            status: 'pending', 
-            customFields: {}, 
-            addedAt: new Date().toISOString() 
+            status: 'pending',
+            customFields: {},
+            addedAt: new Date().toISOString()
         }]);
         setManualEmail('');
         setManualFirstName('');
@@ -406,7 +406,7 @@ function StepLeads({ isDark, leads, onUpdate }: { isDark: boolean; leads: Lead[]
                     }}
                     className={cn(
                         'px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2',
-                        isDark 
+                        isDark
                             ? 'bg-orange-500/10 border border-orange-500/50 text-orange-400 hover:bg-orange-500/20'
                             : 'bg-orange-50 border border-orange-200 text-orange-600 hover:bg-orange-100'
                     )}
@@ -568,7 +568,7 @@ function StepLeads({ isDark, leads, onUpdate }: { isDark: boolean; leads: Lead[]
             {/* Lead Lists Modal */}
             {showLeadListsModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowLeadListsModal(false)}>
-                    <div 
+                    <div
                         onClick={(e) => e.stopPropagation()}
                         className={cn(
                             'w-full max-w-2xl rounded-xl shadow-2xl max-h-[80vh] flex flex-col',
@@ -585,7 +585,7 @@ function StepLeads({ isDark, leads, onUpdate }: { isDark: boolean; leads: Lead[]
                                     Select a list to import leads
                                 </p>
                             </div>
-                            <button 
+                            <button
                                 onClick={() => setShowLeadListsModal(false)}
                                 className={cn(
                                     'p-2 rounded-lg transition-colors',
@@ -623,8 +623,8 @@ function StepLeads({ isDark, leads, onUpdate }: { isDark: boolean; leads: Lead[]
                                             onClick={() => importFromLeadList(list)}
                                             className={cn(
                                                 'w-full p-4 rounded-lg border text-left transition-all hover:scale-[1.01]',
-                                                isDark 
-                                                    ? 'bg-neutral-900 border-neutral-800 hover:border-orange-500/50 hover:bg-neutral-800/50' 
+                                                isDark
+                                                    ? 'bg-neutral-900 border-neutral-800 hover:border-orange-500/50 hover:bg-neutral-800/50'
                                                     : 'bg-white border-gray-200 hover:border-orange-300 hover:bg-orange-50/50'
                                             )}
                                         >
@@ -665,8 +665,8 @@ function StepLeads({ isDark, leads, onUpdate }: { isDark: boolean; leads: Lead[]
                                 onClick={() => setShowLeadListsModal(false)}
                                 className={cn(
                                     'w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-                                    isDark 
-                                        ? 'bg-neutral-800 text-white hover:bg-neutral-700' 
+                                    isDark
+                                        ? 'bg-neutral-800 text-white hover:bg-neutral-700'
                                         : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
                                 )}
                             >
@@ -733,10 +733,12 @@ function StepStrategy({ isDark, value, onChange }: { isDark: boolean; value: 'sa
 }
 
 // Step 4: Email Composer
+// Step 4: Email Composer
 function StepEmails({ isDark, sequences, onUpdate, sequenceType, leads, individualSequences, onIndividualUpdate }: { isDark: boolean; sequences: SequenceStep[]; onUpdate: (s: SequenceStep[]) => void; sequenceType: 'same' | 'individual'; leads: Lead[]; individualSequences: Map<string, SequenceStep[]>; onIndividualUpdate: (m: Map<string, SequenceStep[]>) => void }) {
     const [activeIdx, setActiveIdx] = useState(0);
     const [selectedLead, setSelectedLead] = useState(leads[0]?.id || '');
     const [showAI, setShowAI] = useState(false);
+    const [showGuide, setShowGuide] = useState(false);
     const [aiPrompt, setAiPrompt] = useState('');
     const [aiLoading, setAiLoading] = useState(false);
     const step = sequences[activeIdx];
@@ -786,6 +788,65 @@ function StepEmails({ isDark, sequences, onUpdate, sequenceType, leads, individu
         }
     };
 
+    const VariablesGuide = () => (
+        <div className={cn(
+            'absolute top-12 right-4 w-80 p-4 rounded-xl border shadow-2xl z-50 max-h-[400px] overflow-y-auto',
+            isDark ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-200'
+        )}>
+            <div className="flex items-center justify-between mb-3">
+                <h3 className={cn('font-semibold', isDark ? 'text-white' : 'text-gray-900')}>Personalization Guide</h3>
+                <button onClick={() => setShowGuide(false)} className={cn('p-1 rounded hover:bg-black/10', isDark ? 'text-neutral-400' : 'text-gray-400')}>
+                    <X className="w-4 h-4" />
+                </button>
+            </div>
+
+            <div className="space-y-4">
+                <div>
+                    <p className={cn('text-xs font-medium uppercase tracking-wider mb-2', isDark ? 'text-neutral-500' : 'text-gray-500')}>
+                        Based on Lead Data
+                    </p>
+                    <div className="space-y-2">
+                        {[
+                            { code: '{{firstName}}', desc: "Lead's first name" },
+                            { code: '{{lastName}}', desc: "Lead's last name" },
+                            { code: '{{company}}', desc: "Company name" },
+                            { code: '{{email}}', desc: "Lead's email" },
+                        ].map(v => (
+                            <div key={v.code} className="flex items-center justify-between text-sm">
+                                <code className={cn('px-1.5 py-0.5 rounded text-xs', isDark ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-100 text-orange-600')}>{v.code}</code>
+                                <span className={cn('text-xs', isDark ? 'text-neutral-400' : 'text-gray-500')}>{v.desc}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="border-t pt-3 border-dashed border-gray-700/50">
+                    <p className={cn('text-xs font-medium uppercase tracking-wider mb-2', isDark ? 'text-neutral-500' : 'text-gray-500')}>
+                        Your Sender Profile
+                    </p>
+                    <p className={cn('text-xs mb-2 italic', isDark ? 'text-neutral-500' : 'text-gray-500')}>
+                        Configure these in "Email Accounts" settings
+                    </p>
+                    <div className="space-y-2">
+                        {[
+                            { code: '[Your Name]', desc: "Your full name" },
+                            { code: '[Your Company]', desc: "Your company" },
+                            { code: '[Your Position]', desc: "Your job title" },
+                            { code: '[Your Phone]', desc: "Your phone number" },
+                            { code: '[Your Website]', desc: "Company website" },
+                            { code: '[LinkedIn]', desc: "Your LinkedIn URL" },
+                        ].map(v => (
+                            <div key={v.code} className="flex items-center justify-between text-sm">
+                                <code className={cn('px-1.5 py-0.5 rounded text-xs', isDark ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-600')}>{v.code}</code>
+                                <span className={cn('text-xs', isDark ? 'text-neutral-400' : 'text-gray-500')}>{v.desc}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
     if (sequenceType === 'individual') {
         return (
             <div className="h-full flex flex-col">
@@ -825,12 +886,26 @@ function StepEmails({ isDark, sequences, onUpdate, sequenceType, leads, individu
 
     return (
         <div className="h-full flex flex-col">
-            <div className="mb-4">
-                <h2 className={cn('text-lg font-semibold', isDark ? 'text-white' : 'text-gray-900')}>Craft your sequence</h2>
-                <p className={cn('text-sm', isDark ? 'text-neutral-400' : 'text-gray-500')}>Use {'{{firstName}}'}, {'{{email}}'}, {'{{company}}'} for personalization</p>
+            <div className="mb-4 flex items-center justify-between">
+                <div>
+                    <h2 className={cn('text-lg font-semibold', isDark ? 'text-white' : 'text-gray-900')}>Craft your sequence</h2>
+                    <p className={cn('text-sm', isDark ? 'text-neutral-400' : 'text-gray-500')}>Use variables to personalize your outreach</p>
+                </div>
+                <button
+                    onClick={() => setShowGuide(!showGuide)}
+                    className={cn(
+                        'flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border',
+                        isDark ? 'border-neutral-700 hover:bg-neutral-800 text-neutral-300' : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+                    )}
+                >
+                    <Info className="w-3.5 h-3.5" />
+                    Variables Guide
+                </button>
             </div>
 
-            <div className="flex-1 flex gap-4 min-h-0">
+            <div className="flex-1 flex gap-4 min-h-0 relative">
+                {showGuide && <VariablesGuide />}
+
                 {/* Steps sidebar */}
                 <div className="w-52 flex flex-col gap-2">
                     <div className="flex-1 space-y-2 overflow-y-auto">
@@ -890,7 +965,7 @@ function StepEmails({ isDark, sequences, onUpdate, sequenceType, leads, individu
                     {/* Body */}
                     <div className="flex-1 relative">
                         <textarea
-                            placeholder={`Hi {{firstName}},\n\nWrite your message here...\n\nBest regards`}
+                            placeholder={`Hi {{firstName}},\n\nWrite your message here...\n\nBest regards,\n[Your Name]`}
                             value={step.body}
                             onChange={(e) => updateStep(activeIdx, { body: e.target.value })}
                             className={cn('w-full h-full p-4 bg-transparent resize-none focus:outline-none text-sm leading-relaxed', isDark ? 'text-white placeholder:text-neutral-600' : 'text-gray-900 placeholder:text-gray-400')}

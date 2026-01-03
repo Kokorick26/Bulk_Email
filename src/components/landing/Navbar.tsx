@@ -7,7 +7,7 @@ import { ArrowRight } from 'lucide-react';
 const Navbar = () => {
     const [isScrolled, setIsScrolled] = useState(false);
     const { scrollY } = useScroll();
-    
+
     useEffect(() => {
         const handleScroll = () => {
             setIsScrolled(window.scrollY > 20);
@@ -53,20 +53,15 @@ const Navbar = () => {
         >
             <div className="max-w-7xl w-full mx-auto px-6 flex items-center justify-between">
                 <Link to="/" className="flex items-center gap-3 group">
-                    <div className="relative">
-                        <div className="absolute inset-0 bg-brand-orange blur-lg opacity-20 group-hover:opacity-40 transition-opacity duration-500"></div>
-                        <div className="relative w-10 h-10 bg-brand-orange flex items-center justify-center text-white font-heading font-bold text-xl group-hover:rotate-12 transition-transform duration-500 shadow-lg shadow-brand-orange/20 border border-white/10">
-                            W
-                        </div>
-                    </div>
+                    <img src="/logo.png" alt="Warmlo" className="w-10 h-10 rounded-lg group-hover:scale-105 transition-transform duration-300" />
                     <span className="font-heading font-bold text-xl text-white tracking-tight group-hover:text-brand-orange transition-colors duration-300">WARMLO</span>
                 </Link>
 
                 <div className="hidden md:flex items-center gap-10">
                     {['Features', 'About', 'Pricing'].map((item) => (
-                        <Link 
+                        <Link
                             key={item}
-                            to={`/${item.toLowerCase()}`} 
+                            to={`/${item.toLowerCase()}`}
                             className="relative text-sm font-mono uppercase tracking-wider text-gray-400 hover:text-white transition-colors group py-2"
                         >
                             {item}

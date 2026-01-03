@@ -29,7 +29,7 @@ export default function Pricing() {
         },
         {
             name: "Growth",
-            price: annual ? 30 : 37,
+            price: 0,
             popular: true,
             desc: "For serious sales teams scaling up.",
             features: [
@@ -48,7 +48,7 @@ export default function Pricing() {
         },
         {
             name: "Hypergrowth",
-            price: annual ? 77 : 97,
+            price: 0,
             desc: "For agencies & power users.",
             features: [
                 "Everything in Growth",
@@ -66,7 +66,7 @@ export default function Pricing() {
     return (
         <div className="min-h-screen bg-brand-dark text-white font-body selection:bg-brand-orange selection:text-white overflow-x-hidden">
             <Navbar />
-            
+
             {/* ═══════════════════════════════════════════════════════════════════
                 BACKGROUND
                 ═══════════════════════════════════════════════════════════════════ */}
@@ -77,7 +77,7 @@ export default function Pricing() {
 
             <main className="relative z-10 pt-32 pb-20">
                 <div className="container px-6 mx-auto">
-                    
+
                     {/* ═══════════════════════════════════════════════════════════════════
                         HERO
                         ═══════════════════════════════════════════════════════════════════ */}
@@ -91,7 +91,7 @@ export default function Pricing() {
                             <span className="text-xs font-mono text-gray-300 tracking-wider uppercase">Simple Pricing</span>
                         </motion.div>
 
-                        <motion.h1 
+                        <motion.h1
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.1 }}
@@ -100,8 +100,8 @@ export default function Pricing() {
                             PAY FOR RESULTS, <br />
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-orange to-brand-pink">NOT SEATS</span>
                         </motion.h1>
-                        
-                        <motion.p 
+
+                        <motion.p
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.2 }}
@@ -111,14 +111,14 @@ export default function Pricing() {
                         </motion.p>
 
                         {/* Toggle */}
-                        <motion.div 
+                        <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.3 }}
                             className="flex items-center justify-center gap-4 mb-16"
                         >
                             <span className={`text-sm font-medium ${!annual ? 'text-white' : 'text-gray-500'}`}>Monthly</span>
-                            <button 
+                            <button
                                 onClick={() => setAnnual(!annual)}
                                 className="w-14 h-8 rounded-full bg-white/10 border border-white/10 relative p-1 transition-colors hover:bg-white/20"
                             >
@@ -141,11 +141,10 @@ export default function Pricing() {
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
                                 transition={{ delay: i * 0.1 }}
-                                className={`relative rounded-3xl p-8 flex flex-col ${
-                                    plan.popular 
-                                        ? 'bg-[#0A0A0A] border border-brand-orange/50 shadow-[0_0_50px_-10px_rgba(255,85,51,0.2)]' 
-                                        : 'bg-[#0A0A0A] border border-white/10'
-                                }`}
+                                className={`relative rounded-3xl p-8 flex flex-col ${plan.popular
+                                    ? 'bg-[#0A0A0A] border border-brand-orange/50 shadow-[0_0_50px_-10px_rgba(255,85,51,0.2)]'
+                                    : 'bg-[#0A0A0A] border border-white/10'
+                                    }`}
                             >
                                 {plan.popular && (
                                     <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-brand-orange text-white text-xs font-bold uppercase tracking-wider shadow-lg">
@@ -160,22 +159,31 @@ export default function Pricing() {
 
                                 <div className="mb-8">
                                     <div className="flex items-baseline gap-1">
-                                        <span className="text-4xl font-bold font-heading">${plan.price}</span>
-                                        <span className="text-gray-500">/mo</span>
+                                        {plan.price === 0 ? (
+                                            <span className="text-3xl font-bold font-heading">Coming Soon</span>
+                                        ) : (
+                                            <>
+                                                <span className="text-4xl font-bold font-heading">${plan.price}</span>
+                                                <span className="text-gray-500">/mo</span>
+                                            </>
+                                        )}
                                     </div>
-                                    {annual && plan.price > 0 && (
+                                    {annual && plan.price > 0 ? (
                                         <div className="text-xs text-brand-orange mt-2 font-medium">
                                             Billed ${plan.price * 12} yearly
+                                        </div>
+                                    ) : (
+                                        <div className="text-xs text-brand-orange mt-2 font-medium opacity-0">
+                                            Free forever
                                         </div>
                                     )}
                                 </div>
 
-                                <Button 
-                                    className={`w-full mb-8 h-12 font-bold tracking-wide ${
-                                        plan.popular 
-                                            ? 'bg-brand-orange hover:bg-brand-orange/90 text-white' 
-                                            : 'bg-white/10 hover:bg-white/20 text-white'
-                                    }`}
+                                <Button
+                                    className={`w-full mb-8 h-12 font-bold tracking-wide ${plan.popular
+                                        ? 'bg-brand-orange hover:bg-brand-orange/90 text-white'
+                                        : 'bg-white/10 hover:bg-white/20 text-white'
+                                        }`}
                                 >
                                     {plan.price === 0 ? 'Get Started Free' : 'Start 14-Day Trial'}
                                 </Button>

@@ -61,14 +61,9 @@ export default function Login({ onLogin }: LoginProps) {
                     >
                         {/* Logo */}
                         <div className="flex items-center gap-4 mb-12">
-                            <div className="relative">
-                                <div className="absolute inset-0 bg-[var(--terracotta)] blur-lg opacity-40" />
-                                <div className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-[var(--terracotta)] to-[var(--terracotta-dark)] flex items-center justify-center shadow-lg ring-1 ring-white/10">
-                                    <Bot className="w-6 h-6 text-white" />
-                                </div>
-                            </div>
+                            <img src="/logo.png" alt="Warmlo" className="w-12 h-12 rounded-xl shadow-lg ring-1 ring-white/10" />
                             <span className="text-2xl font-bold text-white tracking-tight" style={{ fontFamily: 'Syne, sans-serif' }}>
-                                Kokorick <span className="text-[var(--text-muted)] font-normal">AI</span>
+                                WARMLO
                             </span>
                         </div>
 
@@ -130,11 +125,9 @@ export default function Login({ onLogin }: LoginProps) {
                 >
                     {/* Mobile Logo */}
                     <div className="lg:hidden flex items-center justify-center gap-3 mb-12">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--terracotta)] to-[var(--terracotta-dark)] flex items-center justify-center ring-1 ring-white/10">
-                            <Bot className="w-5 h-5 text-white" />
-                        </div>
+                        <img src="/logo.png" alt="Warmlo" className="w-10 h-10 rounded-xl shadow-lg" />
                         <span className="text-xl font-bold text-white" style={{ fontFamily: 'Syne, sans-serif' }}>
-                            Kokorick AI
+                            WARMLO
                         </span>
                     </div>
 
@@ -208,7 +201,7 @@ export default function Login({ onLogin }: LoginProps) {
 
                     {/* Footer */}
                     <p className="text-center text-[var(--text-muted)] text-sm mt-12">
-                        Built with ❤️ by Kokorick
+                        Built with ❤️ by WARMLO
                     </p>
                 </motion.div>
             </div>
