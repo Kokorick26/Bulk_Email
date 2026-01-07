@@ -1,8 +1,10 @@
+
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    ChevronLeft, Search, Plus, Mail, Check,
-    Loader2, Trash2, X, User, Building2, Phone, Globe, Linkedin, MapPin, Save, MoreHorizontal, LayoutDashboard
+    ChevronLeft, Search, Plus, Mail, Check, Users,
+    Loader2, Trash2, X, User, Building2, Phone, Globe, Linkedin, MapPin, Save, MoreHorizontal, LayoutDashboard,
+    Calendar, Send, AlertCircle, Inbox, Server
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../../lib/utils';
@@ -115,11 +117,30 @@ export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsP
     const [testingImap, setTestingImap] = useState(false);
     const [testingSmtp, setTestingSmtp] = useState(false);
 
+    // Email History State
+    interface EmailHistoryData {
+        todaySentCount: number;
+        dailyLimit: number;
+        remainingToday: number;
+        sentByCampaign: Array<{ campaignId: string; campaignName: string; emails: Array<{ id: string; to: string; subject: string; status: string; sentAt: string }> }>;
+        scheduledByCampaign: Array<{ campaignId: string; campaignName: string; emails: Array<{ id: string; to: string; subject: string; scheduledTime: string }> }>;
+        sentEmails: Array<{ id: string; to: string; subject: string; status: string; sentAt: string; campaignName?: string }>;
+        scheduledEmails: Array<{ id: string; to: string; subject: string; scheduledTime: string; campaignName?: string }>;
+    }
+    const [emailHistory, setEmailHistory] = useState<EmailHistoryData | null>(null);
+    const [historyLoading, setHistoryLoading] = useState(false);
+
+
+
+
+
+
+
     // Filter accounts
-    const filteredAccounts = accounts.filter(a =>
-        a.fromEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        a.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredAccounts = accounts.filter(a => {
+        return a.fromEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            a.name.toLowerCase().includes(searchQuery.toLowerCase());
+    });
 
     // Selection Handler
     useEffect(() => {
@@ -147,6 +168,26 @@ export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsP
                 senderSignature: selectedAccount.senderSignature || '',
             });
             setView('account-detail');
+
+            // Fetch email history for this account
+            const fetchHistory = async () => {
+                setHistoryLoading(true);
+                try {
+                    const token = localStorage.getItem('bulkEmailToken');
+                    const res = await fetch(`${API_BASE} /smtp-accounts/${selectedAccount.id}/history`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        setEmailHistory(data);
+                    }
+                } catch (err) {
+                    console.error('Failed to fetch email history:', err);
+                } finally {
+                    setHistoryLoading(false);
+                }
+            };
+            fetchHistory();
         }
     }, [selectedAccount]);
 
@@ -278,13 +319,15 @@ export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsP
                         <h2 className={cn('text-[15px] font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
                             Email Accounts
                         </h2>
-                        <button
-                            onClick={handleAddNew}
-                            className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:opacity-90 transition-opacity"
-                        >
-                            <Plus className="w-3.5 h-3.5" />
-                            New
-                        </button>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={handleAddNew}
+                                className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:opacity-90 transition-opacity"
+                            >
+                                <Plus className="w-3.5 h-3.5" />
+                                New
+                            </button>
+                        </div>
                     </div>
                     {/* Search */}
                     <div className={cn(
@@ -303,6 +346,8 @@ export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsP
                             )}
                         />
                     </div>
+
+
                 </div>
 
                 {/* List */}
@@ -581,6 +626,150 @@ export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsP
                             <ScrollArea className="flex-1">
                                 <div className="p-8 max-w-4xl mx-auto space-y-8">
 
+                                    {/* Email Activity Section */}
+                                    <div className={cn('rounded-xl border', isDark ? 'bg-neutral-900/30 border-neutral-800' : 'bg-white border-gray-200')}>
+                                        <div className="px-6 py-4 border-b border-gray-200 dark:border-neutral-800 flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
+                                                    <Mail className="w-4 h-4" />
+                                                </div>
+                                                <div>
+                                                    <h3 className={cn('font-semibold', isDark ? 'text-white' : 'text-gray-900')}>Email Activity</h3>
+                                                    <p className="text-xs text-gray-500">Sent and scheduled emails from this account</p>
+                                                </div>
+                                            </div>
+                                            {emailHistory && (
+                                                <div className={cn('px-3 py-1.5 rounded-full text-xs font-medium',
+                                                    emailHistory.remainingToday > 0
+                                                        ? isDark ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600'
+                                                        : isDark ? 'bg-red-500/10 text-red-400' : 'bg-red-50 text-red-600'
+                                                )}>
+                                                    {emailHistory.remainingToday} of {emailHistory.dailyLimit} left today
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="p-6">
+                                            {historyLoading ? (
+                                                <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                                                    <Loader2 className="w-8 h-8 animate-spin mb-4" />
+                                                    <p className="text-sm">Loading activity...</p>
+                                                </div>
+                                            ) : emailHistory ? (
+                                                <div className="space-y-10">
+                                                    {/* Scheduled Emails Grouped by Campaign */}
+                                                    {emailHistory.scheduledByCampaign.length > 0 && (
+                                                        <div className="space-y-5">
+                                                            <div className="flex items-center gap-2 pb-2 border-b border-gray-100 dark:border-neutral-800">
+                                                                <div className="p-1.5 rounded-md bg-blue-500/10 text-blue-500">
+                                                                    <Calendar className="w-4 h-4" />
+                                                                </div>
+                                                                <h4 className={cn('text-sm font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
+                                                                    Scheduled Queue
+                                                                </h4>
+                                                                <span className={cn('ml-auto text-xs px-2 py-0.5 rounded-full', isDark ? 'bg-neutral-800 text-neutral-400' : 'bg-gray-100 text-gray-500')}>
+                                                                    {emailHistory.scheduledEmails.length} pending
+                                                                </span>
+                                                            </div>
+                                                            <div className="space-y-6">
+                                                                {emailHistory.scheduledByCampaign.map(group => (
+                                                                    <div key={group.campaignId} className="space-y-3">
+                                                                        <div className="flex items-center gap-2 px-2">
+                                                                            <LayoutDashboard className="w-3.5 h-3.5 text-gray-400" />
+                                                                            <span className={cn('text-xs font-semibold uppercase tracking-wider', isDark ? 'text-neutral-500' : 'text-gray-500')}>
+                                                                                {group.campaignName}
+                                                                            </span>
+                                                                        </div>
+                                                                        <div className="space-y-1">
+                                                                            {group.emails.map(email => (
+                                                                                <div key={email.id} className={cn('group p-3 rounded-lg flex items-center justify-between transition-colors', isDark ? 'hover:bg-neutral-800/50' : 'hover:bg-gray-50')}>
+                                                                                    <div className="min-w-0 flex-1 flex flex-col gap-0.5">
+                                                                                        <p className={cn('text-sm font-medium truncate', isDark ? 'text-neutral-200' : 'text-gray-700')}>{email.to}</p>
+                                                                                        <p className={cn('text-xs truncate', isDark ? 'text-neutral-500' : 'text-gray-500')}>{email.subject}</p>
+                                                                                    </div>
+                                                                                    <div className="flex flex-col items-end gap-1 ml-4">
+                                                                                        <span className={cn('text-[10px] font-medium px-2 py-0.5 rounded bg-blue-500/10 text-blue-500')}>
+                                                                                            Pending
+                                                                                        </span>
+                                                                                        <span className="text-[10px] text-gray-400">{new Date(email.scheduledTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                                                                    </div>
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Sent Emails Grouped by Campaign */}
+                                                    <div className="space-y-5">
+                                                        <div className="flex items-center gap-2 pb-2 border-b border-gray-100 dark:border-neutral-800">
+                                                            <div className="p-1.5 rounded-md bg-emerald-500/10 text-emerald-500">
+                                                                <Send className="w-4 h-4" />
+                                                            </div>
+                                                            <h4 className={cn('text-sm font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
+                                                                Recently Sent
+                                                            </h4>
+                                                            <span className={cn('ml-auto text-xs px-2 py-0.5 rounded-full', isDark ? 'bg-neutral-800 text-neutral-400' : 'bg-gray-100 text-gray-500')}>
+                                                                {emailHistory.sentEmails.length} sent
+                                                            </span>
+                                                        </div>
+
+                                                        {emailHistory.sentByCampaign.length === 0 ? (
+                                                            <div className="flex flex-col items-center justify-center py-12 text-center">
+                                                                <div className={cn('w-12 h-12 rounded-full flex items-center justify-center mb-3', isDark ? 'bg-neutral-800 text-neutral-600' : 'bg-gray-100 text-gray-400')}>
+                                                                    <Inbox className="w-6 h-6" />
+                                                                </div>
+                                                                <p className={cn('text-sm font-medium', isDark ? 'text-neutral-400' : 'text-gray-600')}>No emails sent yet</p>
+                                                                <p className={cn('text-xs mt-1', isDark ? 'text-neutral-500' : 'text-gray-500')}>Emails sent from this account will appear here.</p>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="space-y-6">
+                                                                {emailHistory.sentByCampaign.map(group => (
+                                                                    <div key={group.campaignId} className="space-y-3">
+                                                                        <div className="flex items-center gap-2 px-2">
+                                                                            <LayoutDashboard className="w-3.5 h-3.5 text-gray-400" />
+                                                                            <span className={cn('text-xs font-semibold uppercase tracking-wider', isDark ? 'text-neutral-500' : 'text-gray-500')}>
+                                                                                {group.campaignName}
+                                                                            </span>
+                                                                        </div>
+                                                                        <div className="space-y-1">
+                                                                            {group.emails.map(email => (
+                                                                                <div key={email.id} className={cn('group p-3 rounded-lg flex items-center justify-between transition-colors', isDark ? 'hover:bg-neutral-800/50' : 'hover:bg-gray-50')}>
+                                                                                    <div className="min-w-0 flex-1 flex flex-col gap-0.5">
+                                                                                        <p className={cn('text-sm font-medium truncate', isDark ? 'text-neutral-200' : 'text-gray-700')}>{email.to}</p>
+                                                                                        <p className={cn('text-xs truncate', isDark ? 'text-neutral-500' : 'text-gray-500')}>{email.subject}</p>
+                                                                                    </div>
+                                                                                    <div className="flex flex-col items-end gap-1 ml-4">
+                                                                                        <span className={cn('px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wide',
+                                                                                            email.status === 'opened' ? 'bg-emerald-500/10 text-emerald-500' :
+                                                                                                email.status === 'clicked' ? 'bg-blue-500/10 text-blue-500' :
+                                                                                                    isDark ? 'bg-neutral-800 text-neutral-400' : 'bg-gray-100 text-gray-500'
+                                                                                        )}>{email.status}</span>
+                                                                                        <span className="text-[10px] text-gray-400">{new Date(email.sentAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
+                                                                                    </div>
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col items-center justify-center py-12 text-center">
+                                                    <div className={cn('w-12 h-12 rounded-full flex items-center justify-center mb-3', isDark ? 'bg-red-500/10 text-red-500' : 'bg-red-50 text-red-500')}>
+                                                        <AlertCircle className="w-6 h-6" />
+                                                    </div>
+                                                    <p className={cn('text-sm font-medium', isDark ? 'text-neutral-400' : 'text-gray-600')}>Unable to load history</p>
+                                                    <p className={cn('text-xs mt-1 max-w-[200px]', isDark ? 'text-neutral-500' : 'text-gray-500')}>We couldn't fetch the email history for this account. Please try again later.</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+
                                     {/* Sender Profile Section */}
                                     <div className={cn('rounded-xl border', isDark ? 'bg-neutral-900/30 border-neutral-800' : 'bg-white border-gray-200')}>
                                         <div className="px-6 py-4 border-b border-gray-200 dark:border-neutral-800 flex items-center gap-3">
@@ -676,6 +865,80 @@ export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsP
                                         </div>
                                     </div>
 
+                                    {/* Server Configuration Section */}
+                                    <div className={cn('rounded-xl border', isDark ? 'bg-neutral-900/30 border-neutral-800' : 'bg-white border-gray-200')}>
+                                        <div className="px-6 py-4 border-b border-gray-200 dark:border-neutral-800 flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-500">
+                                                <Server className="w-4 h-4" />
+                                            </div>
+                                            <div>
+                                                <h3 className={cn('font-semibold', isDark ? 'text-white' : 'text-gray-900')}>Server Configuration</h3>
+                                                <p className="text-xs text-gray-500">SMTP and IMAP server details</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="p-6 grid grid-cols-2 gap-6">
+                                            <div className="col-span-2">
+                                                <div className="flex items-center gap-2 mb-3">
+                                                    <Mail className="w-4 h-4 text-orange-500" />
+                                                    <span className="text-sm font-medium">SMTP Settings (Outgoing)</span>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4 p-4 rounded-lg bg-white/[0.03] border border-neutral-800">
+                                                    <div>
+                                                        <p className="text-xs text-gray-500 mb-1">Host</p>
+                                                        <p className={cn('text-sm font-mono', isDark ? 'text-white' : 'text-gray-900')}>
+                                                            {selectedAccount?.host || 'Not configured'}
+                                                        </p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs text-gray-500 mb-1">Port</p>
+                                                        <p className={cn('text-sm font-mono', isDark ? 'text-white' : 'text-gray-900')}>
+                                                            {selectedAccount?.port || '-'}
+                                                        </p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs text-gray-500 mb-1">Username</p>
+                                                        <p className={cn('text-sm font-mono truncate', isDark ? 'text-white' : 'text-gray-900')}>
+                                                            {selectedAccount?.username || selectedAccount?.fromEmail || '-'}
+                                                        </p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs text-gray-500 mb-1">From Email</p>
+                                                        <p className={cn('text-sm font-mono truncate', isDark ? 'text-white' : 'text-gray-900')}>
+                                                            {selectedAccount?.fromEmail || '-'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="col-span-2">
+                                                <div className="flex items-center gap-2 mb-3">
+                                                    <Inbox className="w-4 h-4 text-blue-500" />
+                                                    <span className="text-sm font-medium">IMAP Settings (Incoming)</span>
+                                                    {selectedAccount?.imapConfigured ? (
+                                                        <span className="px-2 py-0.5 text-xs rounded-full bg-green-500/20 text-green-500">Configured</span>
+                                                    ) : (
+                                                        <span className="px-2 py-0.5 text-xs rounded-full bg-yellow-500/20 text-yellow-500">Not Configured</span>
+                                                    )}
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4 p-4 rounded-lg bg-white/[0.03] border border-neutral-800">
+                                                    <div>
+                                                        <p className="text-xs text-gray-500 mb-1">Host</p>
+                                                        <p className={cn('text-sm font-mono', isDark ? 'text-white' : 'text-gray-900')}>
+                                                            {selectedAccount?.imapHost || 'Not configured'}
+                                                        </p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs text-gray-500 mb-1">Port</p>
+                                                        <p className={cn('text-sm font-mono', isDark ? 'text-white' : 'text-gray-900')}>
+                                                            {selectedAccount?.imapPort || '-'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     {/* Placeholders Guide */}
                                     <div className={cn(
                                         'p-4 rounded-xl border flex gap-4',
@@ -725,6 +988,8 @@ export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsP
                     )}
                 </AnimatePresence>
             </div>
+
+
         </div>
     );
 }

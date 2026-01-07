@@ -112,6 +112,8 @@ export interface CampaignOptions {
     // Added fields that are used in OptionsTab
     dailyLimit: number;
     timeBetweenEmails: number;
+    // Email Account Selection
+    selectedAccountIds?: string[];
 }
 
 export type CampaignTab = 'analytics' | 'leads' | 'sequences' | 'schedule' | 'options' | 'accounts' | 'history';

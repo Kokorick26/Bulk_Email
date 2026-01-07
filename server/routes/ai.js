@@ -376,16 +376,35 @@ const sanitizeContent = (content) => {
 const generateUniqueEmail = async (baseSubject, baseBody, recipient, index, style, headers) => {
     const apiKey = process.env.MISTRAL_API_KEY;
 
+    // FIX: Analyze which fields are actually available for this recipient
+    const availableFields = {};
+    const missingFields = [];
+
+    Object.entries(recipient).forEach(([key, value]) => {
+        if (value && value.trim && value.trim() !== '') {
+            availableFields[key] = value;
+        } else {
+            missingFields.push(key);
+        }
+    });
+
     // For light personalization, just do variable replacement with variations
     if (style === 'light' || !apiKey) {
         let subject = baseSubject;
         let body = baseBody;
 
-        // Replace variables
-        Object.entries(recipient).forEach(([key, value]) => {
+        // Replace variables only for available fields
+        Object.entries(availableFields).forEach(([key, value]) => {
             const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'gi');
-            subject = subject.replace(regex, value || '');
-            body = body.replace(regex, value || '');
+            subject = subject.replace(regex, value);
+            body = body.replace(regex, value);
+        });
+
+        // Remove any remaining placeholders for missing fields
+        missingFields.forEach(key => {
+            const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'gi');
+            subject = subject.replace(regex, '');
+            body = body.replace(regex, '');
         });
 
         // Add subtle variations
@@ -395,13 +414,38 @@ const generateUniqueEmail = async (baseSubject, baseBody, recipient, index, styl
     }
 
     // For medium/heavy personalization, use AI to generate unique content
-    const recipientInfo = Object.entries(recipient)
+    // FIX: Only include available fields in recipient info
+    const recipientInfo = Object.entries(availableFields)
         .map(([k, v]) => `${k}: "${v}"`)
         .join(', ');
 
     const personalizationPrompt = style === 'heavy'
         ? `Write a completely unique email for this specific person. Make it feel like you researched them personally.`
         : `Personalize this email template for this specific recipient. Keep the core message but adapt the tone and details.`;
+
+    // FIX: Build smart instructions about available fields
+    let fieldInstructions = '';
+    if (availableFields.name || availableFields.firstname) {
+        fieldInstructions += '- You can use the recipient\'s name for personalization.\n';
+    } else {
+        fieldInstructions += '- The recipient\'s name is NOT available. Write a friendly email without using their name.\n';
+    }
+
+    if (availableFields.company) {
+        fieldInstructions += '- You can mention their company.\n';
+    } else {
+        fieldInstructions += '- Company information is NOT available. Do not reference their company.\n';
+    }
+
+    if (availableFields.role || availableFields.position) {
+        fieldInstructions += '- You can reference their role/position.\n';
+    } else {
+        fieldInstructions += '- Role/position is NOT available. Do not reference their job title.\n';
+    }
+
+    if (missingFields.length > 0) {
+        fieldInstructions += `\nIMPORTANT: These fields are MISSING and should NOT be referenced: ${missingFields.join(', ')}\n`;
+    }
 
     try {
         const response = await fetch(MISTRAL_API_URL, {
@@ -420,19 +464,49 @@ const generateUniqueEmail = async (baseSubject, baseBody, recipient, index, styl
 CRITICAL RULES:
 - NEVER use em dashes (—) or en dashes (–). Only use regular hyphens (-) or colons (:).
 - NEVER use markdown formatting like **bold** or *italic* in the output. Plain text only.
-- Output ONLY the email content, no explanations.
-- Format: First line is subject (no "Subject:" prefix, no asterisks), then blank line, then body.
-- Keep it concise and human-sounding.
-- Do not use [brackets] for placeholders.`
+- Do not use [brackets] for placeholders.
+
+OUTPUT FORMAT (CRITICAL - FOLLOW EXACTLY):
+Line 1: Subject line ONLY (no "Subject:" prefix, no quotes, no asterisks)
+Line 2: Empty line
+Line 3+: Email body
+
+SUBJECT LINE REQUIREMENTS:
+- Must be 3-6 words maximum
+- Casual, lowercase style (e.g., "quick question", "thoughts on this?", "intro")
+- NO Title Case Marketing Speak
+- NO punctuation at the end
+- Make it feel human and natural
+
+EXAMPLE OUTPUT:
+quick question about your work
+
+Hi there,
+
+I noticed your recent project and wanted to reach out...
+
+Best,
+Bhawesh
+
+FIELD AVAILABILITY (CRITICAL):
+${fieldInstructions}
+
+Write the email based ONLY on the information you have. If a field is missing, write a great email without it. Be smart and adaptive.`
                     },
                     {
                         role: 'user',
-                        content: `Recipient info: ${recipientInfo}
+                        content: `Available recipient info: ${recipientInfo || 'email only'}
 
 Base subject: ${baseSubject}
 Base body: ${baseBody}
 
-Generate a personalized version for this recipient. Remember: NO em dashes, NO en dashes.`
+Generate a personalized version using ONLY the available fields. 
+
+IMPORTANT: 
+- First line MUST be the subject (no "Subject:" prefix)
+- Then blank line
+- Then email body
+- NO em dashes, NO en dashes, NO references to missing information.`
                     }
                 ],
                 temperature: 0.8 + (index * 0.01), // Slight variation per recipient
@@ -448,17 +522,33 @@ Generate a personalized version for this recipient. Remember: NO em dashes, NO e
         const data = await response.json();
         const content = data.choices?.[0]?.message?.content || '';
 
-        // Parse subject and body from response
-        const lines = content.trim().split('\n');
-        let subject = lines[0].replace(/^Subject:\s*/i, '').trim();
+        // Improved parsing with better error handling
+        const lines = content.trim().split('\n').filter(line => line.trim());
+
+        // First non-empty line is the subject
+        let subject = lines[0]?.replace(/^Subject:\s*/i, '').replace(/^["']|["']$/g, '').trim();
+
+        // Rest is the body (skip the first line and any empty lines)
         let body = lines.slice(1).join('\n').trim();
 
-        // If parsing failed, use base with variable replacement
-        if (!subject || !body) {
-            return generateUniqueEmail(baseSubject, baseBody, recipient, index, 'light', headers);
+        // Validation: ensure we have both subject and body
+        if (!subject || subject.length < 2) {
+            console.warn('[AI] No subject generated, using base subject');
+            subject = baseSubject;
         }
 
-        return { subject: sanitizeContent(subject), body: sanitizeContent(body) };
+        if (!body || body.length < 10) {
+            console.warn('[AI] No body generated, using base body');
+            body = baseBody;
+        }
+
+        // Final cleanup
+        subject = sanitizeContent(subject);
+        body = sanitizeContent(body);
+
+        console.log(`[AI] Generated - Subject: "${subject.substring(0, 50)}...", Body: ${body.length} chars`);
+
+        return { subject, body };
 
     } catch (error) {
         console.error('AI personalization error:', error);
@@ -826,9 +916,9 @@ router.post('/chat', auth, async (req, res) => {
             const toolSummary = toolResults.map(r => {
                 if (r.result.success) {
                     // Just show the message without tool name
-                    return `✅ ${r.result.message}`;
+                    return ` ${r.result.message}`;
                 } else {
-                    return `❌ ${r.result.message}`;
+                    return ` ${r.result.message}`;
                 }
             }).join('\n\n');
 
@@ -902,16 +992,39 @@ router.post('/generate', auth, async (req, res) => {
                 messages: [
                     {
                         role: 'system',
-                        content: `You are an expert email copywriter. Generate email content based on the user's request.
-                        
-RULES:
-- NEVER use em dashes (—) or en dashes (–). Only use hyphens (-) or colons (:).
-- NEVER use markdown ** or * formatting.
-- Keep emails concise and human-sounding.
-- Use personalization merge fields like {{firstName}}, {{company}} where appropriate.
-- Output format: First line is subject (no "Subject:" prefix), then blank line, then body.
-- Do not use [brackets] for placeholders.
-- Make the email ready to send.${contextInfo}`
+                        content: `You are an expert email copywriter. Your job is to write ONE ready-to-send email based on the user's request.
+
+CRITICAL RULES:
+- Write ONLY ONE email, not multiple examples or templates
+- NEVER use em dashes (—) or en dashes (–). Only use hyphens (-) or colons (:)
+- NEVER use markdown ** or * formatting
+- Keep emails concise and human-sounding
+- Use personalization merge fields like {{firstName}}, {{company}} where appropriate
+- Do not use [brackets] for placeholders
+- Make the email ready to send immediately
+
+OUTPUT FORMAT (CRITICAL):
+Line 1: Subject line ONLY (no "Subject:" prefix, no quotes, 3-6 words, casual lowercase style)
+Line 2: Empty line
+Line 3+: Email body
+
+EXAMPLE OUTPUT:
+quick idea for your team
+
+Hi {{firstName}},
+
+I noticed your company is working on improving customer retention...
+
+Best,
+Bhawesh
+
+DO NOT:
+- Generate multiple email options
+- Write "Here are X templates"
+- Include numbered lists of emails
+- Add explanations or commentary
+
+JUST WRITE ONE EMAIL READY TO SEND.${contextInfo}`
                     },
                     {
                         role: 'user',
@@ -934,17 +1047,36 @@ RULES:
         const data = await response.json();
         const content = data.choices?.[0]?.message?.content || '';
 
-        // Parse subject and body
-        const lines = content.trim().split('\n');
-        let subject = lines[0].replace(/^Subject:\s*/i, '').replace(/\*\*/g, '').trim();
+        console.log('[AI /generate] Raw AI response:', content.substring(0, 200));
+
+        // Improved parsing - filter empty lines first
+        const lines = content.trim().split('\n').filter(line => line.trim());
+
+        // First non-empty line is the subject
+        let subject = lines[0]?.replace(/^Subject:\s*/i, '').replace(/\*\*/g, '').replace(/^["']|["']$/g, '').trim();
+
+        // Rest is the body
         let body = lines.slice(1).join('\n').replace(/\*\*/g, '').trim();
 
         // Remove any "Body:" prefix
         body = body.replace(/^Body:\s*/i, '').trim();
 
+        // Validation
+        if (!subject || subject.length < 2) {
+            console.warn('[AI /generate] No subject generated, using fallback');
+            subject = 'quick question';
+        }
+
+        if (!body || body.length < 10) {
+            console.warn('[AI /generate] No body generated, using fallback');
+            body = `Hi {{firstName}},\n\n${prompt || 'I wanted to reach out to you.'}\n\nBest regards`;
+        }
+
         // Sanitize em dashes
         subject = subject.replace(/[—–]/g, '-');
         body = body.replace(/[—–]/g, '-');
+
+        console.log('[AI /generate] Parsed - Subject:', subject, '| Body length:', body.length);
 
         res.json({ subject, body });
 
@@ -1146,9 +1278,9 @@ router.post('/confirm-send', auth, async (req, res) => {
                     text: email.body.replace(/<[^>]*>/g, ''),
                     html: email.body,
                 });
-                console.log(`✅ Email sent to ${recipient.email}`);
+                console.log(` Email sent to ${recipient.email}`);
             } catch (smtpError) {
-                console.error(`❌ Failed to send to ${recipient.email}:`, smtpError.message);
+                console.error(` Failed to send to ${recipient.email}:`, smtpError.message);
                 emailStatus = 'failed';
             }
 
@@ -1241,10 +1373,10 @@ router.post('/confirm-send', auth, async (req, res) => {
                         text: sanitizeContent(personalizedBody.replace(/<[^>]*>/g, '')),
                         html: sanitizeContent(personalizedBody),
                     });
-                    console.log(`✅ Sent to ${r.email}`);
+                    console.log(` Sent to ${r.email}`);
                     sentCount++;
                 } catch (smtpError) {
-                    console.error(`❌ Failed ${r.email}:`, smtpError.message);
+                    console.error(` Failed ${r.email}:`, smtpError.message);
                     status = 'failed';
                     failedCount++;
                 }
@@ -1285,7 +1417,7 @@ router.post('/confirm-send', auth, async (req, res) => {
             }).promise();
 
             transporter.close();
-            console.log(`📧 Campaign complete: ${sentCount} sent, ${failedCount} failed`);
+            console.log(` Campaign complete: ${sentCount} sent, ${failedCount} failed`);
 
         } else if (sendType === 'personalized') {
             // Send AI-generated unique personalized emails to each recipient
@@ -1336,10 +1468,10 @@ router.post('/confirm-send', auth, async (req, res) => {
                         text: sanitizeContent(emailData.body.replace(/<[^>]*>/g, '')),
                         html: sanitizeContent(emailData.body),
                     });
-                    console.log(`✅ Sent personalized email to ${emailData.email}`);
+                    console.log(` Sent personalized email to ${emailData.email}`);
                     sentCount++;
                 } catch (smtpError) {
-                    console.error(`❌ Failed ${emailData.email}:`, smtpError.message);
+                    console.error(` Failed ${emailData.email}:`, smtpError.message);
                     status = 'failed';
                     failedCount++;
                 }
@@ -1381,7 +1513,7 @@ router.post('/confirm-send', auth, async (req, res) => {
             }).promise();
 
             transporter.close();
-            console.log(`📧 Personalized campaign complete: ${sentCount} sent, ${failedCount} failed`);
+            console.log(` Personalized campaign complete: ${sentCount} sent, ${failedCount} failed`);
 
         } else {
             res.status(400).json({ error: 'Invalid send type' });

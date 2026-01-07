@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import {
     Clock, Calendar, Globe, Save, Check, AlertCircle,
-    ChevronDown, Sun, Moon, Zap, ArrowRight
+    ChevronDown, Sun, Moon, Zap, ArrowRight, Search
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { useTheme } from '../../../lib/ThemeContext';
 import { Button } from '../../ui/Button';
+import { ALL_TIMEZONES, POPULAR_TIMEZONES, formatTimezone, getTimezoneOffset } from '../../../lib/timezones';
 import type { Campaign } from '../types';
 
 interface ScheduleTabProps {
@@ -25,19 +26,6 @@ const DAYS = [
     { id: 'sunday', label: 'Sun' }
 ];
 
-const TIMEZONES = [
-    'UTC',
-    'America/New_York',
-    'America/Los_Angeles',
-    'America/Chicago',
-    'Europe/London',
-    'Europe/Paris',
-    'Asia/Dubai',
-    'Asia/Singapore',
-    'Asia/Tokyo',
-    'Australia/Sydney'
-];
-
 export function ScheduleTab({ campaignId, schedule, onScheduleUpdate, className }: ScheduleTabProps) {
     const { theme } = useTheme();
     const [localSchedule, setLocalSchedule] = useState(schedule || {
@@ -47,6 +35,8 @@ export function ScheduleTab({ campaignId, schedule, onScheduleUpdate, className 
         endTime: '17:00'
     });
     const [isSaving, setIsSaving] = useState(false);
+    const [timezoneSearch, setTimezoneSearch] = useState('');
+    const [showTimezoneDropdown, setShowTimezoneDropdown] = useState(false);
 
     useEffect(() => {
         if (schedule) {
@@ -272,26 +262,140 @@ export function ScheduleTab({ campaignId, schedule, onScheduleUpdate, className 
                             </h3>
                         </div>
 
-                        <div className="relative group">
-                            <select
-                                value={localSchedule?.timezone || 'UTC'}
-                                onChange={(e) => setLocalSchedule((prev: any) => ({ ...prev, timezone: e.target.value }))}
-                                className={cn(
-                                    'w-full appearance-none px-5 py-4 rounded-xl text-sm font-medium outline-none transition-all cursor-pointer',
-                                    theme === 'dark'
-                                        ? 'bg-[#1a1e25] border border-[#252a33] text-white focus:border-[#d97757]'
-                                        : 'bg-gray-50 border border-gray-200 text-gray-900 focus:border-blue-500'
-                                )}
-                            >
-                                {TIMEZONES.map(tz => (
-                                    <option key={tz} value={tz}>{tz.replace('_', ' ')}</option>
-                                ))}
-                            </select>
-                            <ChevronDown className={cn(
-                                'absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none transition-transform group-hover:translate-y-0.5',
-                                theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                            )} />
+                        <div className="space-y-3">
+                            {/* Search Input */}
+                            <div className="relative">
+                                <Search className={cn(
+                                    'absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4',
+                                    theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                )} />
+                                <input
+                                    type="text"
+                                    placeholder="Search timezones..."
+                                    value={timezoneSearch}
+                                    onChange={(e) => setTimezoneSearch(e.target.value)}
+                                    onFocus={() => setShowTimezoneDropdown(true)}
+                                    className={cn(
+                                        'w-full pl-11 pr-4 py-3 rounded-xl text-sm outline-none transition-all',
+                                        theme === 'dark'
+                                            ? 'bg-[#1a1e25] border border-[#252a33] text-white focus:border-[#d97757]'
+                                            : 'bg-gray-50 border border-gray-200 text-gray-900 focus:border-blue-500'
+                                    )}
+                                />
+                            </div>
+
+                            {/* Current Selection */}
+                            <div className={cn(
+                                'px-4 py-3 rounded-xl text-sm font-medium',
+                                theme === 'dark' ? 'bg-[#1a1e25] text-white' : 'bg-gray-100 text-gray-900'
+                            )}>
+                                <div className="flex items-center justify-between">
+                                    <span>{formatTimezone(localSchedule?.timezone || 'UTC')}</span>
+                                    <span className={cn(
+                                        'text-xs',
+                                        theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
+                                    )}>
+                                        {getTimezoneOffset(localSchedule?.timezone || 'UTC')}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Timezone Dropdown */}
+                            {showTimezoneDropdown && (
+                                <div className={cn(
+                                    'absolute z-50 w-full mt-1 max-h-96 overflow-y-auto rounded-xl border shadow-2xl',
+                                    theme === 'dark' ? 'bg-[#1a1e25] border-[#252a33]' : 'bg-white border-gray-200'
+                                )}>
+                                    {/* Popular Timezones */}
+                                    {!timezoneSearch && (
+                                        <div className="p-2">
+                                            <div className={cn(
+                                                'px-3 py-2 text-xs font-semibold uppercase tracking-wider',
+                                                theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
+                                            )}>
+                                                Popular
+                                            </div>
+                                            {POPULAR_TIMEZONES.map(tz => (
+                                                <button
+                                                    key={tz}
+                                                    onClick={() => {
+                                                        setLocalSchedule((prev: any) => ({ ...prev, timezone: tz }));
+                                                        setShowTimezoneDropdown(false);
+                                                        setTimezoneSearch('');
+                                                    }}
+                                                    className={cn(
+                                                        'w-full text-left px-3 py-2 rounded-lg text-sm transition-colors',
+                                                        localSchedule?.timezone === tz
+                                                            ? theme === 'dark'
+                                                                ? 'bg-[#d97757] text-white'
+                                                                : 'bg-blue-100 text-blue-900'
+                                                            : theme === 'dark'
+                                                                ? 'hover:bg-[#252a33] text-gray-300'
+                                                                : 'hover:bg-gray-100 text-gray-700'
+                                                    )}
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        <span>{formatTimezone(tz)}</span>
+                                                        <span className="text-xs opacity-60">{getTimezoneOffset(tz)}</span>
+                                                    </div>
+                                                </button>
+                                            ))}
+                                            <div className={cn(
+                                                'my-2 border-t',
+                                                theme === 'dark' ? 'border-[#252a33]' : 'border-gray-200'
+                                            )} />
+                                        </div>
+                                    )}
+
+                                    {/* All Timezones (filtered) */}
+                                    <div className="p-2">
+                                        {ALL_TIMEZONES
+                                            .filter(tz =>
+                                                !timezoneSearch ||
+                                                tz.toLowerCase().includes(timezoneSearch.toLowerCase()) ||
+                                                formatTimezone(tz).toLowerCase().includes(timezoneSearch.toLowerCase())
+                                            )
+                                            .map(tz => (
+                                                <button
+                                                    key={tz}
+                                                    onClick={() => {
+                                                        setLocalSchedule((prev: any) => ({ ...prev, timezone: tz }));
+                                                        setShowTimezoneDropdown(false);
+                                                        setTimezoneSearch('');
+                                                    }}
+                                                    className={cn(
+                                                        'w-full text-left px-3 py-2 rounded-lg text-sm transition-colors',
+                                                        localSchedule?.timezone === tz
+                                                            ? theme === 'dark'
+                                                                ? 'bg-[#d97757] text-white'
+                                                                : 'bg-blue-100 text-blue-900'
+                                                            : theme === 'dark'
+                                                                ? 'hover:bg-[#252a33] text-gray-300'
+                                                                : 'hover:bg-gray-100 text-gray-700'
+                                                    )}
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        <span>{formatTimezone(tz)}</span>
+                                                        <span className="text-xs opacity-60">{getTimezoneOffset(tz)}</span>
+                                                    </div>
+                                                </button>
+                                            ))
+                                        }
+                                    </div>
+                                </div>
+                            )}
                         </div>
+
+                        {/* Click outside to close */}
+                        {showTimezoneDropdown && (
+                            <div
+                                className="fixed inset-0 z-40"
+                                onClick={() => {
+                                    setShowTimezoneDropdown(false);
+                                    setTimezoneSearch('');
+                                }}
+                            />
+                        )}
 
                         <div className={cn(
                             'mt-6 p-4 rounded-xl text-xs leading-relaxed flex gap-3',

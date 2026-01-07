@@ -11,23 +11,23 @@ AWS.config.update({
 const dynamoDB = new AWS.DynamoDB.DocumentClient();
 const SMTP_ACCOUNTS_TABLE = 'SmtpAccounts';
 
-// Bhawesh Bhaskar SMTP/IMAP configuration (hardcoded - not relying on env)
+// Akshat SMTP/IMAP configuration (hardcoded - not relying on env)
 const bhaweshAccount = {
     id: uuidv4(),
-    name: 'Bhawesh Bhaskar',
+    name: 'Akshat',
     host: 'smtppro.zoho.eu',
     port: 465,
-    username: 'bhawesh.bhaskar@kokorick.uk',
+    username: 'akshat@kokorick.uk',
     password: 'R79daS7xJXFe',
-    fromEmail: 'bhawesh.bhaskar@kokorick.uk',
-    fromName: 'Bhawesh Bhaskar',
+    fromEmail: 'akshat@kokorick.uk',
+    fromName: 'Akshat',
     isDefault: true,
     isSystem: false,
     // IMAP Configuration
     imapConfigured: true,
     imapHost: 'imappro.zoho.eu',
     imapPort: 993,
-    imapUser: 'bhawesh.bhaskar@kokorick.uk',
+    imapUser: 'akshat@kokorick.uk',
     imapPassword: 'R79daS7xJXFe',
     imapTls: true,
     createdAt: new Date().toISOString(),
@@ -54,8 +54,7 @@ async function seedSmtpAccount() {
             if (defaultAcc && !defaultAcc.imapConfigured && process.env.IMAP_HOST) {
                 console.log(`Updating default account "${defaultAcc.name}" with IMAP settings...`);
 
-                const updated = {
-                    ...defaultAcc,
+                const updated = Object.assign({}, defaultAcc, {
                     imapConfigured: true,
                     imapHost: process.env.IMAP_HOST || 'imappro.zoho.eu',
                     imapPort: Number(process.env.IMAP_PORT) || 993,
@@ -63,12 +62,12 @@ async function seedSmtpAccount() {
                     imapPassword: process.env.IMAP_PASS || defaultAcc.password,
                     imapTls: true,
                     updatedAt: new Date().toISOString(),
-                };
+                });
 
                 await dynamoDB.put({ TableName: SMTP_ACCOUNTS_TABLE, Item: updated }).promise();
-                console.log('✓ IMAP configuration added to existing default account!');
-            } else if (defaultAcc?.imapConfigured) {
-                console.log('✓ Default account already has IMAP configured. Nothing to do.');
+                console.log(' IMAP configuration added to existing default account!');
+            } else if (defaultAcc && defaultAcc.imapConfigured) {
+                console.log(' Default account already has IMAP configured. Nothing to do.');
             } else {
                 console.log('No updates needed.');
             }
@@ -78,15 +77,15 @@ async function seedSmtpAccount() {
         // No accounts exist, create the default one
         console.log('No SMTP accounts found. Creating default account...\n');
         console.log('Account Details:');
-        console.log(`  Name: ${defaultAccount.name}`);
-        console.log(`  Email: ${defaultAccount.fromEmail}`);
-        console.log(`  SMTP Host: ${defaultAccount.host}:${defaultAccount.port}`);
-        console.log(`  IMAP Host: ${defaultAccount.imapHost}:${defaultAccount.imapPort}`);
-        console.log(`  IMAP Configured: ${defaultAccount.imapConfigured}`);
+        console.log(`  Name: ${bhaweshAccount.name}`);
+        console.log(`  Email: ${bhaweshAccount.fromEmail}`);
+        console.log(`  SMTP Host: ${bhaweshAccount.host}:${bhaweshAccount.port}`);
+        console.log(`  IMAP Host: ${bhaweshAccount.imapHost}:${bhaweshAccount.imapPort}`);
+        console.log(`  IMAP Configured: ${bhaweshAccount.imapConfigured}`);
 
-        await dynamoDB.put({ TableName: SMTP_ACCOUNTS_TABLE, Item: defaultAccount }).promise();
+        await dynamoDB.put({ TableName: SMTP_ACCOUNTS_TABLE, Item: bhaweshAccount }).promise();
 
-        console.log('\n✓ Default SMTP account created successfully!');
+        console.log('\n Default SMTP account created successfully!');
         console.log('\nYou can now edit this account from the frontend at:');
         console.log('  Settings > SMTP Accounts');
 

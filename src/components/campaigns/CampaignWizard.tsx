@@ -8,6 +8,7 @@ import {
 import { toast } from 'sonner';
 import { cn } from '../../lib/utils';
 import { useTheme } from '../../lib/ThemeContext';
+import { ALL_TIMEZONES, formatTimezone } from '../../lib/timezones';
 import type { Lead, SequenceStep, CampaignSchedule, CampaignOptions } from './types';
 
 interface CampaignWizardProps {
@@ -18,11 +19,12 @@ interface CampaignWizardProps {
 
 const STEPS = [
     { id: 1, title: 'Name', icon: FileText },
-    { id: 2, title: 'Leads', icon: Users },
-    { id: 3, title: 'Strategy', icon: Target },
-    { id: 4, title: 'Emails', icon: Mail },
-    { id: 5, title: 'Schedule', icon: Calendar },
-    { id: 6, title: 'Launch', icon: Send },
+    { id: 2, title: 'Accounts', icon: Mail },
+    { id: 3, title: 'Leads', icon: Users },
+    { id: 4, title: 'Strategy', icon: Target },
+    { id: 5, title: 'Emails', icon: Mail },
+    { id: 6, title: 'Schedule', icon: Calendar },
+    { id: 7, title: 'Launch', icon: Send },
 ];
 
 export function CampaignWizard({ onBack, onComplete, className }: CampaignWizardProps) {
@@ -51,24 +53,27 @@ export function CampaignWizard({ onBack, onComplete, className }: CampaignWizard
         stopOnReply: true,
         stopOnClick: false,
         removeUnsubscribed: true,
-        dailyLimit: 50,
-        timeBetweenEmails: 300
+        dailyLimit: 15,
+        timeBetweenEmails: 10,
+        selectedAccountIds: []
     });
+    const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
 
     const canProceed = useCallback(() => {
         switch (currentStep) {
             case 1: return campaignName.trim().length > 0;
-            case 2: return leads.length > 0;
-            case 3: return true;
-            case 4: return sequences.some(s => s.subject && s.body);
-            case 5: return schedule.days.length > 0;
-            case 6: return true;
+            case 2: return selectedAccountIds.length > 0;
+            case 3: return leads.length > 0;
+            case 4: return true;
+            case 5: return sequences.some(s => s.subject && s.body);
+            case 6: return schedule.days.length > 0;
+            case 7: return true;
             default: return false;
         }
-    }, [currentStep, campaignName, leads, sequences, schedule]);
+    }, [currentStep, campaignName, selectedAccountIds, leads, sequences, schedule]);
 
     const handleNext = () => {
-        if (currentStep < 6 && canProceed()) {
+        if (currentStep < 7 && canProceed()) {
             setCurrentStep(prev => prev + 1);
         }
     };
@@ -84,6 +89,23 @@ export function CampaignWizard({ onBack, onComplete, className }: CampaignWizard
     const handleComplete = async () => {
         setIsCreating(true);
         try {
+            // ✅ ASSIGN ACCOUNTS TO LEADS BEFORE SAVING
+            // This ensures each lead knows which SMTP account will send their emails
+            const leadsWithAccounts = leads.map((lead, index) => {
+                // If lead already has an account assigned (from LeadsTab), keep it
+                if (lead.sendingAccountId) {
+                    return lead;
+                }
+                // Otherwise, assign round-robin from selected accounts
+                if (selectedAccountIds.length > 0) {
+                    return {
+                        ...lead,
+                        sendingAccountId: selectedAccountIds[index % selectedAccountIds.length]
+                    };
+                }
+                return lead;
+            });
+
             const token = localStorage.getItem('bulkEmailToken');
             const response = await fetch('/api/bulk-email/campaigns', {
                 method: 'POST',
@@ -94,10 +116,10 @@ export function CampaignWizard({ onBack, onComplete, className }: CampaignWizard
                 body: JSON.stringify({
                     name: campaignName.trim(),
                     status: 'draft',
-                    leads,
+                    leads: leadsWithAccounts,  // ✅ Use leads with accounts assigned
                     sequence: { id: `seq-${Date.now()}`, campaignId: '', steps: sequences },
                     schedule,
-                    options,
+                    options: { ...options, selectedAccountIds },
                     sequenceType
                 })
             });
@@ -175,9 +197,9 @@ export function CampaignWizard({ onBack, onComplete, className }: CampaignWizard
                 {/* Right side: Step Counter + Continue Button */}
                 <div className="flex items-center gap-4">
                     <span className={cn('text-sm', isDark ? 'text-neutral-500' : 'text-gray-400')}>
-                        Step {currentStep} of 6
+                        Step {currentStep} of 7
                     </span>
-                    {currentStep < 6 ? (
+                    {currentStep < 7 ? (
                         <button
                             onClick={handleNext}
                             disabled={!canProceed()}
@@ -229,14 +251,15 @@ export function CampaignWizard({ onBack, onComplete, className }: CampaignWizard
             <main className="flex-1 overflow-y-auto">
                 <div className={cn(
                     'mx-auto py-8 px-6',
-                    currentStep === 4 ? 'max-w-5xl h-full' : 'max-w-2xl'
+                    currentStep === 5 ? 'max-w-5xl h-full' : 'max-w-2xl'
                 )}>
                     {currentStep === 1 && <StepName isDark={isDark} value={campaignName} onChange={setCampaignName} />}
-                    {currentStep === 2 && <StepLeads isDark={isDark} leads={leads} onUpdate={setLeads} />}
-                    {currentStep === 3 && <StepStrategy isDark={isDark} value={sequenceType} onChange={setSequenceType} />}
-                    {currentStep === 4 && <StepEmails isDark={isDark} sequences={sequences} onUpdate={setSequences} sequenceType={sequenceType} leads={leads} individualSequences={individualSequences} onIndividualUpdate={setIndividualSequences} />}
-                    {currentStep === 5 && <StepSchedule isDark={isDark} schedule={schedule} onUpdate={setSchedule} />}
-                    {currentStep === 6 && <StepLaunch isDark={isDark} options={options} onUpdate={setOptions} campaignName={campaignName} leadsCount={leads.length} />}
+                    {currentStep === 2 && <StepAccounts isDark={isDark} selectedIds={selectedAccountIds} onUpdate={setSelectedAccountIds} />}
+                    {currentStep === 3 && <StepLeads isDark={isDark} leads={leads} onUpdate={setLeads} />}
+                    {currentStep === 4 && <StepStrategy isDark={isDark} value={sequenceType} onChange={setSequenceType} />}
+                    {currentStep === 5 && <StepEmails isDark={isDark} sequences={sequences} onUpdate={setSequences} sequenceType={sequenceType} leads={leads} individualSequences={individualSequences} onIndividualUpdate={setIndividualSequences} />}
+                    {currentStep === 6 && <StepSchedule isDark={isDark} schedule={schedule} onUpdate={setSchedule} />}
+                    {currentStep === 7 && <StepLaunch isDark={isDark} options={options} onUpdate={setOptions} campaignName={campaignName} leadsCount={leads.length} selectedAccountIds={selectedAccountIds} />}
                 </div>
             </main>
 
@@ -1070,8 +1093,8 @@ function StepSchedule({ isDark, schedule, onUpdate }: { isDark: boolean; schedul
                 <select value={schedule.timezone} onChange={(e) => onUpdate({ ...schedule, timezone: e.target.value })}
                     className={cn('w-full px-3 py-2 rounded-lg text-sm cursor-pointer', isDark ? 'bg-neutral-900 border border-neutral-800 text-white' : 'bg-white border border-gray-200 text-gray-900')}
                     style={{ outline: 'none' }}>
-                    {['UTC', 'America/New_York', 'America/Los_Angeles', 'America/Chicago', 'Europe/London', 'Asia/Singapore', 'Asia/Tokyo', 'Australia/Sydney'].map(tz => (
-                        <option key={tz} value={tz}>{tz.replace('_', ' ')}</option>
+                    {ALL_TIMEZONES.map(tz => (
+                        <option key={tz} value={tz}>{formatTimezone(tz)}</option>
                     ))}
                 </select>
             </div>
@@ -1079,23 +1102,21 @@ function StepSchedule({ isDark, schedule, onUpdate }: { isDark: boolean; schedul
     );
 }
 
-// Step 6: Review & Launch
-function StepLaunch({ isDark, options, onUpdate, campaignName, leadsCount }: { isDark: boolean; options: CampaignOptions; onUpdate: (o: CampaignOptions) => void; campaignName: string; leadsCount: number }) {
-    const [emailAccounts, setEmailAccounts] = useState<number>(0);
+// Step 2: Select Email Accounts
+function StepAccounts({ isDark, selectedIds, onUpdate }: { isDark: boolean; selectedIds: string[]; onUpdate: (ids: string[]) => void }) {
+    const [accounts, setAccounts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-
-    const EMAILS_PER_ACCOUNT = 15;
 
     useEffect(() => {
         const fetchAccounts = async () => {
             try {
                 const token = localStorage.getItem('bulkEmailToken');
-                const response = await fetch('/api/bulk-email/smtp-accounts', {
+                const res = await fetch('/api/bulk-email/smtp-accounts', {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                if (response.ok) {
-                    const accounts = await response.json();
-                    setEmailAccounts(Array.isArray(accounts) ? accounts.length : 0);
+                if (res.ok) {
+                    const data = await res.json();
+                    setAccounts(Array.isArray(data) ? data : []);
                 }
             } catch (e) {
                 console.error('Failed to fetch accounts:', e);
@@ -1106,7 +1127,138 @@ function StepLaunch({ isDark, options, onUpdate, campaignName, leadsCount }: { i
         fetchAccounts();
     }, []);
 
-    const maxDailyEmails = emailAccounts * EMAILS_PER_ACCOUNT;
+    const toggleAccount = (id: string) => {
+        if (selectedIds.includes(id)) {
+            onUpdate(selectedIds.filter(i => i !== id));
+        } else {
+            onUpdate([...selectedIds, id]);
+        }
+    };
+
+    const selectAll = () => {
+        if (selectedIds.length === accounts.length) {
+            onUpdate([]);
+        } else {
+            onUpdate(accounts.map(a => a.id));
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-orange-500" />
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-6">
+            <div>
+                <h2 className={cn('text-xl font-semibold mb-2', isDark ? 'text-white' : 'text-gray-900')}>
+                    Select Email Accounts
+                </h2>
+                <p className={cn('text-sm', isDark ? 'text-neutral-400' : 'text-gray-500')}>
+                    Choose which email accounts to use for this campaign. Each account can send max 15 emails per day.
+                </p>
+            </div>
+
+            {accounts.length === 0 ? (
+                <div className={cn('p-8 rounded-lg text-center border', isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-gray-50 border-gray-200')}>
+                    <Mail className={cn('w-12 h-12 mx-auto mb-3', isDark ? 'text-neutral-600' : 'text-gray-400')} />
+                    <p className={cn('text-sm font-medium mb-1', isDark ? 'text-neutral-400' : 'text-gray-600')}>No email accounts found</p>
+                    <p className={cn('text-xs', isDark ? 'text-neutral-500' : 'text-gray-500')}>Add email accounts in Settings first.</p>
+                </div>
+            ) : (
+                <>
+                    {/* Select All */}
+                    <button
+                        onClick={selectAll}
+                        className={cn(
+                            'w-full flex items-center justify-between p-4 rounded-lg border transition-colors',
+                            selectedIds.length === accounts.length
+                                ? 'bg-orange-500/10 border-orange-500 text-orange-500'
+                                : isDark
+                                    ? 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:border-orange-500/50'
+                                    : 'bg-white border-gray-200 text-gray-600 hover:border-orange-300'
+                        )}
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className={cn(
+                                'w-5 h-5 rounded border-2 flex items-center justify-center',
+                                selectedIds.length === accounts.length
+                                    ? 'bg-orange-500 border-orange-500'
+                                    : isDark ? 'border-neutral-600' : 'border-gray-300'
+                            )}>
+                                {selectedIds.length === accounts.length && <Check className="w-3 h-3 text-white" />}
+                            </div>
+                            <span className="font-medium">Select All ({accounts.length} accounts)</span>
+                        </div>
+                        <span className="text-sm">{accounts.length * 15} emails/day max</span>
+                    </button>
+
+                    {/* Individual Accounts */}
+                    <div className="space-y-2">
+                        {accounts.map(acc => {
+                            const isSelected = selectedIds.includes(acc.id);
+                            return (
+                                <button
+                                    key={acc.id}
+                                    onClick={() => toggleAccount(acc.id)}
+                                    className={cn(
+                                        'w-full flex items-center gap-3 p-4 rounded-lg border transition-colors text-left',
+                                        isSelected
+                                            ? 'bg-orange-500/10 border-orange-500'
+                                            : isDark
+                                                ? 'bg-neutral-900 border-neutral-800 hover:border-neutral-700'
+                                                : 'bg-white border-gray-200 hover:border-gray-300'
+                                    )}
+                                >
+                                    <div className={cn(
+                                        'w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0',
+                                        isSelected
+                                            ? 'bg-orange-500 border-orange-500'
+                                            : isDark ? 'border-neutral-600' : 'border-gray-300'
+                                    )}>
+                                        {isSelected && <Check className="w-3 h-3 text-white" />}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className={cn('text-sm font-medium truncate', isDark ? 'text-white' : 'text-gray-900')}>
+                                            {acc.fromEmail}
+                                        </p>
+                                        <p className={cn('text-xs truncate', isDark ? 'text-neutral-500' : 'text-gray-500')}>
+                                            {acc.name || acc.fromName}
+                                        </p>
+                                    </div>
+                                    <span className={cn('text-xs', isDark ? 'text-neutral-500' : 'text-gray-400')}>
+                                        15/day
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* Summary */}
+                    <div className={cn(
+                        'px-4 py-3 rounded-lg text-sm flex items-center justify-between',
+                        selectedIds.length > 0
+                            ? isDark ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600'
+                            : isDark ? 'bg-neutral-800 text-neutral-500' : 'bg-gray-100 text-gray-500'
+                    )}>
+                        <span>{selectedIds.length} account{selectedIds.length !== 1 ? 's' : ''} selected</span>
+                        <span className="font-medium">{selectedIds.length * 15} emails/day max</span>
+                    </div>
+                </>
+            )}
+        </div>
+    );
+}
+
+// Step 7: Review & Launch
+function StepLaunch({ isDark, options, onUpdate, campaignName, leadsCount, selectedAccountIds }: { isDark: boolean; options: CampaignOptions; onUpdate: (o: CampaignOptions) => void; campaignName: string; leadsCount: number; selectedAccountIds: string[] }) {
+    const EMAILS_PER_ACCOUNT = 15;
+
+    const activeAccountsCount = selectedAccountIds.length;
+    const maxDailyEmails = activeAccountsCount * EMAILS_PER_ACCOUNT;
     const daysToComplete = maxDailyEmails > 0 ? Math.ceil(leadsCount / maxDailyEmails) : 0;
 
     const Toggle = ({ checked, onChange }: { checked: boolean; onChange: () => void }) => (
@@ -1135,17 +1287,17 @@ function StepLaunch({ isDark, options, onUpdate, campaignName, leadsCount }: { i
                     </div>
                     <div>
                         <p className={cn('text-2xl font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
-                            {loading ? '-' : emailAccounts}
+                            {activeAccountsCount}
                         </p>
-                        <p className={cn('text-xs', isDark ? 'text-neutral-500' : 'text-gray-400')}>Email Accounts</p>
+                        <p className={cn('text-xs', isDark ? 'text-neutral-500' : 'text-gray-400')}>Sending Accounts</p>
                     </div>
                     <div>
-                        <p className={cn('text-2xl font-semibold text-orange-500')}>{loading ? '-' : maxDailyEmails}</p>
+                        <p className={cn('text-2xl font-semibold text-orange-500')}>{maxDailyEmails}</p>
                         <p className={cn('text-xs', isDark ? 'text-neutral-500' : 'text-gray-400')}>Max Daily Emails</p>
                     </div>
                     <div>
                         <p className={cn('text-2xl font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
-                            {loading ? '-' : `~${daysToComplete}`}
+                            ~{daysToComplete}
                         </p>
                         <p className={cn('text-xs', isDark ? 'text-neutral-500' : 'text-gray-400')}>Days to Complete</p>
                     </div>
@@ -1177,21 +1329,30 @@ function StepLaunch({ isDark, options, onUpdate, campaignName, leadsCount }: { i
                 <div className="flex items-center justify-between">
                     <div>
                         <p className={cn('text-sm font-medium', isDark ? 'text-white' : 'text-gray-900')}>Time Gap</p>
-                        <p className={cn('text-xs', isDark ? 'text-neutral-500' : 'text-gray-400')}>Seconds between sends</p>
+                        <p className={cn('text-xs', isDark ? 'text-neutral-500' : 'text-gray-400')}>Minutes between sends</p>
                     </div>
-                    <input type="number" value={options.timeBetweenEmails} onChange={(e) => onUpdate({ ...options, timeBetweenEmails: parseInt(e.target.value) || 300 })}
+                    <input
+                        type="number"
+                        min="1"
+                        value={options.timeBetweenEmails || 10}
+                        onChange={(e) => {
+                            const minutes = parseInt(e.target.value) || 10;
+                            onUpdate({ ...options, timeBetweenEmails: minutes });
+                        }}
                         className={cn('w-20 px-3 py-2 rounded-lg text-right text-sm font-medium', isDark ? 'bg-neutral-800 border border-neutral-700 text-white' : 'bg-gray-50 border border-gray-200 text-gray-900')}
-                        style={{ outline: 'none' }} />
+                        style={{ outline: 'none' }}
+                    />
                 </div>
             </div>
 
             {/* Warning if no accounts */}
-            {!loading && emailAccounts === 0 && (
+            {activeAccountsCount === 0 && (
                 <div className={cn('p-4 rounded-lg border', isDark ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-red-50 border-red-200 text-red-600')}>
-                    <p className="text-sm font-medium">No email accounts configured</p>
-                    <p className="text-xs mt-1">Please add at least one email account in Settings before launching the campaign.</p>
+                    <p className="text-sm font-medium">No email accounts selected</p>
+                    <p className="text-xs mt-1">Go back to Step 2 and select at least one email account.</p>
                 </div>
             )}
         </div>
     );
 }
+

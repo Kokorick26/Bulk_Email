@@ -40,7 +40,7 @@ async function fixPasswords() {
     };
 
     await dynamoDB.put({ TableName: 'SmtpAccounts', Item: updated }).promise();
-    console.log('\n✓ Passwords and IMAP config updated successfully!');
+    console.log('\n Passwords and IMAP config updated successfully!');
 }
 
 fixPasswords().catch(err => {

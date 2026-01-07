@@ -24,12 +24,12 @@ export default function DashboardMockup() {
                 </div>
 
                 {/* Navigation - Icons Only */}
-                <div className="py-4 space-y-2 w-full flex flex-col items-center">
-                    <NavItemCollapsed icon={Megaphone} active />
-                    <NavItemCollapsed icon={Inbox} badge="3" />
-                    <NavItemCollapsed icon={Target} />
-                    <NavItemCollapsed icon={Users} />
-                    <NavItemCollapsed icon={Server} />
+                <div className="py-4 space-y-4 w-full flex flex-col items-center">
+                    <NavItemCollapsed icon={Megaphone} active color="#FF5533" />
+                    <NavItemCollapsed icon={Inbox} badge="3" color="#FF4466" />
+                    <NavItemCollapsed icon={Target} color="#FF3399" />
+                    <NavItemCollapsed icon={Users} color="#B233CC" />
+                    <NavItemCollapsed icon={Server} color="#6633FF" />
                 </div>
 
                 {/* Sidebar Footer - Avatar Only */}
@@ -167,13 +167,16 @@ export default function DashboardMockup() {
     );
 }
 
-function NavItemCollapsed({ icon: Icon, active, badge }: { icon: any, active?: boolean, badge?: string }) {
+function NavItemCollapsed({ icon: Icon, active, badge, color }: { icon: any, active?: boolean, badge?: string, color?: string }) {
     return (
-        <div className="relative group">
-            <div className={cn(
-                "w-10 h-10 flex items-center justify-center rounded-lg cursor-default transition-colors relative",
-                active ? "bg-white text-black" : "text-gray-400 hover:text-white hover:bg-white/5"
-            )}>
+        <div className="relative group p-0">
+            <div
+                className={cn(
+                    "w-10 h-10 flex items-center justify-center rounded-lg cursor-default transition-all relative",
+                    active ? "bg-white/10" : "hover:bg-white/5"
+                )}
+                style={{ color: color || '#9ca3af' }}
+            >
                 <Icon className="w-5 h-5" />
                 {badge && (
                     <span className="absolute -top-1 -right-1 w-4 h-4 flex items-center justify-center rounded-full bg-brand-orange text-white text-[9px] font-bold shadow-lg">

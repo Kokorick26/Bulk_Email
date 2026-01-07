@@ -203,10 +203,13 @@ export function AISidebar({
 
                         // AUTOMATICALLY UPDATE EDITOR
                         if (result.result.template) {
+                            console.log('[AI] Preview template:', result.result.template);
                             if (result.result.template.subject && onInsertSubject) {
+                                console.log('[AI] Inserting subject from preview:', result.result.template.subject);
                                 onInsertSubject(result.result.template.subject);
                             }
                             if (result.result.template.body && onInsertBody) {
+                                console.log('[AI] Inserting body from preview, length:', result.result.template.body.length);
                                 onInsertBody(result.result.template.body);
                             }
                         }
@@ -245,11 +248,18 @@ export function AISidebar({
 
             // Handle insert content action
             if (data.insertContent) {
+                console.log('[AI] Inserting content:', data.insertContent);
                 if (data.insertContent.subject && onInsertSubject) {
+                    console.log('[AI] Inserting subject:', data.insertContent.subject);
                     onInsertSubject(data.insertContent.subject);
+                } else {
+                    console.warn('[AI] No subject to insert or no onInsertSubject callback');
                 }
                 if (data.insertContent.body && onInsertBody) {
+                    console.log('[AI] Inserting body, length:', data.insertContent.body.length);
                     onInsertBody(data.insertContent.body);
+                } else {
+                    console.warn('[AI] No body to insert or no onInsertBody callback');
                 }
                 toast.success('Content inserted into compose form!');
             }

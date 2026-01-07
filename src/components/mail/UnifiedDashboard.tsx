@@ -21,6 +21,8 @@ import type { Campaign as OrganizedCampaign } from '../campaigns';
 import { LeadDiscovery } from '../discovery';
 import { LeadListsPage } from '../../pages/LeadListsPage';
 
+import AnalyticsPage from '../../pages/AnalyticsPage';
+
 const API_BASE = '/api/bulk-email';
 
 interface SmtpAccount {
@@ -249,6 +251,11 @@ export default function UnifiedDashboard() {
         // Email Accounts
         if (activeSection === 'accounts') {
             return <EmailAccounts accounts={smtpAccounts} onRefresh={fetchData} />;
+        }
+
+        // Analytics
+        if (activeSection === 'analytics') {
+            return <AnalyticsPage />;
         }
 
         // Default: show campaigns

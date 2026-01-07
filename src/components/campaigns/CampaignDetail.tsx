@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
     ChevronLeft, Play, Pause, MoreHorizontal, Loader2,
-    BarChart2, Users, List, Calendar, Settings, History, Server
+    BarChart2, Users, List, Calendar, Settings, History, Server, RotateCw
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useTheme } from '../../lib/ThemeContext';
@@ -225,6 +225,41 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
         }
     };
 
+    const handleRetryCampaign = async () => {
+        if (!campaign) return;
+
+        const failedCount = leads.filter(l => (l.status as string) === 'failed' || l.status === 'bounced').length;
+        if (failedCount === 0) {
+            alert('No failed leads to retry. Use "Resume" to start pending leads.');
+            return;
+        }
+
+        if (!confirm(`Are you sure you want to retry ${failedCount} failed leads?`)) return;
+
+        try {
+            const token = localStorage.getItem('bulkEmailToken');
+            const response = await fetch(`/api/bulk-email/campaigns/${campaignId}/retry`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                }
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                setCampaign({ ...campaign, status: 'active', failedCount: 0 }); // Optimistic update
+                alert(data.message || 'Campaign retried started');
+            } else {
+                alert(data.error || 'Failed to retry campaign');
+            }
+        } catch (error) {
+            console.error('Error retrying campaign:', error);
+            alert('Failed to retry campaign. Please try again.');
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-full">
@@ -236,9 +271,13 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
         );
     }
 
+    // Calculate failure count ONLY from actual lead statuses, not accumulated counter
+    const failedLeadsCount = leads.filter(l => (l.status as string) === 'failed' || l.status === 'bounced').length;
+
     return (
         <div className={cn('flex flex-1 h-full overflow-hidden', className)}>
-            {/* Sidebar Navigation */}
+            {/* ... Sidebar ... */}
+            {/* Same sidebar code as before, we are focusing on Main Content Header for replace context */}
             <div className={cn(
                 'w-64 flex-shrink-0 flex flex-col border-r',
                 theme === 'dark' ? 'bg-[#0c0c0c] border-neutral-800' : 'bg-gray-50 border-gray-200'
@@ -314,6 +353,21 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
                     </div>
 
                     <div className="flex items-center gap-3">
+                        {failedLeadsCount > 0 && (
+                            <Button
+                                onClick={handleRetryCampaign}
+                                variant="outline"
+                                size="sm"
+                                className={cn(
+                                    'gap-2 text-red-500 border-red-500/20 hover:bg-red-500/10',
+                                    theme === 'dark' ? 'hover:text-red-400' : 'hover:text-red-600'
+                                )}
+                            >
+                                <RotateCw className="w-4 h-4" />
+                                Retry Failed ({failedLeadsCount})
+                            </Button>
+                        )}
+
                         {campaign?.status === 'active' ? (
                             <Button
                                 onClick={handlePauseCampaign}
@@ -352,6 +406,15 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
                                 </button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={async () => {
+                                    if (!confirm('Reset all campaign statistics (sent, failed, open counts)?')) return;
+                                    const token = localStorage.getItem('bulkEmailToken');
+                                    await fetch(`/api/bulk-email/campaigns/${campaignId}/reset-stats`, {
+                                        method: 'POST',
+                                        headers: { Authorization: `Bearer ${token}` }
+                                    });
+                                    window.location.reload();
+                                }}>Reset Stats</DropdownMenuItem>
                                 <DropdownMenuItem>Duplicate Campaign</DropdownMenuItem>
                                 <DropdownMenuItem>Export Data</DropdownMenuItem>
                                 <DropdownMenuItem className="text-red-500">Delete Campaign</DropdownMenuItem>

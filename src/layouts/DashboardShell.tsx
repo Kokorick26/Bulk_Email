@@ -1,4 +1,4 @@
-import { useState, createContext, useContext, useCallback, useRef } from 'react';
+import { useState, createContext, useContext, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Mail, LogOut, Menu, X, User, Settings, Search, Bell, Crown,
@@ -44,6 +44,18 @@ export const useDashboardContext = () => {
     return context;
 };
 
+// Types
+interface InboxCounts {
+    all: number;
+    unread: number;
+    starred: number;
+    sent: number;
+    drafts: number;
+    trash: number;
+    archive: number;
+    spam: number;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // NAVIGATION CONFIG
 // ═══════════════════════════════════════════════════════════════════════════
@@ -53,6 +65,7 @@ const NAV_ITEMS = [
     { id: 'inbox', icon: Inbox, label: 'Inbox' },
     { id: 'discovery', icon: Target, label: 'Discovery' },
     { id: 'lead-lists', icon: Users, label: 'Lead Lists' },
+    { id: 'analytics', icon: Globe, label: 'Analytics' },
     { id: 'accounts', icon: Server, label: 'Accounts' },
 ];
 
@@ -83,18 +96,29 @@ const SIDEBAR_CONTENT: Record<string, {
             {
                 title: 'Status',
                 items: [
-                    { icon: Send, label: 'Active', id: 'active', badge: 3 },
+                    { icon: Send, label: 'Active', id: 'active' },
                     { icon: Clock, label: 'Scheduled', id: 'scheduled' },
-                    { icon: FileText, label: 'Drafts', id: 'drafts', badge: 2 },
+                    { icon: FileText, label: 'Drafts', id: 'drafts' },
                     { icon: CheckCircle, label: 'Completed', id: 'completed' },
                     { icon: Archive, label: 'Archived', id: 'archived' },
                 ],
             },
+        ],
+    },
+    analytics: {
+        title: 'Analytics',
+        sections: [
             {
-                title: 'Analytics',
+                title: 'Overview',
                 items: [
-                    { icon: BarChart2, label: 'Performance', id: 'performance' },
-                    { icon: TrendingUp, label: 'Trends', id: 'trends' },
+                    { icon: Globe, label: 'Geographic', id: 'geo' },
+                    { icon: Activity, label: 'Engagement', id: 'engagement' },
+                ],
+            },
+            {
+                title: 'Reports',
+                items: [
+                    { icon: FileText, label: 'Download', id: 'download' },
                 ],
             },
         ],
@@ -105,8 +129,8 @@ const SIDEBAR_CONTENT: Record<string, {
             {
                 title: 'Folders',
                 items: [
-                    { icon: Inbox, label: 'All Mail', id: 'all', badge: 12 },
-                    { icon: Mail, label: 'Unread', id: 'unread', badge: 5 },
+                    { icon: Inbox, label: 'All Mail', id: 'all' },
+                    { icon: Mail, label: 'Unread', id: 'unread' },
                     { icon: Star, label: 'Starred', id: 'starred' },
                     { icon: Send, label: 'Sent', id: 'sent' },
                     { icon: Archive, label: 'Archive', id: 'archive' },
@@ -154,9 +178,9 @@ const SIDEBAR_CONTENT: Record<string, {
             {
                 title: 'My Lists',
                 items: [
-                    { icon: Users, label: 'All Leads', id: 'all', badge: 1240 },
-                    { icon: Users, label: 'Hot Leads', id: 'hot', badge: 89 },
-                    { icon: Users, label: 'Nurturing', id: 'nurturing', badge: 234 },
+                    { icon: Users, label: 'All Leads', id: 'all' },
+                    { icon: Users, label: 'Hot Leads', id: 'hot' },
+                    { icon: Users, label: 'Nurturing', id: 'nurturing' },
                 ],
             },
         ],
@@ -206,6 +230,44 @@ const SIDEBAR_CONTENT: Record<string, {
             },
         ],
     },
+};
+
+// Helper to enrich sidebar content with dynamic counts
+const enrichSidebarContent = (activeSection: string, counts: InboxCounts) => {
+    // Get base content
+    const baseContent = SIDEBAR_CONTENT[activeSection] || SIDEBAR_CONTENT.campaigns;
+
+    // Safe shallow copy to preserve icon function references
+    const content = {
+        ...baseContent,
+        sections: baseContent.sections.map((s: any) => ({
+            ...s,
+            items: s.items.map((i: any) => ({ ...i }))
+        }))
+    };
+
+    // Only enrich if we have counts and are in a relevant section
+    if (activeSection === 'inbox' || activeSection === 'campaigns' || activeSection === 'lead-lists') {
+        content.sections.forEach((section: any) => {
+            section.items.forEach((item: any) => {
+                // Map inbox counts
+                if (activeSection === 'inbox') {
+                    if (item.id === 'all' && counts.all > 0) item.badge = counts.all;
+                    if (item.id === 'unread' && counts.unread > 0) item.badge = counts.unread;
+                    if (item.id === 'starred' && counts.starred > 0) item.badge = counts.starred;
+                    if (item.id === 'sent' && counts.sent > 0) item.badge = counts.sent;
+                    if (item.id === 'drafts' && counts.drafts > 0) item.badge = counts.drafts;
+                    if (item.id === 'spam' && counts.spam > 0) item.badge = counts.spam;
+                    if (item.id === 'trash' && counts.trash > 0) item.badge = counts.trash;
+                }
+
+                // Add logic for other sections if backend provides those counts
+                // For now, only inbox counters are implemented in the new endpoint
+            });
+        });
+    }
+
+    return content;
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -292,6 +354,7 @@ function DetailSidebar({
     onToggleCollapse,
     isDark,
     onItemClick,
+    inboxCounts = { all: 0, unread: 0, starred: 0, sent: 0, drafts: 0, trash: 0, archive: 0, spam: 0 },
 }: {
     activeSection: string;
     activeSubItem: string;
@@ -299,9 +362,10 @@ function DetailSidebar({
     onToggleCollapse: () => void;
     isDark: boolean;
     onItemClick?: (sectionId: string, itemId: string) => void;
+    inboxCounts?: InboxCounts;
 }) {
     const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
-    const content = SIDEBAR_CONTENT[activeSection] || SIDEBAR_CONTENT.campaigns;
+    const content = enrichSidebarContent(activeSection, inboxCounts);
 
     const toggleExpanded = (key: string) => {
         setExpandedItems(prev => {
@@ -314,7 +378,7 @@ function DetailSidebar({
 
     if (isCollapsed) {
         // Get all unique icons from sections
-        const allItems = content.sections.flatMap(s => s.items);
+        const allItems = content.sections.flatMap((s: any) => s.items);
 
         return (
             <aside className={cn(
@@ -335,7 +399,7 @@ function DetailSidebar({
 
                 {/* Icon-only items */}
                 <div className="flex flex-col gap-1 w-full px-1">
-                    {allItems.slice(0, 8).map((item, idx) => {
+                    {allItems.slice(0, 8).map((item: any, idx: number) => {
                         const ItemIcon = item.icon;
                         return (
                             <button
@@ -405,7 +469,7 @@ function DetailSidebar({
             {/* Content */}
             <ScrollArea className="flex-1">
                 <div className="px-2 pb-4">
-                    {content.sections.map((section, sIdx) => (
+                    {content.sections.map((section: any, sIdx: number) => (
                         <div key={sIdx} className="mb-4">
                             <div className={cn(
                                 "px-3 py-2 text-[11px] font-semibold uppercase tracking-wider",
@@ -414,7 +478,7 @@ function DetailSidebar({
                                 {section.title}
                             </div>
                             <div className="space-y-0.5">
-                                {section.items.map((item, iIdx) => {
+                                {section.items.map((item: any, iIdx: number) => {
                                     const itemKey = `${sIdx}-${iIdx}`;
                                     const isExpanded = expandedItems.has(itemKey);
                                     const ItemIcon = item.icon;
@@ -456,7 +520,7 @@ function DetailSidebar({
                                             </button>
                                             {isExpanded && item.children && (
                                                 <div className="ml-6 pl-3 border-l border-neutral-800 mt-1 mb-2 space-y-0.5">
-                                                    {item.children.map((child, cIdx) => {
+                                                    {item.children.map((child: any, cIdx: number) => {
                                                         const childId = child.id || child.label;
                                                         const isChildActive = activeSubItem === childId;
                                                         return (
@@ -618,6 +682,33 @@ export default function DashboardShell() {
         window.location.href = '/';
     };
 
+    const [inboxCounts, setInboxCounts] = useState<InboxCounts>({
+        all: 0, unread: 0, starred: 0, sent: 0, drafts: 0, trash: 0, archive: 0, spam: 0
+    });
+
+    useEffect(() => {
+        const fetchCounts = async () => {
+            try {
+                const token = localStorage.getItem('bulkEmailToken');
+                if (!token) return;
+                const res = await fetch('/api/inbox/counters', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setInboxCounts(prev => ({ ...prev, ...data }));
+                }
+            } catch (err) {
+                console.error('Failed to fetch inbox counts', err);
+            }
+        };
+
+        fetchCounts();
+        // Poll every minute
+        const interval = setInterval(fetchCounts, 60000);
+        return () => clearInterval(interval);
+    }, []);
+
     const handleItemClick = (section: string, itemId: string) => {
         console.log('Item clicked:', section, itemId);
         setActiveSubItem(itemId);
@@ -670,6 +761,7 @@ export default function DashboardShell() {
                             onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
                             isDark={isDark}
                             onItemClick={handleItemClick}
+                            inboxCounts={inboxCounts}
                         />
                     )}
 

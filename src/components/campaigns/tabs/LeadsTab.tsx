@@ -182,6 +182,35 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
         fetchCampaignSequence();
     }, [fetchSmtpAccounts, fetchEmailLogs, fetchCampaignSequence]);
 
+    // Auto-refresh campaign data every 10 seconds to update lead statuses
+    useEffect(() => {
+        if (!campaignId) return;
+
+        const refreshCampaignData = async () => {
+            try {
+                const token = localStorage.getItem('bulkEmailToken');
+                const response = await fetch(`/api/bulk-email/campaigns/${campaignId}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.leads && Array.isArray(data.leads)) {
+                        // Update leads with latest status from backend
+                        onLeadsUpdate(data.leads);
+                    }
+                }
+            } catch (error) {
+                // Silently fail - don't spam console
+            }
+        };
+
+        // Refresh every 10 seconds
+        const interval = setInterval(refreshCampaignData, 10000);
+
+        return () => clearInterval(interval);
+    }, [campaignId, onLeadsUpdate]);
+
     // Personalize email content with lead data
     const personalizeContent = (content: string, lead: Lead): string => {
         if (!content) return '';
@@ -903,6 +932,76 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
         });
     };
 
+    // Country to timezone mapping for display
+    const countryToTimezone: Record<string, string> = {
+        'india': 'Asia/Kolkata',
+        'usa': 'America/New_York',
+        'uk': 'Europe/London',
+        'united kingdom': 'Europe/London',
+        'germany': 'Europe/Berlin',
+        'france': 'Europe/Paris',
+        'australia': 'Australia/Sydney',
+        'japan': 'Asia/Tokyo',
+        'china': 'Asia/Shanghai',
+        'singapore': 'Asia/Singapore',
+        'uae': 'Asia/Dubai',
+        'canada': 'America/Toronto',
+    };
+
+    // Helper to get lead's timezone
+    const getLeadTimezone = (lead: Lead): string => {
+        if (lead.timezone) return lead.timezone;
+        if (lead.country) {
+            const tz = countryToTimezone[lead.country.toLowerCase()];
+            if (tz) return tz;
+        }
+        return Intl.DateTimeFormat().resolvedOptions().timeZone; // Default to local
+    };
+
+    // Helper to get lead's current local time
+    const getLeadLocalTime = (lead: Lead): string => {
+        try {
+            const tz = getLeadTimezone(lead);
+            return new Date().toLocaleTimeString('en-US', {
+                timeZone: tz,
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
+        } catch {
+            return new Date().toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
+        }
+    };
+
+    // Helper to check if lead is within working hours (default 9:00-20:00)
+    const isWithinWorkingHours = (lead: Lead, workStart: string = '09:00', workEnd: string = '20:00'): boolean => {
+        try {
+            const tz = getLeadTimezone(lead);
+            const now = new Date();
+            const localTime = now.toLocaleTimeString('en-US', {
+                timeZone: tz,
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            });
+            const [hours, minutes] = localTime.split(':').map(Number);
+            const currentMinutes = hours * 60 + minutes;
+
+            const [startH, startM] = workStart.split(':').map(Number);
+            const [endH, endM] = workEnd.split(':').map(Number);
+            const startMinutes = startH * 60 + startM;
+            const endMinutes = endH * 60 + endM;
+
+            return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+        } catch {
+            return true; // Assume within hours if can't determine
+        }
+    };
+
     // If no leads, show empty state with upload
     if (leads.length === 0) {
         return (
@@ -1251,6 +1350,7 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                                     <TableHead className={theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'}>Sending Account</TableHead>
                                     <TableHead className={theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'}>Timezone</TableHead>
                                     <TableHead className={theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'}>Status</TableHead>
+                                    <TableHead className={theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'}>Reply</TableHead>
                                     <TableHead className={theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'}>Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -1364,63 +1464,122 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                                                             </option>
                                                         ))}
                                                     </select>
-                                                ) : (
-                                                    <span className={cn(
-                                                        'text-xs',
-                                                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                                                    )}>
-                                                        {lead.sendingAccountId
-                                                            ? smtpAccounts.find(a => a.id === lead.sendingAccountId)?.fromEmail || 'Auto'
-                                                            : 'Auto'}
-                                                    </span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                {lead.timezone ? (
-                                                    <div className="flex flex-col">
+                                                ) : lead.sendingAccountId ? (
+                                                    // ✅ Show assigned account with icon
+                                                    <div className="flex items-center gap-2">
+                                                        <Mail className={cn(
+                                                            'w-3 h-3',
+                                                            theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
+                                                        )} />
                                                         <span className={cn(
                                                             'text-xs font-medium',
-                                                            theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
+                                                            theme === 'dark' ? 'text-white' : 'text-gray-900'
                                                         )}>
-                                                            {lead.timezone.split('/').pop()?.replace('_', ' ') || lead.timezone}
+                                                            {smtpAccounts.find(a => a.id === lead.sendingAccountId)?.fromEmail || 'Unknown'}
                                                         </span>
-                                                        {lead.workingHoursStart && lead.workingHoursEnd && (
-                                                            <span className={cn(
-                                                                'text-xs',
-                                                                theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                                                            )}>
-                                                                {lead.workingHoursStart} - {lead.workingHoursEnd}
-                                                            </span>
-                                                        )}
                                                     </div>
-                                                ) : lead.country ? (
-                                                    <span className={cn(
-                                                        'text-xs',
-                                                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                                                    )}>
-                                                        {lead.country}
-                                                    </span>
                                                 ) : (
+                                                    // ✅ Not assigned indicator
                                                     <span className={cn(
-                                                        'text-xs',
-                                                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                                        'text-xs italic',
+                                                        theme === 'dark' ? 'text-gray-600' : 'text-gray-400'
                                                     )}>
-                                                        {Intl.DateTimeFormat().resolvedOptions().timeZone.split('/').pop()?.replace('_', ' ') || 'Local'}
+                                                        Not assigned
                                                     </span>
                                                 )}
                                             </TableCell>
                                             <TableCell>
-                                                <span className={cn(
-                                                    'px-2 py-1 rounded-full text-xs font-medium',
-                                                    lead.status === 'sent' && 'bg-blue-500/20 text-blue-400',
-                                                    lead.status === 'opened' && 'bg-emerald-500/20 text-emerald-400',
-                                                    lead.status === 'clicked' && 'bg-purple-500/20 text-purple-400',
-                                                    lead.status === 'replied' && 'bg-amber-500/20 text-amber-400',
-                                                    lead.status === 'bounced' && 'bg-red-500/20 text-red-400',
-                                                    lead.status === 'pending' && (theme === 'dark' ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-500')
-                                                )}>
-                                                    {lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}
-                                                </span>
+                                                {(() => {
+                                                    const tz = getLeadTimezone(lead);
+                                                    const localTime = getLeadLocalTime(lead);
+                                                    const tzName = tz.split('/').pop()?.replace('_', ' ') || tz;
+                                                    const withinHours = isWithinWorkingHours(lead);
+
+                                                    return (
+                                                        <div className="flex flex-col gap-0.5">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className={cn(
+                                                                    'text-xs font-medium',
+                                                                    theme === 'dark' ? 'text-white' : 'text-gray-900'
+                                                                )}>
+                                                                    {localTime}
+                                                                </span>
+                                                                <span className={cn(
+                                                                    'w-1.5 h-1.5 rounded-full',
+                                                                    withinHours ? 'bg-emerald-500' : 'bg-amber-500'
+                                                                )} title={withinHours ? 'Within working hours' : 'Outside working hours'} />
+                                                            </div>
+                                                            <span className={cn(
+                                                                'text-[10px]',
+                                                                theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                                            )}>
+                                                                {tzName}
+                                                            </span>
+                                                            {(lead.workingHoursStart && lead.workingHoursEnd) && (
+                                                                <span className={cn(
+                                                                    'text-[10px]',
+                                                                    theme === 'dark' ? 'text-gray-600' : 'text-gray-400'
+                                                                )}>
+                                                                    Hours: {lead.workingHoursStart}-{lead.workingHoursEnd}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </TableCell>
+                                            <TableCell>
+                                                {(() => {
+                                                    const withinHours = isWithinWorkingHours(lead);
+                                                    const isWaiting = lead.status === 'pending' && !withinHours;
+
+                                                    return (
+                                                        <div className="flex flex-col gap-0.5">
+                                                            <span className={cn(
+                                                                'px-2 py-1 rounded-full text-xs font-medium inline-block w-fit',
+                                                                lead.status === 'sent' && 'bg-blue-500/20 text-blue-400',
+                                                                lead.status === 'opened' && 'bg-emerald-500/20 text-emerald-400',
+                                                                lead.status === 'clicked' && 'bg-purple-500/20 text-purple-400',
+                                                                lead.status === 'replied' && 'bg-amber-500/20 text-amber-400',
+                                                                lead.status === 'bounced' && 'bg-red-500/20 text-red-400',
+                                                                lead.status === 'pending' && !isWaiting && (theme === 'dark' ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-500'),
+                                                                isWaiting && 'bg-amber-500/20 text-amber-400'
+                                                            )}>
+                                                                {isWaiting ? 'Waiting' : lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}
+                                                            </span>
+                                                            {isWaiting && (
+                                                                <span className={cn(
+                                                                    'text-[10px]',
+                                                                    theme === 'dark' ? 'text-amber-500/70' : 'text-amber-600'
+                                                                )}>
+                                                                    Outside hours
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </TableCell>
+                                            <TableCell>
+                                                {(lead as any).hasReplied ? (
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Check className={cn(
+                                                            'w-3.5 h-3.5',
+                                                            theme === 'dark' ? 'text-green-400' : 'text-green-600'
+                                                        )} />
+                                                        <span className={cn(
+                                                            'text-xs font-medium',
+                                                            theme === 'dark' ? 'text-green-400' : 'text-green-600'
+                                                        )}>
+                                                            Replied
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    <span className={cn(
+                                                        'text-xs',
+                                                        theme === 'dark' ? 'text-gray-600' : 'text-gray-400'
+                                                    )}>
+                                                        -
+                                                    </span>
+                                                )}
                                             </TableCell>
                                             <TableCell>
                                                 {leadLogs.length > 0 ? (

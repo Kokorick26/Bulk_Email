@@ -252,7 +252,7 @@ function addUnique(target, source, seenEmails, seenNames) {
         if (nameKey) seenNames.add(nameKey);
 
         target.push(emp);
-        console.log(`[EmployeeDiscovery] ✓ Added: ${emp.name} - ${emp.role} (${emp.source})`);
+        console.log(`[EmployeeDiscovery]  Added: ${emp.name} - ${emp.role} (${emp.source})`);
     }
 }
 

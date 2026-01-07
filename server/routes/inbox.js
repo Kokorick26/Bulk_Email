@@ -693,6 +693,78 @@ router.get('/stats', auth, async (req, res) => {
     }
 });
 
+// Get inbox counters (unread, starred, etc.)
+router.get('/counters', auth, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+
+        // Scan all messages for this user
+        // Note: For production with large datasets, use a GSI on userId
+        const params = {
+            TableName: INBOX_MESSAGES_TABLE,
+            FilterExpression: 'userId = :userId',
+            ExpressionAttributeValues: {
+                ':userId': userId
+            }
+        };
+
+        const data = await dynamoDB.scan(params).promise();
+        const messages = data.Items || [];
+
+        const counters = {
+            all: 0,
+            unread: 0,
+            starred: 0,
+            sent: 0,
+            drafts: 0,
+            trash: 0,
+            archive: 0,
+            spam: 0,
+            important: 0
+        };
+
+        messages.forEach(msg => {
+            const folderLower = (msg.folder || '').toLowerCase();
+            const flags = msg.flags || [];
+
+            // Unread count (Global)
+            if (!msg.isRead) {
+                counters.unread++;
+            }
+
+            // Starred count
+            if (msg.isStarred) {
+                counters.starred++;
+            }
+
+            // Important label count (if applicable, though usually this is a folder or flag)
+            // For now, we don't have explicit 'important' flag logic in fetch, but let's check labels if any
+
+            // Folder mapping
+            // Note: 'All Mail' in UI maps to INBOX folder currently
+            if (folderLower.includes('inbox')) {
+                counters.all++;
+            } else if (folderLower.includes('sent')) {
+                counters.sent++;
+            } else if (folderLower.includes('draft')) {
+                counters.drafts++;
+            } else if (folderLower.includes('trash') || folderLower.includes('deleted')) {
+                counters.trash++;
+            } else if (folderLower.includes('spam') || folderLower.includes('bulk')) {
+                counters.spam++;
+            } else if (folderLower.includes('archive') || folderLower.includes('all') && !folderLower.includes('inbox')) {
+                counters.archive++;
+            }
+        });
+
+        res.json(counters);
+    } catch (err) {
+        console.error('Error fetching counters:', err);
+        // Return zeros on error
+        res.json({ all: 0, unread: 0, starred: 0 });
+    }
+});
+
 // Get mailbox folders for an account
 router.get('/folders/:accountId', auth, async (req, res) => {
     try {

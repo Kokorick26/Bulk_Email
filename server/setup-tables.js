@@ -106,7 +106,7 @@ async function createTable(tableConfig) {
     try {
         // Check if table exists
         await dynamoDB.describeTable({ TableName: tableName }).promise();
-        console.log(`✓ Table "${tableName}" already exists`);
+        console.log(` Table "${tableName}" already exists`);
         return;
     } catch (err) {
         if (err.code !== 'ResourceNotFoundException') {
@@ -121,7 +121,7 @@ async function createTable(tableConfig) {
     // Wait for table to be active
     console.log(`  Waiting for table to become active...`);
     await dynamoDB.waitFor('tableExists', { TableName: tableName }).promise();
-    console.log(`✓ Table "${tableName}" created successfully`);
+    console.log(` Table "${tableName}" created successfully`);
 }
 
 async function setup() {
@@ -131,7 +131,7 @@ async function setup() {
         await createTable(table);
     }
 
-    console.log('\n✓ All tables setup complete!');
+    console.log('\n All tables setup complete!');
     console.log('\nTables:');
     console.log('  - EmailCampaigns: Stores email campaign data');
     console.log('  - EmailLogs: Stores individual email send logs');

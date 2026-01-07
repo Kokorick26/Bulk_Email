@@ -43,11 +43,12 @@ router.get('/smtp-accounts', auth, async (req, res) => {
 // Create SMTP account
 router.post('/smtp-accounts', auth, async (req, res) => {
     try {
-        const { 
-            name, host, port, username, password, fromEmail, fromName, isDefault, 
+        const {
+            name, host, port, username, password, fromEmail, fromName, isDefault,
             imapHost, imapPort, imapUser, imapPassword, imapTls,
             // Sender profile fields for email footer
-            senderFullName, senderPosition, senderCompany, senderPhone, senderWebsite, senderLinkedIn, senderAddress, senderSignature
+            senderFullName, senderPosition, senderCompany, senderPhone, senderWebsite, senderLinkedIn, senderAddress, senderSignature,
+            groups // Array of group names
         } = req.body;
 
         if (!name || !host || !port || !username || !password || !fromEmail) {
@@ -95,6 +96,8 @@ router.post('/smtp-accounts', auth, async (req, res) => {
             senderLinkedIn: senderLinkedIn || null,
             senderAddress: senderAddress || null,
             senderSignature: senderSignature || null,
+            // Groups
+            groups: Array.isArray(groups) ? groups : [],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         };
@@ -154,6 +157,8 @@ router.put('/smtp-accounts/:id', auth, async (req, res) => {
                 : existing.Item.imapPassword,
             // Set imapConfigured based on whether imapHost is set
             imapConfigured: !!(updates.imapHost || existing.Item.imapHost),
+            // Ensure groups is an array
+            groups: Array.isArray(updates.groups) ? updates.groups : (existing.Item.groups || []),
             id: existing.Item.id,
             updatedAt: new Date().toISOString(),
         };
@@ -184,8 +189,131 @@ router.delete('/smtp-accounts/:id', auth, async (req, res) => {
     }
 });
 
+// Get email history for a specific SMTP account (sent and scheduled)
+router.get('/smtp-accounts/:id/history', auth, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Fetch all email logs and campaigns
+        const [logsData, campaignsData, progressData] = await Promise.all([
+            dynamoDB.scan({ TableName: EMAIL_LOGS_TABLE }).promise(),
+            dynamoDB.scan({ TableName: CAMPAIGNS_TABLE }).promise(),
+            dynamoDB.scan({ TableName: LEAD_PROGRESS_TABLE }).promise()
+        ]);
+
+        const allLogs = logsData.Items || [];
+        const allCampaigns = campaignsData.Items || [];
+        const allProgress = progressData.Items || [];
+
+        // Create campaign name lookup
+        const campaignNames = {};
+        allCampaigns.forEach(c => {
+            campaignNames[c.id] = c.name || 'Unknown Campaign';
+        });
+
+        // Filter logs for this account
+        const accountLogs = allLogs.filter(log => log.smtpAccountId === id || log.accountId === id);
+
+        // Separate sent emails
+        const sentEmails = accountLogs
+            .filter(log => log.status === 'delivered' || log.status === 'sent' || log.status === 'opened' || log.status === 'clicked')
+            .sort((a, b) => new Date(b.sentAt || b.createdAt) - new Date(a.sentAt || a.createdAt))
+            .slice(0, 50);
+
+        // Get scheduled emails from LeadProgress table
+        const scheduledEmails = allProgress
+            .filter(p => p.sendingAccountId === id && p.status === 'pending' && p.scheduledTime)
+            .sort((a, b) => new Date(a.scheduledTime) - new Date(b.scheduledTime))
+            .slice(0, 50);
+
+        // Calculate today's send count for this account
+        const today = new Date().toISOString().split('T')[0];
+        const todaySentCount = accountLogs.filter(log => {
+            const logDate = (log.sentAt || log.createdAt || '').split('T')[0];
+            return logDate === today && (log.status === 'delivered' || log.status === 'sent');
+        }).length;
+
+        // Group sent emails by campaign
+        const sentByCampaign = {};
+        sentEmails.forEach(log => {
+            const cid = log.campaignId || 'no-campaign';
+            if (!sentByCampaign[cid]) {
+                sentByCampaign[cid] = {
+                    campaignId: cid,
+                    campaignName: campaignNames[cid] || 'Direct Send',
+                    emails: []
+                };
+            }
+            sentByCampaign[cid].emails.push({
+                id: log.id,
+                to: log.recipientEmail || log.to,
+                subject: log.subject,
+                status: log.status,
+                sentAt: log.sentAt || log.createdAt,
+                openedAt: log.openedAt,
+                clickedAt: log.clickedAt
+            });
+        });
+
+        // Group scheduled emails by campaign
+        const scheduledByCampaign = {};
+        scheduledEmails.forEach(p => {
+            const cid = p.campaignId || 'no-campaign';
+            if (!scheduledByCampaign[cid]) {
+                scheduledByCampaign[cid] = {
+                    campaignId: cid,
+                    campaignName: campaignNames[cid] || 'Unknown',
+                    emails: []
+                };
+            }
+            scheduledByCampaign[cid].emails.push({
+                id: p.id,
+                to: p.recipientEmail || p.leadEmail,
+                subject: p.nextSubject || 'Pending',
+                scheduledTime: p.scheduledTime,
+                stepNumber: p.currentStep
+            });
+        });
+
+        res.json({
+            accountId: id,
+            todaySentCount,
+            dailyLimit: 15,
+            remainingToday: Math.max(0, 15 - todaySentCount),
+            sentByCampaign: Object.values(sentByCampaign),
+            scheduledByCampaign: Object.values(scheduledByCampaign),
+            // Keep flat arrays for backward compatibility
+            sentEmails: sentEmails.map(log => ({
+                id: log.id,
+                to: log.recipientEmail || log.to,
+                subject: log.subject,
+                status: log.status,
+                sentAt: log.sentAt || log.createdAt,
+                campaignId: log.campaignId,
+                campaignName: campaignNames[log.campaignId] || 'Direct Send',
+                openedAt: log.openedAt,
+                clickedAt: log.clickedAt
+            })),
+            scheduledEmails: scheduledEmails.map(p => ({
+                id: p.id,
+                to: p.recipientEmail || p.leadEmail,
+                subject: p.nextSubject || 'Pending',
+                scheduledTime: p.scheduledTime,
+                campaignId: p.campaignId,
+                campaignName: campaignNames[p.campaignId] || 'Unknown',
+                stepNumber: p.currentStep
+            }))
+        });
+    } catch (err) {
+        console.error('Error fetching account history:', err);
+        res.status(500).json({ error: 'Could not fetch account history' });
+    }
+});
+
+
 // Test SMTP connection
 router.post('/smtp-accounts/:id/test', auth, async (req, res) => {
+    let transporter;  //  FIX: Declare outside try block
     try {
         const { id } = req.params;
         const { testEmail } = req.body;
@@ -203,7 +331,7 @@ router.post('/smtp-accounts/:id/test', auth, async (req, res) => {
             return res.status(404).json({ error: 'SMTP account not found' });
         }
 
-        const transporter = nodemailer.createTransport({
+        transporter = nodemailer.createTransport({
             host: account.Item.host,
             port: account.Item.port,
             secure: account.Item.port === 465,
@@ -227,11 +355,15 @@ router.post('/smtp-accounts/:id/test', auth, async (req, res) => {
             `,
         });
 
-        transporter.close();
         res.json({ message: 'Test email sent successfully!' });
     } catch (err) {
         console.error('SMTP test failed:', err);
         res.status(500).json({ error: err.message || 'SMTP test failed' });
+    } finally {
+        //  FIX: Always close transporter to prevent connection leaks
+        if (transporter) {
+            transporter.close();
+        }
     }
 });
 
@@ -279,7 +411,8 @@ router.get('/settings', auth, async (req, res) => {
         defaultThrottling: 4,
         trackOpens: true,
         trackClicks: true,
-        autoRetry: true
+        autoRetry: true,
+        availableAccountGroups: [] // Default empty groups
     };
 
     try {
@@ -418,7 +551,7 @@ async function getTransporter(smtpAccountId = null) {
                 pass: smtpPass,
             },
             fromEmail: process.env.SMTP_FROM || smtpUser,
-            fromName: 'Bhawesh Bhaskar',
+            fromName: process.env.SMTP_FROM_NAME || smtpUser?.split('@')[0] || 'Support',
         };
     }
 
@@ -787,7 +920,7 @@ async function processEmailsOneByOne(campaignId, campaign, recipientList, smtpAc
 
                 const currentStatus = statusCheck.Item?.status;
                 if (currentStatus === 'paused' || currentStatus === 'stopped' || currentStatus === 'cancelled') {
-                    console.log(`[Batch] ⏹️ Campaign ${currentStatus} - STOPPING IMMEDIATELY`);
+                    console.log(`[Batch]  Campaign ${currentStatus} - STOPPING IMMEDIATELY`);
                     console.log(`[Batch] Progress: ${sentCount} sent, ${failedCount} failed`);
 
                     // Save progress and exit
@@ -944,7 +1077,7 @@ async function processEmailsPooled(campaignId, campaign, recipientList, smtpAcco
 
                     const currentStatus = statusCheck.Item?.status;
                     if (currentStatus === 'paused' || currentStatus === 'stopped' || currentStatus === 'cancelled') {
-                        console.log(`[Pooled] ⏹️ Campaign ${currentStatus} - STOPPING IMMEDIATELY`);
+                        console.log(`[Pooled]  Campaign ${currentStatus} - STOPPING IMMEDIATELY`);
                         transporter.close();
                         await finalizeCampaign(campaignId, sentCount, failedCount);
                         return;
@@ -1207,6 +1340,42 @@ router.get('/campaigns/:id', auth, async (req, res) => {
     }
 });
 
+// Get reply for a specific lead
+router.get('/campaigns/:campaignId/leads/:leadId/reply', auth, async (req, res) => {
+    try {
+        const { campaignId, leadId } = req.params;
+
+        // Get lead progress
+        const progressData = await dynamoDB.scan({
+            TableName: LEAD_PROGRESS_TABLE,
+            FilterExpression: 'campaignId = :campaignId AND leadId = :leadId',
+            ExpressionAttributeValues: {
+                ':campaignId': campaignId,
+                ':leadId': leadId
+            }
+        }).promise();
+
+        const leadProgress = progressData.Items?.[0];
+
+        if (!leadProgress || !leadProgress.hasReplied) {
+            return res.json({ hasReply: false });
+        }
+
+        res.json({
+            hasReply: true,
+            reply: {
+                from: leadProgress.replyFrom || leadProgress.leadEmail,
+                subject: leadProgress.replySubject || '',
+                body: leadProgress.replyBody || '',
+                receivedAt: leadProgress.replyReceivedAt || new Date().toISOString()
+            }
+        });
+    } catch (err) {
+        console.error('Error fetching reply:', err);
+        res.status(500).json({ error: 'Could not load reply' });
+    }
+});
+
 // Create a new campaign
 router.post('/campaigns', auth, async (req, res) => {
     try {
@@ -1392,20 +1561,30 @@ router.post('/campaigns/:id/start', auth, async (req, res) => {
             return res.status(400).json({ error: 'Campaign has no email sequence. Please create at least one step.' });
         }
 
-        // Check if first step has content
-        const firstStep = campaign.Item.sequence.steps[0];
-        if (!firstStep.subject || !firstStep.body) {
-            return res.status(400).json({ error: 'First step must have a subject and body.' });
+        //  FIX: Validate ALL steps have content, not just the first one
+        const invalidSteps = campaign.Item.sequence.steps
+            .map((step, idx) => ({ step, idx }))
+            .filter(({ step }) => !step.subject || !step.body || !step.subject.trim() || !step.body.trim());
+
+        if (invalidSteps.length > 0) {
+            const stepNumbers = invalidSteps.map(({ idx }) => idx + 1).join(', ');
+            return res.status(400).json({
+                error: `Step${invalidSteps.length > 1 ? 's' : ''} ${stepNumbers} ${invalidSteps.length > 1 ? 'are' : 'is'} missing subject or body. All steps must have content.`
+            });
         }
 
         // Update campaign status to active
+        //  FIX: Add condition to prevent race condition (multiple start clicks)
         await dynamoDB.update({
             TableName: CAMPAIGNS_TABLE,
             Key: { id },
             UpdateExpression: 'SET #status = :status, startedAt = :startedAt, updatedAt = :updatedAt',
+            ConditionExpression: '#status IN (:draft, :paused)',  //  Only start if draft or paused
             ExpressionAttributeNames: { '#status': 'status' },
             ExpressionAttributeValues: {
                 ':status': 'active',
+                ':draft': 'draft',
+                ':paused': 'paused',
                 ':startedAt': new Date().toISOString(),
                 ':updatedAt': new Date().toISOString()
             }
@@ -1431,6 +1610,95 @@ router.post('/campaigns/:id/start', auth, async (req, res) => {
     }
 });
 
+// Retry failed leads in campaign
+router.post('/campaigns/:id/retry', auth, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const campaign = await dynamoDB.get({
+            TableName: CAMPAIGNS_TABLE,
+            Key: { id }
+        }).promise();
+
+        if (!campaign.Item) {
+            return res.status(404).json({ error: 'Campaign not found' });
+        }
+
+        // 1. Find all failed leads in LeadProgress
+        const progressData = await dynamoDB.scan({
+            TableName: LEAD_PROGRESS_TABLE,
+            FilterExpression: 'campaignId = :campaignId AND #status = :failed',
+            ExpressionAttributeNames: { '#status': 'status' },
+            ExpressionAttributeValues: {
+                ':campaignId': id,
+                ':failed': 'failed'
+            }
+        }).promise();
+
+        const failedLeads = progressData.Items || [];
+        console.log(`[CampaignRetry] Found ${failedLeads.length} failed leads to retry`);
+
+        if (failedLeads.length > 0) {
+            // 2. Reset status for each failed lead
+            for (const lead of failedLeads) {
+                // Determine new status based on step
+                const newStatus = lead.currentStep === 0 ? 'pending' : 'in_progress';
+
+                // Update LeadProgress
+                await dynamoDB.update({
+                    TableName: LEAD_PROGRESS_TABLE,
+                    Key: { id: lead.id },
+                    UpdateExpression: 'SET #status = :status, error = :null',
+                    ExpressionAttributeNames: { '#status': 'status' },
+                    ExpressionAttributeValues: {
+                        ':status': newStatus,
+                        ':null': null
+                    }
+                }).promise();
+
+                // Update Campaign.leads array status
+                const leadIndex = campaign.Item.leads ? campaign.Item.leads.findIndex(l => l.email === lead.leadEmail) : -1;
+                if (leadIndex !== -1) {
+                    await dynamoDB.update({
+                        TableName: CAMPAIGNS_TABLE,
+                        Key: { id },
+                        UpdateExpression: `SET leads[${leadIndex}].#status = :status`,
+                        ExpressionAttributeNames: { '#status': 'status' },
+                        ExpressionAttributeValues: { ':status': newStatus }
+                    }).promise();
+                }
+            }
+        }
+
+        // 3. Set campaign to active
+        await dynamoDB.update({
+            TableName: CAMPAIGNS_TABLE,
+            Key: { id },
+            UpdateExpression: 'SET #status = :status, failedCount = :zero',
+            ExpressionAttributeNames: { '#status': 'status' },
+            ExpressionAttributeValues: {
+                ':status': 'active',
+                ':zero': 0
+            }
+        }).promise();
+
+        // 4. Trigger execution
+        setImmediate(() => {
+            executeCampaign(id).catch(err => {
+                console.error('[Campaign Retry] Execution error:', err);
+            });
+        });
+
+        res.json({
+            message: `Retrying ${failedLeads.length} failed leads`,
+            retriedCount: failedLeads.length
+        });
+    } catch (err) {
+        console.error('Error retrying campaign:', err);
+        res.status(500).json({ error: 'Could not retry campaign' });
+    }
+});
+
 // Pause a campaign
 router.post('/campaigns/:id/pause', auth, async (req, res) => {
     try {
@@ -1453,6 +1721,29 @@ router.post('/campaigns/:id/pause', auth, async (req, res) => {
     } catch (err) {
         console.error('Error pausing campaign:', err);
         res.status(500).json({ error: 'Could not pause campaign' });
+    }
+});
+
+// Reset campaign statistics (for starting fresh)
+router.post('/campaigns/:id/reset-stats', auth, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        await dynamoDB.update({
+            TableName: CAMPAIGNS_TABLE,
+            Key: { id },
+            UpdateExpression: 'SET sentCount = :zero, failedCount = :zero, openCount = :zero, clickCount = :zero, replyCount = :zero, updatedAt = :updatedAt',
+            ExpressionAttributeValues: {
+                ':zero': 0,
+                ':updatedAt': new Date().toISOString()
+            }
+        }).promise();
+
+        res.json({ message: 'Campaign statistics reset successfully' });
+
+    } catch (err) {
+        console.error('Error resetting campaign stats:', err);
+        res.status(500).json({ error: 'Could not reset campaign statistics' });
     }
 });
 
@@ -1804,6 +2095,62 @@ router.delete('/lead-lists/:id', auth, async (req, res) => {
     } catch (err) {
         console.error('Error deleting lead list:', err);
         res.status(500).json({ error: 'Could not delete lead list' });
+    }
+});
+
+// ============ ANALYTICS ============
+
+router.get('/analytics/geo', auth, async (req, res) => {
+    try {
+        // Fetch logs with country data
+        // For efficiency, we should actually query a GSI or aggregated table, but for now scan EmailLogs
+        // We will filter in memory or via Scan filter
+        const logs = await dynamoDB.scan({
+            TableName: EMAIL_LOGS_TABLE,
+            FilterExpression: 'attribute_exists(country) AND country <> :unknown',
+            ExpressionAttributeValues: {
+                ':unknown': 'Unknown'
+            }
+        }).promise();
+
+        // Aggregate by country
+        // ISO 3166 alpha-3 or Name? GeoIP Lite returns 2 letter code usually (e.g., 'US') or Name depending on lookup. 
+        // geoip.lookup(ip).country is 2-letter 'US', 'GB' etc.
+        // react-simple-maps Geographies often use ISO-3 numeric or ISO-3 alpha.
+        // We need to check what geoip returns. It's ISO-2 (e.g. US). 
+        // The map topology usually needs ISO-3. We'll handle mapping in Frontend or send raw counts for now.
+
+        const countryCounts = {};
+        (logs.Items || []).forEach(log => {
+            const country = log.country; // Expecting 'US', 'IN', etc.
+            if (country) {
+                countryCounts[country] = (countryCounts[country] || 0) + 1;
+            }
+        });
+
+        const data = Object.entries(countryCounts).map(([id, value]) => ({ id, value }));
+
+        // Also fetch total stats
+        const allLogs = await dynamoDB.scan({ TableName: EMAIL_LOGS_TABLE }).promise();
+        const stats = {
+            totalSent: allLogs.Items.filter(l => l.status === 'sent').length,
+            totalOpens: allLogs.Items.filter(l => l.status === 'open').length,
+            totalClicks: allLogs.Items.filter(l => l.status === 'clicked').length,
+        };
+
+        // replies are in LeadProgress or Campaigns usually
+        const replies = await dynamoDB.scan({
+            TableName: LEAD_PROGRESS_TABLE,
+            FilterExpression: 'hasReplied = :true',
+            ExpressionAttributeValues: { ':true': true }
+        }).promise();
+        stats.totalReplies = replies.Count;
+
+        res.json({ geoData: data, stats });
+
+    } catch (err) {
+        console.error('Error fetching analytics:', err);
+        res.status(500).json({ error: 'Could not fetch analytics data' });
     }
 });
 

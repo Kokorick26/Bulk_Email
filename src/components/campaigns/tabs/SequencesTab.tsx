@@ -162,8 +162,23 @@ export function SequencesTab({ campaignId, sequence, onSequenceUpdate, leads = [
 
             if (response.ok) {
                 const data = await response.json();
-                if (data.subject) handleUpdateStep(activeStepId, { subject: data.subject });
-                if (data.body) handleUpdateStep(activeStepId, { body: data.body });
+                console.log('[AI Generate] Response:', data);
+
+                if (data.subject) {
+                    console.log('[AI Generate] Updating subject:', data.subject);
+                    handleUpdateStep(activeStepId, { subject: data.subject });
+                } else {
+                    console.warn('[AI Generate] No subject in response');
+                }
+
+                if (data.body) {
+                    console.log('[AI Generate] Updating body, length:', data.body.length);
+                    handleUpdateStep(activeStepId, { body: data.body });
+                } else {
+                    console.warn('[AI Generate] No body in response');
+                }
+            } else {
+                console.error('[AI Generate] Response not OK:', response.status);
             }
         } catch (error) {
             console.error('AI error:', error);

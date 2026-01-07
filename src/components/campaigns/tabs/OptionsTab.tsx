@@ -20,8 +20,8 @@ export function OptionsTab({ campaignId, options, onOptionsUpdate, className }: 
     const [trackOpens, setTrackOpens] = useState(true);
     const [trackClicks, setTrackClicks] = useState(true);
     const [stopOnReply, setStopOnReply] = useState(true);
-    const [dailyLimit, setDailyLimit] = useState(50);
-    const [timeBetweenEmails, setTimeBetweenEmails] = useState(300);
+    const [dailyLimit, setDailyLimit] = useState(15);
+    const [timeBetweenEmails, setTimeBetweenEmails] = useState(10);
 
     // Initialize from props once
     useEffect(() => {
@@ -29,8 +29,8 @@ export function OptionsTab({ campaignId, options, onOptionsUpdate, className }: 
             setTrackOpens(options.trackOpens ?? true);
             setTrackClicks(options.trackClicks ?? true);
             setStopOnReply(options.stopOnReply ?? true);
-            setDailyLimit(options.dailyLimit ?? 50);
-            setTimeBetweenEmails(options.timeBetweenEmails ?? 300);
+            setDailyLimit(options.dailyLimit ?? 15);
+            setTimeBetweenEmails(options.timeBetweenEmails ?? 10);
         }
     }, []);
 
@@ -285,7 +285,7 @@ export function OptionsTab({ campaignId, options, onOptionsUpdate, className }: 
                                 'text-xs mt-0.5',
                                 theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
                             )}>
-                                Seconds between emails
+                                Minutes between emails
                             </p>
                         </div>
                         <input

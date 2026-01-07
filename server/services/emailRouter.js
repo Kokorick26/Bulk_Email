@@ -307,33 +307,60 @@ export function calculateDistribution(totalLeads, accountCount, config = {}) {
 
 /**
  * Reset daily usage (call this at midnight or start of new day)
+ *  FIX: Added pagination and batch deletion to prevent memory leaks
  */
 export async function resetDailyUsage() {
-    // Old usage records are keyed by date, so they naturally expire
-    // This function can be used for cleanup if needed
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    // Keep 7 days of history for analytics
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - 7);
+    const cutoffStr = cutoffDate.toISOString().split('T')[0];
 
     try {
-        // Scan for old records and delete them
-        const data = await dynamoDB.scan({
-            TableName: ACCOUNT_USAGE_TABLE,
-            FilterExpression: '#date < :yesterday',
-            ExpressionAttributeNames: { '#date': 'date' },
-            ExpressionAttributeValues: { ':yesterday': yesterdayStr }
-        }).promise();
+        let lastEvaluatedKey = null;
+        let deletedCount = 0;
 
-        for (const item of data.Items || []) {
-            await dynamoDB.delete({
+        do {
+            const scanParams = {
                 TableName: ACCOUNT_USAGE_TABLE,
-                Key: { id: item.id }
-            }).promise();
-        }
+                FilterExpression: '#date < :cutoff',
+                ExpressionAttributeNames: { '#date': 'date' },
+                ExpressionAttributeValues: { ':cutoff': cutoffStr },
+                Limit: 25  //  Process in batches to avoid memory issues
+            };
 
-        console.log(`[EmailRouter] Cleaned up ${data.Items?.length || 0} old usage records`);
+            if (lastEvaluatedKey) {
+                scanParams.ExclusiveStartKey = lastEvaluatedKey;
+            }
+
+            const data = await dynamoDB.scan(scanParams).promise();
+
+            // Batch delete (DynamoDB supports max 25 items per batch)
+            if (data.Items && data.Items.length > 0) {
+                const deleteRequests = data.Items.map(item => ({
+                    DeleteRequest: { Key: { id: item.id } }
+                }));
+
+                // Process in batches of 25
+                for (let i = 0; i < deleteRequests.length; i += 25) {
+                    const batch = deleteRequests.slice(i, i + 25);
+                    await dynamoDB.batchWrite({
+                        RequestItems: {
+                            [ACCOUNT_USAGE_TABLE]: batch
+                        }
+                    }).promise();
+                }
+
+                deletedCount += data.Items.length;
+            }
+
+            lastEvaluatedKey = data.LastEvaluatedKey;
+        } while (lastEvaluatedKey);
+
+        console.log(`[EmailRouter]  Cleaned up ${deletedCount} old usage records (older than ${cutoffStr})`);
+        return { success: true, deleted: deletedCount };
     } catch (error) {
         console.error('[EmailRouter] Error cleaning up old usage:', error);
+        return { success: false, error: error.message };
     }
 }
 
