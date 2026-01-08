@@ -43,6 +43,7 @@ export interface Campaign {
     options?: CampaignOptions;
     schedule?: CampaignSchedule;
     sequence?: Sequence;
+    leads?: Lead[];
 }
 
 export interface Lead {

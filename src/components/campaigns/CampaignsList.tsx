@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
     Plus, Search, MoreHorizontal, Play, Pause, Trash2, Copy,
-    TrendingUp, Eye, Loader2, ChevronRight, Megaphone, Send,
-    Clock, Users, MousePointer, ArrowUpRight, Inbox
+    Eye, Loader2, ChevronRight, Megaphone, Inbox
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useTheme } from '../../lib/ThemeContext';
@@ -17,6 +16,7 @@ import {
     DropdownMenuSeparator
 } from '../ui/DropdownMenu';
 import type { Campaign, CampaignFilter } from './types';
+import { AnalyticsTab } from './tabs/AnalyticsTab';
 
 interface CampaignsListProps {
     campaigns: Campaign[];
@@ -305,128 +305,9 @@ export function CampaignsList({
                             </div>
                         </div>
 
-                        {/* Stats */}
+                        {/* Analytics Dashboard */}
                         <div className="p-4">
-                            <div className="grid grid-cols-4 gap-3">
-                                {[
-                                    { label: 'Progress', value: `${selected.totalRecipients > 0 ? Math.round((selected.sentCount / selected.totalRecipients) * 100) : 0}%`, icon: TrendingUp },
-                                    { label: 'Emails Sent', value: selected.sentCount.toLocaleString(), sub: `of ${selected.totalRecipients}`, icon: Send },
-                                    { label: 'Replied', value: '0', sub: '0% reply rate', icon: ArrowUpRight },
-                                    { label: 'Clicked', value: '0', sub: '0% click rate', icon: MousePointer },
-                                ].map((stat, i) => (
-                                    <div
-                                        key={i}
-                                        className={cn(
-                                            'p-3 rounded border',
-                                            isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
-                                        )}
-                                    >
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <div className={cn(
-                                                'w-6 h-6 rounded flex items-center justify-center',
-                                                isDark ? 'bg-orange-500/10' : 'bg-orange-50'
-                                            )}>
-                                                <stat.icon className="w-3 h-3 text-orange-500" />
-                                            </div>
-                                            <span className={cn('text-[10px] font-medium', isDark ? 'text-gray-400' : 'text-gray-500')}>
-                                                {stat.label}
-                                            </span>
-                                        </div>
-                                        <p className={cn('text-lg font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
-                                            {stat.value}
-                                        </p>
-                                        {stat.sub && (
-                                            <p className={cn('text-[9px] mt-0.5', isDark ? 'text-gray-500' : 'text-gray-400')}>
-                                                {stat.sub}
-                                            </p>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Quick Overview */}
-                            <div className={cn(
-                                'mt-4 p-4 rounded border',
-                                isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
-                            )}>
-                                <h3 className={cn('text-xs font-semibold mb-3', isDark ? 'text-white' : 'text-gray-900')}>
-                                    Quick Overview
-                                </h3>
-                                <div className="space-y-3">
-                                    {/* Primary Info */}
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <p className={cn('text-[9px] uppercase tracking-wide mb-0.5', isDark ? 'text-gray-500' : 'text-gray-400')}>Status</p>
-                                            <span className={cn(
-                                                'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium',
-                                                STATUS_STYLES[selected.status]?.bg,
-                                                STATUS_STYLES[selected.status]?.text
-                                            )}>
-                                                {selected.status.charAt(0).toUpperCase() + selected.status.slice(1)}
-                                            </span>
-                                        </div>
-                                        <div>
-                                            <p className={cn('text-[9px] uppercase tracking-wide mb-0.5', isDark ? 'text-gray-500' : 'text-gray-400')}>Created</p>
-                                            <p className={cn('text-[10px] font-medium', isDark ? 'text-white' : 'text-gray-900')}>
-                                                {formatDate(selected.createdAt)}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    {/* Engagement Stats */}
-                                    <div className={cn('pt-3 border-t', isDark ? 'border-neutral-800' : 'border-gray-100')}>
-                                        <p className={cn('text-[9px] uppercase tracking-wide font-medium mb-2', isDark ? 'text-gray-500' : 'text-gray-400')}>Engagement</p>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            {[
-                                                { label: 'Open Rate', val: selected.sentCount > 0 ? Math.round((selected.openCount || 0) / selected.sentCount * 100) : 0 },
-                                                { label: 'Click Rate', val: selected.sentCount > 0 ? Math.round((selected.clickCount || 0) / selected.sentCount * 100) : 0 },
-                                                { label: 'Reply Rate', val: selected.sentCount > 0 ? Math.round((selected.replyCount || 0) / selected.sentCount * 100) : 0 },
-                                            ].map((stat, i) => (
-                                                <div key={i} className={cn('p-2 rounded text-center', isDark ? 'bg-neutral-800' : 'bg-gray-50')}>
-                                                    <div className={cn('text-base font-semibold', isDark ? 'text-white' : 'text-gray-900')}>{stat.val}%</div>
-                                                    <div className={cn('text-[9px]', isDark ? 'text-gray-500' : 'text-gray-400')}>{stat.label}</div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* Schedule Info */}
-                                    {selected.schedule && (
-                                        <div className={cn('pt-3 border-t', isDark ? 'border-neutral-800' : 'border-gray-100')}>
-                                            <p className={cn('text-[9px] uppercase tracking-wide font-medium mb-1.5', isDark ? 'text-gray-500' : 'text-gray-400')}>Schedule</p>
-                                            <div className="flex items-start gap-1.5">
-                                                <Clock className={cn('w-3 h-3 mt-0.5', isDark ? 'text-gray-500' : 'text-gray-400')} />
-                                                <div>
-                                                    <p className={cn('text-[10px]', isDark ? 'text-gray-300' : 'text-gray-700')}>
-                                                        {selected.schedule.days.map(d => d.slice(0, 3)).join(', ')}
-                                                    </p>
-                                                    <p className={cn('text-[9px]', isDark ? 'text-gray-500' : 'text-gray-400')}>
-                                                        {selected.schedule.startTime} - {selected.schedule.endTime} ({selected.schedule.timezone})
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Config Hints */}
-                                    {selected.options && (
-                                        <div className={cn('pt-3 border-t', isDark ? 'border-neutral-800' : 'border-gray-100')}>
-                                            <div className="flex gap-3">
-                                                {selected.options.trackOpens && (
-                                                    <span className={cn('text-[9px] flex items-center gap-1', isDark ? 'text-gray-400' : 'text-gray-500')}>
-                                                        <Eye className="w-3 h-3" /> Track Opens
-                                                    </span>
-                                                )}
-                                                {selected.options.trackClicks && (
-                                                    <span className={cn('text-[9px] flex items-center gap-1', isDark ? 'text-gray-400' : 'text-gray-500')}>
-                                                        <MousePointer className="w-3 h-3" /> Track Clicks
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+                            <AnalyticsTab campaign={selected} leads={selected.leads} />
                         </div>
                     </>
                 ) : (

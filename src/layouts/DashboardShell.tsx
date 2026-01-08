@@ -38,6 +38,8 @@ interface DashboardContextType {
     setInboxFilterAccountIds: (ids: string[]) => void;
     inboxFilterCampaignId: string | null;
     setInboxFilterCampaignId: (id: string | null) => void;
+    inboxViewMode: 'selection' | 'inbox';
+    setInboxViewMode: (mode: 'selection' | 'inbox') => void;
 }
 
 const DashboardContext = createContext<DashboardContextType | null>(null);
@@ -691,6 +693,14 @@ export default function DashboardShell() {
     });
     const [inboxFilterAccountIds, setInboxFilterAccountIds] = useState<string[]>([]);
     const [inboxFilterCampaignId, setInboxFilterCampaignId] = useState<string | null>(null);
+    const [inboxViewMode, setInboxViewMode] = useState<'selection' | 'inbox'>('selection');
+
+    useEffect(() => {
+        // If we have active filters, ensure we are in inbox mode
+        if (inboxFilterCampaignId || inboxFilterAccountIds.length > 0) {
+            setInboxViewMode('inbox');
+        }
+    }, [inboxFilterCampaignId, inboxFilterAccountIds]);
 
     useEffect(() => {
         const fetchCounts = async () => {
@@ -733,7 +743,9 @@ export default function DashboardShell() {
             inboxFilterAccountIds,
             setInboxFilterAccountIds,
             inboxFilterCampaignId,
-            setInboxFilterCampaignId
+            setInboxFilterCampaignId,
+            inboxViewMode,
+            setInboxViewMode
         }}>
             <div className={cn("h-screen flex flex-col overflow-hidden", isDark ? 'bg-[#0a0a0a]' : 'bg-gray-50')}>
                 <Toaster
@@ -763,7 +775,7 @@ export default function DashboardShell() {
                     />
 
                     {/* Detail Sidebar - Only show for sections that need it */}
-                    {(activeSection === 'inbox' || activeSection === 'settings') && (
+                    {((activeSection === 'inbox' && inboxViewMode === 'inbox') || activeSection === 'settings') && (
                         <DetailSidebar
                             activeSection={activeSection}
                             activeSubItem={activeSubItem}

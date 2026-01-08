@@ -78,7 +78,16 @@ const SIDEBAR_TO_FOLDER: Record<string, { folder?: string; filter?: FilterType }
 
 export default function InboxView({ smtpAccounts, campaigns = [], onRefreshAccounts, onReply, onForward }: InboxViewProps) {
     const { theme } = useTheme();
-    const { activeSubItem, setActiveSubItem, inboxFilterAccountIds, setInboxFilterAccountIds, inboxFilterCampaignId, setInboxFilterCampaignId } = useDashboardContext();
+    const {
+        activeSubItem,
+        setActiveSubItem,
+        inboxFilterAccountIds,
+        setInboxFilterAccountIds,
+        inboxFilterCampaignId,
+        setInboxFilterCampaignId,
+        inboxViewMode: viewMode,
+        setInboxViewMode: setViewMode
+    } = useDashboardContext();
     const isDark = theme === 'dark';
 
     const [selectedAccount, setSelectedAccount] = useState<SmtpAccount | null>(null);
@@ -95,10 +104,6 @@ export default function InboxView({ smtpAccounts, campaigns = [], onRefreshAccou
     const sidebarConfig = SIDEBAR_TO_FOLDER[activeSubItem] || { folder: 'INBOX', filter: 'all' };
     const activeFolder = sidebarConfig.folder || 'INBOX';
     const activeFilter: FilterType = sidebarConfig.filter || 'all';
-
-    const [viewMode, setViewMode] = useState<'selection' | 'inbox'>(
-        inboxFilterCampaignId || inboxFilterAccountIds.length > 0 ? 'inbox' : 'selection'
-    );
 
     // Filter accounts based on inboxFilterAccountIds (for campaign or account selection)
     const configuredAccounts = smtpAccounts.filter(a => {
@@ -118,12 +123,6 @@ export default function InboxView({ smtpAccounts, campaigns = [], onRefreshAccou
         setInboxFilterCampaignId(null);
         setViewMode('selection');
     };
-
-    useEffect(() => {
-        if (inboxFilterCampaignId || inboxFilterAccountIds.length > 0) {
-            setViewMode('inbox');
-        }
-    }, [inboxFilterCampaignId, inboxFilterAccountIds]);
 
     useEffect(() => {
         // If no account selected, or current selection is not in the (potentially filtered) list

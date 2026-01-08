@@ -10,7 +10,7 @@ import type { Campaign, Lead } from '../types';
 
 interface AnalyticsTabProps {
     campaign: Campaign;
-    leads: Lead[];
+    leads?: Lead[];
     className?: string;
 }
 
@@ -86,12 +86,32 @@ const StatBlock = ({ label, value, subValue, icon: Icon, color, theme, trend }: 
 export function AnalyticsTab({ campaign, leads, className }: AnalyticsTabProps) {
     const { theme } = useTheme();
 
-    const sentCount = leads.filter(l => l.status === 'sent' || l.status === 'opened' || l.status === 'clicked' || l.status === 'replied').length;
-    const openCount = leads.filter(l => l.status === 'opened' || l.status === 'clicked' || l.status === 'replied').length;
-    const clickCount = leads.filter(l => l.status === 'clicked' || l.status === 'replied').length;
-    const replyCount = leads.filter(l => l.status === 'replied').length;
-    const bounceCount = leads.filter(l => l.status === 'bounced').length;
-    const totalLeads = leads.length;
+    // If leads are provided, calculate from leads. Otherwise use campaign stats.
+    const hasLeads = leads !== undefined;
+
+    const sentCount = hasLeads
+        ? leads!.filter(l => l.status === 'sent' || l.status === 'opened' || l.status === 'clicked' || l.status === 'replied').length
+        : campaign.sentCount || 0;
+
+    const openCount = hasLeads
+        ? leads!.filter(l => l.status === 'opened' || l.status === 'clicked' || l.status === 'replied').length
+        : campaign.openCount || 0;
+
+    const clickCount = hasLeads
+        ? leads!.filter(l => l.status === 'clicked' || l.status === 'replied').length
+        : campaign.clickCount || 0;
+
+    const replyCount = hasLeads
+        ? leads!.filter(l => l.status === 'replied').length
+        : campaign.replyCount || 0;
+
+    const bounceCount = hasLeads
+        ? leads!.filter(l => l.status === 'bounced').length
+        : campaign.bounceCount || 0;
+
+    const totalLeads = hasLeads
+        ? leads!.length
+        : campaign.totalRecipients || 0;
 
     const openRate = sentCount > 0 ? ((openCount / sentCount) * 100).toFixed(1) : '0.0';
     const clickRate = openCount > 0 ? ((clickCount / openCount) * 100).toFixed(1) : '0.0';

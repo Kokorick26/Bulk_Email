@@ -54,6 +54,7 @@ interface Campaign {
     completedAt?: string;
     schedule?: any;
     options?: any;
+    leads?: any[];
 }
 
 interface EmailStats {
@@ -95,6 +96,7 @@ export default function UnifiedDashboard() {
         progress: c.totalRecipients > 0 ? (c.sentCount / c.totalRecipients) * 100 : 0,
         schedule: c.schedule,
         options: c.options,
+        leads: c.leads,
     }));
 
     const [aiContext, setAiContext] = useState({
