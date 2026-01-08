@@ -105,30 +105,30 @@ export function OptionsTab({ campaignId, options, onOptionsUpdate, className }: 
         <div
             onClick={() => onChange(!checked)}
             className={cn(
-                'flex items-center justify-between p-5 rounded-xl border transition-all cursor-pointer select-none',
+                'flex items-center justify-between p-3 rounded border transition-all cursor-pointer select-none',
                 theme === 'dark'
-                    ? 'bg-[#12151a] border-[#252a33] hover:border-[#d97757]/50 hover:bg-[#1a1e25]'
-                    : 'bg-white border-gray-200 hover:border-blue-300 hover:bg-blue-50/50 shadow-sm'
+                    ? 'bg-neutral-900 border-neutral-800 hover:border-neutral-700 hover:bg-neutral-800'
+                    : 'bg-white border-gray-200 hover:border-gray-300 hover:bg-gray-50'
             )}
         >
-            <div className="flex items-center gap-4 pointer-events-none">
+            <div className="flex items-center gap-3 pointer-events-none">
                 <div className={cn(
-                    'p-2.5 rounded-lg transition-colors',
+                    'p-2 rounded transition-colors',
                     checked
-                        ? theme === 'dark' ? 'bg-[#d97757]/20 text-[#d97757]' : 'bg-blue-100 text-blue-600'
-                        : theme === 'dark' ? 'bg-gray-800 text-gray-500' : 'bg-gray-100 text-gray-400'
+                        ? theme === 'dark' ? 'bg-orange-500/20 text-orange-500' : 'bg-blue-100 text-blue-600'
+                        : theme === 'dark' ? 'bg-neutral-800 text-gray-500' : 'bg-gray-100 text-gray-400'
                 )}>
-                    <Icon className="w-5 h-5" />
+                    <Icon className="w-4 h-4" />
                 </div>
                 <div>
                     <h4 className={cn(
-                        'text-sm font-semibold',
+                        'text-xs font-semibold',
                         theme === 'dark' ? 'text-white' : 'text-gray-900'
                     )}>
                         {title}
                     </h4>
                     <p className={cn(
-                        'text-xs mt-0.5',
+                        'text-[10px]',
                         theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
                     )}>
                         {description}
@@ -137,61 +137,68 @@ export function OptionsTab({ campaignId, options, onOptionsUpdate, className }: 
             </div>
             {/* Custom Toggle Display (not a button, just visual) */}
             <div className={cn(
-                'relative w-12 h-7 rounded-full transition-colors pointer-events-none',
+                'relative w-10 h-6 rounded-full transition-colors pointer-events-none',
                 checked
-                    ? theme === 'dark' ? 'bg-[#d97757]' : 'bg-blue-600'
-                    : theme === 'dark' ? 'bg-gray-700' : 'bg-gray-300'
+                    ? theme === 'dark' ? 'bg-orange-500' : 'bg-blue-600'
+                    : theme === 'dark' ? 'bg-neutral-700' : 'bg-gray-300'
             )}>
                 <div className={cn(
-                    'absolute top-1 w-5 h-5 rounded-full bg-white shadow-sm transition-transform',
-                    checked ? 'left-6' : 'left-1'
+                    'absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform',
+                    checked ? 'left-5' : 'left-1'
                 )} />
             </div>
         </div>
     );
 
     return (
-        <div className={cn('max-w-2xl mx-auto animate-in fade-in duration-500', className)}>
-            {/* Header */}
-            <div className="flex items-center justify-between mb-8">
-                <div>
+        <div className={cn('space-y-6 max-w-2xl', className)}>
+            {/* Compact Header */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
                     <h2 className={cn(
-                        'text-2xl font-[Syne] font-bold',
+                        'text-lg font-semibold',
                         theme === 'dark' ? 'text-white' : 'text-gray-900'
                     )}>
-                        Campaign <span className="text-[#d97757]">Options</span>
+                        Options
                     </h2>
-                    <p className={cn(
-                        'text-sm mt-1',
-                        theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
+                    <div className={cn(
+                        'text-xs px-2 py-0.5 rounded',
+                        theme === 'dark' ? 'bg-neutral-800 text-gray-400' : 'bg-gray-100 text-gray-500'
                     )}>
-                        Configure tracking and automation settings
-                    </p>
+                        3 Sections
+                    </div>
                 </div>
+
                 <Button
                     onClick={handleSave}
                     disabled={isSaving}
+                    size="sm"
                     className={cn(
-                        'h-10 px-6 rounded-lg font-semibold',
+                        'h-8 text-xs gap-1.5',
                         theme === 'dark'
-                            ? 'bg-[#d97757] hover:bg-[#c46144] text-white'
+                            ? 'bg-blue-600 hover:bg-blue-500 text-white'
                             : 'bg-blue-600 hover:bg-blue-700 text-white'
                     )}
                 >
                     {isSaving ? (
-                        <Clock className="w-4 h-4 animate-spin mr-2" />
+                        <>
+                            <Clock className="w-3 h-3 animate-spin" />
+                            Saving...
+                        </>
                     ) : (
-                        <Save className="w-4 h-4 mr-2" />
+                        <>
+                            <Save className="w-3.5 h-3.5" />
+                            Save
+                        </>
                     )}
-                    {isSaving ? 'Saving...' : 'Save'}
                 </Button>
             </div>
 
             {/* Tracking Options */}
-            <div className="space-y-3 mb-8">
+            <div className="space-y-2">
                 <h3 className={cn(
-                    'text-xs font-bold uppercase tracking-wider mb-4',
-                    theme === 'dark' ? 'text-[#d97757]' : 'text-blue-600'
+                    'text-[10px] font-semibold uppercase tracking-wider mb-3',
+                    theme === 'dark' ? 'text-orange-500' : 'text-blue-600'
                 )}>
                     Tracking
                 </h3>
@@ -212,10 +219,10 @@ export function OptionsTab({ campaignId, options, onOptionsUpdate, className }: 
             </div>
 
             {/* Automation Options */}
-            <div className="space-y-3 mb-8">
+            <div className="space-y-2">
                 <h3 className={cn(
-                    'text-xs font-bold uppercase tracking-wider mb-4',
-                    theme === 'dark' ? 'text-[#d97757]' : 'text-blue-600'
+                    'text-[10px] font-semibold uppercase tracking-wider mb-3',
+                    theme === 'dark' ? 'text-orange-500' : 'text-blue-600'
                 )}>
                     Automation
                 </h3>
@@ -229,29 +236,29 @@ export function OptionsTab({ campaignId, options, onOptionsUpdate, className }: 
             </div>
 
             {/* Safety Limits */}
-            <div className="space-y-4">
+            <div className="space-y-2">
                 <h3 className={cn(
-                    'text-xs font-bold uppercase tracking-wider mb-4',
-                    theme === 'dark' ? 'text-[#d97757]' : 'text-blue-600'
+                    'text-[10px] font-semibold uppercase tracking-wider mb-3',
+                    theme === 'dark' ? 'text-orange-500' : 'text-blue-600'
                 )}>
                     Safety Limits
                 </h3>
                 <div className={cn(
-                    'p-5 rounded-xl border',
+                    'p-3 rounded border',
                     theme === 'dark'
-                        ? 'bg-[#12151a] border-[#252a33]'
-                        : 'bg-white border-gray-200 shadow-sm'
+                        ? 'bg-neutral-900 border-neutral-800'
+                        : 'bg-white border-gray-200'
                 )}>
-                    <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center justify-between mb-4">
                         <div>
                             <h4 className={cn(
-                                'text-sm font-semibold',
+                                'text-xs font-semibold',
                                 theme === 'dark' ? 'text-white' : 'text-gray-900'
                             )}>
                                 Daily Limit
                             </h4>
                             <p className={cn(
-                                'text-xs mt-0.5',
+                                'text-[10px]',
                                 theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
                             )}>
                                 Max emails per day per account
@@ -262,27 +269,27 @@ export function OptionsTab({ campaignId, options, onOptionsUpdate, className }: 
                             value={dailyLimit}
                             onChange={(e) => setDailyLimit(parseInt(e.target.value) || 0)}
                             className={cn(
-                                'w-24 px-3 py-2 rounded-lg text-right font-mono font-bold border',
+                                'w-20 px-2 py-1.5 rounded text-right font-mono text-sm font-bold border',
                                 theme === 'dark'
-                                    ? 'bg-[#0a0c0f] border-[#252a33] text-white focus:border-[#d97757]'
-                                    : 'bg-white border-gray-200 text-gray-900 focus:border-blue-500'
+                                    ? 'bg-neutral-800 border-neutral-700 text-white focus:border-orange-500'
+                                    : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-blue-500'
                             )}
                         />
                     </div>
                     <div className={cn(
-                        'w-full h-px mb-6',
-                        theme === 'dark' ? 'bg-[#252a33]' : 'bg-gray-200'
+                        'w-full h-px mb-4',
+                        theme === 'dark' ? 'bg-neutral-800' : 'bg-gray-200'
                     )} />
                     <div className="flex items-center justify-between">
                         <div>
                             <h4 className={cn(
-                                'text-sm font-semibold',
+                                'text-xs font-semibold',
                                 theme === 'dark' ? 'text-white' : 'text-gray-900'
                             )}>
                                 Time Gap
                             </h4>
                             <p className={cn(
-                                'text-xs mt-0.5',
+                                'text-[10px]',
                                 theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
                             )}>
                                 Minutes between emails
@@ -293,10 +300,10 @@ export function OptionsTab({ campaignId, options, onOptionsUpdate, className }: 
                             value={timeBetweenEmails}
                             onChange={(e) => setTimeBetweenEmails(parseInt(e.target.value) || 0)}
                             className={cn(
-                                'w-24 px-3 py-2 rounded-lg text-right font-mono font-bold border',
+                                'w-20 px-2 py-1.5 rounded text-right font-mono text-sm font-bold border',
                                 theme === 'dark'
-                                    ? 'bg-[#0a0c0f] border-[#252a33] text-white focus:border-[#d97757]'
-                                    : 'bg-white border-gray-200 text-gray-900 focus:border-blue-500'
+                                    ? 'bg-neutral-800 border-neutral-700 text-white focus:border-orange-500'
+                                    : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-blue-500'
                             )}
                         />
                     </div>

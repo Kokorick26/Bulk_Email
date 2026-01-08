@@ -1224,7 +1224,7 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
     // Show leads list
     return (
         <>
-            <div className={cn('max-w-7xl mx-auto space-y-4', className)}>
+            <div className={cn('h-full flex flex-col', className)}>
                 {/* Lead Builder Modal */}
                 <AnimatePresence>
                     {showLeadBuilder && (
@@ -1236,87 +1236,86 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                     )}
                 </AnimatePresence>
 
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b pb-6" style={{ borderColor: theme === 'dark' ? '#252a33' : '#e5e7eb' }}>
-                    <div className="space-y-1">
+                {/* Toolbar - Revnix Style */}
+                <div className={cn(
+                    'flex items-center justify-between px-4 py-3 border-b',
+                    theme === 'dark' ? 'bg-[#0d0d0d] border-neutral-800' : 'bg-white border-gray-200'
+                )}>
+                    {/* Left: Title and Stats */}
+                    <div className="flex items-center gap-4">
                         <h2 className={cn(
-                            'text-3xl font-[Syne] font-bold tracking-tight',
+                            'text-sm font-semibold',
                             theme === 'dark' ? 'text-white' : 'text-gray-900'
                         )}>
-                            Target <span className="text-[#d97757]">Audience</span>
+                            Leads
                         </h2>
-                        <div className="flex items-center gap-2">
-                            <div className={cn(
-                                'text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded',
-                                theme === 'dark' ? 'bg-[#252a33] text-gray-400' : 'bg-gray-100 text-gray-500'
-                            )}>
-                                Database
-                            </div>
-                            <p className={cn(
-                                'text-sm mb-0',
-                                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                            )}>
-                                • {leads.length} leads loaded
-                            </p>
+                        <div className={cn(
+                            'text-xs px-2 py-0.5 rounded',
+                            theme === 'dark' ? 'bg-neutral-800 text-gray-400' : 'bg-gray-100 text-gray-500'
+                        )}>
+                            {leads.length} Results
                         </div>
                     </div>
+
+                    {/* Right: Actions */}
                     <div className="flex items-center gap-2">
-                        {/* Edit Leads Button */}
                         <Button
                             variant="outline"
+                            size="sm"
                             onClick={() => setShowLeadBuilder(true)}
                             className={cn(
-                                'gap-2',
+                                'h-8 text-xs gap-1.5',
                                 theme === 'dark'
-                                    ? 'border-gray-700 text-gray-300 hover:bg-gray-800'
-                                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                                    ? 'border-neutral-700 text-gray-300 hover:bg-neutral-800'
+                                    : 'border-gray-200 text-gray-600 hover:bg-gray-50'
                             )}
                         >
-                            <Edit3 className="w-4 h-4" />
+                            <Edit3 className="w-3.5 h-3.5" />
                             Edit Leads
                         </Button>
 
-                        {/* Add Leads Dropdown */}
                         <div className="relative group">
                             <Button
+                                size="sm"
                                 className={cn(
-                                    'gap-2',
+                                    'h-8 text-xs gap-1.5',
                                     theme === 'dark'
                                         ? 'bg-blue-600 hover:bg-blue-500 text-white'
                                         : 'bg-blue-600 hover:bg-blue-700 text-white'
                                 )}
                             >
-                                <Plus className="w-4 h-4" />
+                                <Plus className="w-3.5 h-3.5" />
                                 Add Leads
-                                <ChevronDown className="w-3 h-3" />
+                                <ChevronDown className="w-3 h-3 ml-1" />
                             </Button>
                             <div className={cn(
-                                'absolute right-0 top-full mt-1 py-1 w-48 rounded-lg shadow-xl border opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20',
+                                'absolute right-0 top-full mt-1 py-1 w-44 rounded-lg shadow-xl border opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20',
                                 theme === 'dark'
-                                    ? 'bg-[#1a1a1a] border-gray-800'
+                                    ? 'bg-neutral-900 border-neutral-800'
                                     : 'bg-white border-gray-200'
                             )}>
                                 <button
                                     onClick={() => setShowLeadBuilder(true)}
                                     className={cn(
-                                        'w-full flex items-center gap-2 px-3 py-2 text-sm text-left',
+                                        'w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors',
                                         theme === 'dark'
-                                            ? 'hover:bg-gray-800 text-gray-300'
-                                            : 'hover:bg-gray-100 text-gray-700'
+                                            ? 'hover:bg-neutral-800 text-gray-300'
+                                            : 'hover:bg-gray-50 text-gray-700'
                                     )}
                                 >
-                                    <Plus className="w-4 h-4" />
+                                    <Plus className="w-3.5 h-3.5" />
                                     Create leads
                                 </button>
                                 <button
                                     onClick={() => document.getElementById('csv-upload-3')?.click()}
                                     className={cn(
-                                        'w-full flex items-center gap-2 px-3 py-2 text-sm text-left',
+                                        'w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors',
                                         theme === 'dark'
-                                            ? 'hover:bg-gray-800 text-gray-300'
-                                            : 'hover:bg-gray-100 text-gray-700'
+                                            ? 'hover:bg-neutral-800 text-gray-300'
+                                            : 'hover:bg-gray-50 text-gray-700'
                                     )}
                                 >
-                                    <Upload className="w-4 h-4" />
+                                    <Upload className="w-3.5 h-3.5" />
                                     Upload CSV
                                 </button>
                             </div>
@@ -1331,27 +1330,25 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                     </div>
                 </div>
 
-
-                <div className={cn(
-                    'rounded-xl border overflow-hidden flex-1',
-                    theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
-                )}>
-                    <ScrollArea className="h-[calc(100vh-320px)]">
+                {/* Table Container */}
+                <div className="flex-1 overflow-hidden">
+                    <ScrollArea className="h-full">
                         <Table>
                             <TableHeader className="sticky top-0 z-10">
                                 <TableRow className={cn(
-                                    theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'
+                                    'border-b',
+                                    theme === 'dark' ? 'bg-[#0d0d0d] border-neutral-800' : 'bg-gray-50 border-gray-200'
                                 )}>
-                                    <TableHead className={theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'}>#</TableHead>
-                                    <TableHead className={theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'}>Email</TableHead>
-                                    <TableHead className={theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'}>Name</TableHead>
-                                    <TableHead className={theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'}>Company</TableHead>
-                                    <TableHead className={theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'}>Sent / Scheduled</TableHead>
-                                    <TableHead className={theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'}>Sending Account</TableHead>
-                                    <TableHead className={theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'}>Timezone</TableHead>
-                                    <TableHead className={theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'}>Status</TableHead>
-                                    <TableHead className={theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'}>Reply</TableHead>
-                                    <TableHead className={theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'}>Actions</TableHead>
+                                    <TableHead className={cn('w-12', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>#</TableHead>
+                                    <TableHead className={cn('min-w-[200px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Email</TableHead>
+                                    <TableHead className={cn('min-w-[120px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Name</TableHead>
+                                    <TableHead className={cn('min-w-[120px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Company</TableHead>
+                                    <TableHead className={cn('min-w-[130px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Sent / Scheduled</TableHead>
+                                    <TableHead className={cn('min-w-[160px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Sending Account</TableHead>
+                                    <TableHead className={cn('min-w-[100px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Timezone</TableHead>
+                                    <TableHead className={cn('min-w-[100px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Status</TableHead>
+                                    <TableHead className={cn('min-w-[80px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Reply</TableHead>
+                                    <TableHead className={cn('min-w-[80px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -1535,7 +1532,7 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                                                     return (
                                                         <div className="flex flex-col gap-0.5">
                                                             <span className={cn(
-                                                                'px-2 py-1 rounded-full text-xs font-medium inline-block w-fit',
+                                                                'px-1.5 py-0.5 rounded text-[10px] font-semibold inline-block w-fit uppercase tracking-wide',
                                                                 lead.status === 'sent' && 'bg-blue-500/20 text-blue-400',
                                                                 lead.status === 'opened' && 'bg-emerald-500/20 text-emerald-400',
                                                                 lead.status === 'clicked' && 'bg-purple-500/20 text-purple-400',
@@ -1589,13 +1586,13 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                                                             setShowEmailPreview(true);
                                                         }}
                                                         className={cn(
-                                                            'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all',
+                                                            'flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-all',
                                                             theme === 'dark'
                                                                 ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30'
                                                                 : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
                                                         )}
                                                     >
-                                                        <Eye className="w-3.5 h-3.5" />
+                                                        <Eye className="w-3 h-3" />
                                                         Preview
                                                     </button>
                                                 ) : (

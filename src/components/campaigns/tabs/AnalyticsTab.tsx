@@ -26,35 +26,31 @@ interface StatCardProps {
 
 const StatBlock = ({ label, value, subValue, icon: Icon, color, theme, trend }: StatCardProps) => (
     <div className={cn(
-        'relative overflow-hidden p-6 rounded-3xl border transition-all duration-300 group',
+        'relative overflow-hidden p-4 rounded border transition-all duration-300',
         theme === 'dark'
-            ? 'bg-[#12151a] border-[#252a33] hover:border-[#d97757]/30'
-            : 'bg-white border-gray-100 hover:border-blue-200 shadow-lg hover:shadow-xl'
+            ? 'bg-neutral-900 border-neutral-800 hover:border-neutral-700'
+            : 'bg-white border-gray-200 hover:border-gray-300'
     )}>
-        {/* Background Gradient/Glow */}
-        <div className={cn(
-            'absolute -right-6 -top-6 w-24 h-24 rounded-full blur-2xl opacity-10 transition-opacity duration-500 group-hover:opacity-20',
-            color === 'terracotta' ? 'bg-[#d97757]' :
-                color === 'blue' ? 'bg-blue-500' :
-                    color === 'purple' ? 'bg-purple-500' : 'bg-emerald-500'
-        )} />
-
-        <div className="relative flex flex-col h-full justify-between">
-            <div className="flex items-start justify-between mb-4">
+        <div className="relative flex flex-col justify-between">
+            <div className="flex items-start justify-between mb-3">
                 <div className={cn(
-                    'p-3 rounded-2xl',
-                    theme === 'dark' ? 'bg-[#1a1e25]' : 'bg-gray-50',
-                    color === 'terracotta' && theme === 'dark' && 'text-[#d97757]',
+                    'p-2 rounded',
+                    theme === 'dark' ? 'bg-neutral-800' : 'bg-gray-50',
+                    color === 'terracotta' && theme === 'dark' && 'text-orange-500',
                     color === 'blue' && theme === 'dark' && 'text-blue-400',
                     color === 'emerald' && theme === 'dark' && 'text-emerald-400',
                     color === 'purple' && theme === 'dark' && 'text-purple-400',
+                    color === 'terracotta' && theme !== 'dark' && 'text-orange-600',
+                    color === 'blue' && theme !== 'dark' && 'text-blue-600',
+                    color === 'emerald' && theme !== 'dark' && 'text-emerald-600',
+                    color === 'purple' && theme !== 'dark' && 'text-purple-600',
                 )}>
-                    <Icon className="w-6 h-6" />
+                    <Icon className="w-4 h-4" />
                 </div>
                 {trend && (
                     <span className={cn(
-                        'text-xs font-bold px-2 py-1 rounded-full',
-                        theme === 'dark' ? 'bg-[#252a33] text-emerald-400' : 'bg-emerald-100 text-emerald-700'
+                        'text-[10px] font-bold px-1.5 py-0.5 rounded',
+                        theme === 'dark' ? 'bg-neutral-800 text-emerald-400' : 'bg-emerald-100 text-emerald-700'
                     )}>
                         {trend}
                     </span>
@@ -63,21 +59,21 @@ const StatBlock = ({ label, value, subValue, icon: Icon, color, theme, trend }: 
 
             <div>
                 <p className={cn(
-                    'text-xs font-bold uppercase tracking-widest mb-1 opacity-60',
-                    theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                    'text-[10px] font-semibold uppercase tracking-wider mb-0.5',
+                    theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                 )}>
                     {label}
                 </p>
                 <h3 className={cn(
-                    'text-4xl font-[Syne] font-bold tracking-tight',
+                    'text-2xl font-bold',
                     theme === 'dark' ? 'text-white' : 'text-gray-900'
                 )}>
                     {value}
                 </h3>
                 {subValue && (
                     <p className={cn(
-                        'text-xs mt-2 font-mono opacity-80',
-                        theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                        'text-[10px] mt-1 font-mono',
+                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                     )}>
                         {subValue}
                     </p>
@@ -102,39 +98,30 @@ export function AnalyticsTab({ campaign, leads, className }: AnalyticsTabProps) 
     const replyRate = sentCount > 0 ? ((replyCount / sentCount) * 100).toFixed(1) : '0.0';
 
     return (
-        <div className={cn(
-            'max-w-7xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700',
-            className
-        )}>
-            {/* Header */}
-            <div className="flex flex-col md:flex-row items-end justify-between gap-4 mb-2">
-                <div className="space-y-2">
+        <div className={cn('space-y-4', className)}>
+            {/* Compact Header */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
                     <h2 className={cn(
-                        'text-3xl md:text-4xl font-[Syne] font-bold tracking-tight',
+                        'text-sm font-semibold',
                         theme === 'dark' ? 'text-white' : 'text-gray-900'
                     )}>
-                        Campaign <span className="text-[#d97757]">Performance</span>
+                        Analytics
                     </h2>
-                    <p className={cn(
-                        'text-sm font-light',
-                        theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                    <div className={cn(
+                        'text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1',
+                        theme === 'dark' ? 'bg-neutral-800' : 'bg-gray-100'
                     )}>
-                        Real-time metrics on engagement and delivery.
-                    </p>
-                </div>
-                <div className={cn(
-                    'px-4 py-2 rounded-xl border flex items-center gap-2',
-                    theme === 'dark' ? 'bg-[#1a1e25] border-[#252a33]' : 'bg-white border-gray-200'
-                )}>
-                    <Activity className={cn('w-4 h-4', theme === 'dark' ? 'text-[#d97757]' : 'text-blue-600')} />
-                    <span className={cn('text-xs font-mono', theme === 'dark' ? 'text-gray-300' : 'text-gray-600')}>
-                        Last updated: Just now
-                    </span>
+                        <Activity className={cn('w-2.5 h-2.5', theme === 'dark' ? 'text-emerald-500' : 'text-emerald-600')} />
+                        <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
+                            Live
+                        </span>
+                    </div>
                 </div>
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                 <StatBlock
                     label="Sent Emails"
                     value={sentCount}
@@ -171,55 +158,58 @@ export function AnalyticsTab({ campaign, leads, className }: AnalyticsTabProps) 
             </div>
 
             {/* Detailed Breakdown Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 {/* Progress Circle or Big Chart Area */}
                 <div className={cn(
-                    'lg:col-span-2 p-8 rounded-3xl border overflow-hidden relative',
-                    theme === 'dark' ? 'bg-[#12151a] border-[#252a33]' : 'bg-white border-gray-100 shadow-xl'
+                    'lg:col-span-2 p-4 rounded border overflow-hidden',
+                    theme === 'dark' ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
                 )}>
-                    <div className="flex items-center justify-between mb-8">
-                        <h3 className="font-[Syne] text-xl font-bold">Campaign Progress</h3>
-                        <BarChart3 className={cn('w-5 h-5 opacity-50')} />
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className={cn(
+                            'text-sm font-semibold',
+                            theme === 'dark' ? 'text-white' : 'text-gray-900'
+                        )}>Campaign Progress</h3>
+                        <BarChart3 className={cn('w-4 h-4 opacity-50')} />
                     </div>
 
                     {/* Custom Progress Visualization */}
-                    <div className="space-y-8">
+                    <div className="space-y-4">
                         <div>
-                            <div className="flex justify-between text-sm mb-2 font-medium">
+                            <div className="flex justify-between text-xs mb-1.5 font-medium">
                                 <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>Overall Completion</span>
                                 <span className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>{sentCount} / {totalLeads}</span>
                             </div>
-                            <div className="h-4 rounded-full bg-gray-100 dark:bg-[#1a1e25] overflow-hidden">
+                            <div className="h-2.5 rounded-full bg-gray-100 dark:bg-neutral-800 overflow-hidden">
                                 <motion.div
                                     initial={{ width: 0 }}
                                     animate={{ width: `${(sentCount / (totalLeads || 1)) * 100}%` }}
                                     transition={{ duration: 1, ease: "easeOut" }}
-                                    className="h-full bg-gradient-to-r from-[#d97757] to-[#c46144]"
+                                    className="h-full bg-orange-500"
                                 />
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-3 gap-4 pt-4">
+                        <div className="grid grid-cols-3 gap-3 pt-2">
                             <div className={cn(
-                                'p-4 rounded-2xl text-center',
-                                theme === 'dark' ? 'bg-[#1a1e25]' : 'bg-gray-50'
+                                'p-3 rounded text-center',
+                                theme === 'dark' ? 'bg-neutral-800' : 'bg-gray-50'
                             )}>
-                                <div className="text-2xl font-[Syne] font-bold text-emerald-500">{sentCount}</div>
-                                <div className="text-xs uppercase tracking-wider opacity-60 mt-1">Succeeded</div>
+                                <div className="text-lg font-bold text-emerald-500">{sentCount}</div>
+                                <div className="text-[10px] uppercase tracking-wider opacity-60">Succeeded</div>
                             </div>
                             <div className={cn(
-                                'p-4 rounded-2xl text-center',
-                                theme === 'dark' ? 'bg-[#1a1e25]' : 'bg-gray-50'
+                                'p-3 rounded text-center',
+                                theme === 'dark' ? 'bg-neutral-800' : 'bg-gray-50'
                             )}>
-                                <div className="text-2xl font-[Syne] font-bold text-red-400">{bounceCount}</div>
-                                <div className="text-xs uppercase tracking-wider opacity-60 mt-1">Bounced</div>
+                                <div className="text-lg font-bold text-red-400">{bounceCount}</div>
+                                <div className="text-[10px] uppercase tracking-wider opacity-60">Bounced</div>
                             </div>
                             <div className={cn(
-                                'p-4 rounded-2xl text-center',
-                                theme === 'dark' ? 'bg-[#1a1e25]' : 'bg-gray-50'
+                                'p-3 rounded text-center',
+                                theme === 'dark' ? 'bg-neutral-800' : 'bg-gray-50'
                             )}>
-                                <div className="text-2xl font-[Syne] font-bold text-blue-400">{totalLeads - sentCount - bounceCount}</div>
-                                <div className="text-xs uppercase tracking-wider opacity-60 mt-1">Pending</div>
+                                <div className="text-lg font-bold text-blue-400">{totalLeads - sentCount - bounceCount}</div>
+                                <div className="text-[10px] uppercase tracking-wider opacity-60">Pending</div>
                             </div>
                         </div>
                     </div>
@@ -227,44 +217,47 @@ export function AnalyticsTab({ campaign, leads, className }: AnalyticsTabProps) 
 
                 {/* Engagement Funnel */}
                 <div className={cn(
-                    'p-8 rounded-3xl border overflow-hidden relative',
-                    theme === 'dark' ? 'bg-[#0a0c0f] border-[#252a33]' : 'bg-white border-gray-100 shadow-xl'
+                    'p-4 rounded border overflow-hidden',
+                    theme === 'dark' ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
                 )}>
-                    <h3 className="font-[Syne] text-xl font-bold mb-6">Engagement Funnel</h3>
-                    <div className="space-y-6 relative">
+                    <h3 className={cn(
+                        'text-sm font-semibold mb-4',
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                    )}>Engagement Funnel</h3>
+                    <div className="space-y-4 relative">
                         {/* Connecting Line */}
                         <div className={cn(
-                            'absolute left-[15px] top-4 bottom-4 w-0.5 z-0',
-                            theme === 'dark' ? 'bg-[#252a33]' : 'bg-gray-200'
+                            'absolute left-[13px] top-3 bottom-3 w-0.5 z-0',
+                            theme === 'dark' ? 'bg-neutral-700' : 'bg-gray-200'
                         )} />
 
-                        <div className="relative z-10 flex items-center gap-4">
-                            <div className={cn('w-8 h-8 rounded-full flex items-center justify-center border-4 border-[#12151a] dark:border-[#0a0c0f] bg-blue-500 text-white shadow')}>
+                        <div className="relative z-10 flex items-center gap-3">
+                            <div className={cn('w-7 h-7 rounded-full flex items-center justify-center bg-blue-500 text-white')}>
                                 <Send className="w-3 h-3" />
                             </div>
                             <div>
-                                <p className="text-xs font-bold uppercase tracking-widest opacity-60">Sent</p>
-                                <p className="text-lg font-bold">{sentCount}</p>
+                                <p className="text-[10px] font-semibold uppercase tracking-wider opacity-60">Sent</p>
+                                <p className="text-base font-bold">{sentCount}</p>
                             </div>
                         </div>
 
-                        <div className="relative z-10 flex items-center gap-4">
-                            <div className={cn('w-8 h-8 rounded-full flex items-center justify-center border-4 border-[#12151a] dark:border-[#0a0c0f] bg-purple-500 text-white shadow')}>
+                        <div className="relative z-10 flex items-center gap-3">
+                            <div className={cn('w-7 h-7 rounded-full flex items-center justify-center bg-purple-500 text-white')}>
                                 <Eye className="w-3 h-3" />
                             </div>
                             <div>
-                                <p className="text-xs font-bold uppercase tracking-widest opacity-60">Opened</p>
-                                <p className="text-lg font-bold">{openCount}</p>
+                                <p className="text-[10px] font-semibold uppercase tracking-wider opacity-60">Opened</p>
+                                <p className="text-base font-bold">{openCount}</p>
                             </div>
                         </div>
 
-                        <div className="relative z-10 flex items-center gap-4">
-                            <div className={cn('w-8 h-8 rounded-full flex items-center justify-center border-4 border-[#12151a] dark:border-[#0a0c0f] bg-emerald-500 text-white shadow')}>
+                        <div className="relative z-10 flex items-center gap-3">
+                            <div className={cn('w-7 h-7 rounded-full flex items-center justify-center bg-emerald-500 text-white')}>
                                 <MessageSquareReply className="w-3 h-3" />
                             </div>
                             <div>
-                                <p className="text-xs font-bold uppercase tracking-widest opacity-60">Replied</p>
-                                <p className="text-lg font-bold">{replyCount}</p>
+                                <p className="text-[10px] font-semibold uppercase tracking-wider opacity-60">Replied</p>
+                                <p className="text-base font-bold">{replyCount}</p>
                             </div>
                         </div>
                     </div>

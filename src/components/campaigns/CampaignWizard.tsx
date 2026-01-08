@@ -213,7 +213,7 @@ export function CampaignWizard({ onBack, onComplete, className }: CampaignWizard
                             )}
                         >
                             <span className="relative z-10 flex items-center gap-2">
-                                Continue
+                                Continue1
                                 <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                             </span>
                             {canProceed() && (

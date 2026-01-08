@@ -517,9 +517,9 @@ export function LeadListsPage({ onNavigateToCampaign }: LeadListsPageProps) {
                         }}
                         onKeyDown={(e) => e.key === 'Escape' && setEditingCell(null)}
                         className={cn(
-                            'w-full px-2 py-1 text-sm border-2 rounded outline-none',
+                            'w-full px-2 py-1 text-xs border-2 rounded outline-none',
                             theme === 'dark'
-                                ? 'bg-[#252525] border-blue-500 text-white'
+                                ? 'bg-neutral-800 border-blue-500 text-white'
                                 : 'bg-white border-blue-500 text-gray-900'
                         )}
                     >
@@ -542,9 +542,9 @@ export function LeadListsPage({ onNavigateToCampaign }: LeadListsPageProps) {
                         }}
                         onKeyDown={(e) => e.key === 'Escape' && setEditingCell(null)}
                         className={cn(
-                            'w-full px-2 py-1 text-sm border-2 rounded outline-none',
+                            'w-full px-2 py-1 text-xs border-2 rounded outline-none',
                             theme === 'dark'
-                                ? 'bg-[#252525] border-blue-500 text-white'
+                                ? 'bg-neutral-800 border-blue-500 text-white'
                                 : 'bg-white border-blue-500 text-gray-900'
                         )}
                     >
@@ -574,9 +574,9 @@ export function LeadListsPage({ onNavigateToCampaign }: LeadListsPageProps) {
                         }
                     }}
                     className={cn(
-                        'w-full px-2 py-1 text-sm border-2 rounded outline-none',
+                        'w-full px-2 py-1 text-xs border-2 rounded outline-none',
                         theme === 'dark'
-                            ? 'bg-[#252525] border-blue-500 text-white'
+                            ? 'bg-neutral-800 border-blue-500 text-white'
                             : 'bg-white border-blue-500 text-gray-900'
                     )}
                     placeholder={`Enter ${field}...`}
@@ -591,7 +591,7 @@ export function LeadListsPage({ onNavigateToCampaign }: LeadListsPageProps) {
                     setEditValue(value);
                 }}
                 className={cn(
-                    'w-full px-2 py-1.5 cursor-text text-sm truncate rounded',
+                    'w-full px-1.5 py-1 cursor-text text-xs truncate rounded',
                     'hover:bg-blue-500/10 transition-colors',
                     value ? '' : 'text-gray-400 italic'
                 )}
@@ -616,43 +616,43 @@ export function LeadListsPage({ onNavigateToCampaign }: LeadListsPageProps) {
         <div className="flex flex-1 min-h-0">
             {/* Sidebar - List of Lead Lists */}
             <div className={cn(
-                'w-[280px] flex-shrink-0 flex flex-col border-r',
-                theme === 'dark' ? 'bg-[#0c0c0c] border-neutral-800' : 'bg-gray-50 border-gray-200'
+                'w-[260px] flex-shrink-0 flex flex-col border-r',
+                theme === 'dark' ? 'bg-neutral-900 border-neutral-800' : 'bg-gray-50 border-gray-200'
             )}>
                 {/* Sidebar Header */}
                 <div className={cn(
-                    'p-4 border-b',
+                    'px-3 py-3 border-b',
                     theme === 'dark' ? 'border-neutral-800' : 'border-gray-200'
                 )}>
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center justify-between mb-3">
                         <h2 className={cn(
-                            'text-[15px] font-semibold',
+                            'text-xs font-semibold',
                             theme === 'dark' ? 'text-white' : 'text-gray-900'
                         )}>
                             Lead Lists
                         </h2>
                         <button
                             onClick={() => setShowCreateModal(true)}
-                            className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:opacity-90 transition-opacity"
+                            className="flex items-center gap-1 h-7 px-2.5 rounded text-[10px] font-medium bg-orange-500 text-white hover:bg-orange-600 transition-colors"
                         >
-                            <Plus className="w-3.5 h-3.5" />
+                            <Plus className="w-3 h-3" />
                             New
                         </button>
                     </div>
 
                     {/* Search */}
                     <div className={cn(
-                        'flex items-center gap-2 h-9 px-3 rounded-lg',
-                        theme === 'dark' ? 'bg-white/[0.04]' : 'bg-gray-100'
+                        'flex items-center gap-2 h-8 px-2.5 rounded',
+                        theme === 'dark' ? 'bg-neutral-800' : 'bg-gray-100'
                     )}>
-                        <Search className={cn('w-4 h-4', theme === 'dark' ? 'text-gray-500' : 'text-gray-400')} />
+                        <Search className={cn('w-3.5 h-3.5', theme === 'dark' ? 'text-gray-500' : 'text-gray-400')} />
                         <input
                             type="text"
                             placeholder="Search lists..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className={cn(
-                                'flex-1 bg-transparent border-0 outline-none text-[13px]',
+                                'flex-1 bg-transparent border-0 outline-none text-[11px]',
                                 theme === 'dark' ? 'text-white placeholder:text-gray-500' : 'text-gray-900 placeholder:text-gray-400'
                             )}
                         />
@@ -663,26 +663,26 @@ export function LeadListsPage({ onNavigateToCampaign }: LeadListsPageProps) {
                 <ScrollArea className="flex-1">
                     <div className="p-2 space-y-0.5">
                         {loading ? (
-                            <div className="flex items-center justify-center py-12">
-                                <Loader2 className={cn('w-5 h-5 animate-spin', theme === 'dark' ? 'text-gray-500' : 'text-gray-400')} />
+                            <div className="flex items-center justify-center py-10">
+                                <Loader2 className={cn('w-4 h-4 animate-spin', theme === 'dark' ? 'text-gray-500' : 'text-gray-400')} />
                             </div>
                         ) : filteredLists.length === 0 ? (
-                            <div className="text-center py-12 px-4">
+                            <div className="text-center py-10 px-3">
                                 <div className={cn(
-                                    'w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center',
-                                    theme === 'dark' ? 'bg-white/[0.04]' : 'bg-gray-100'
+                                    'w-10 h-10 rounded mx-auto mb-2 flex items-center justify-center',
+                                    theme === 'dark' ? 'bg-neutral-800' : 'bg-gray-100'
                                 )}>
-                                    <Users className={cn('w-6 h-6', theme === 'dark' ? 'text-gray-500' : 'text-gray-400')} />
+                                    <Users className={cn('w-5 h-5', theme === 'dark' ? 'text-gray-500' : 'text-gray-400')} />
                                 </div>
-                                <p className={cn('text-[13px] font-medium mb-1', theme === 'dark' ? 'text-gray-400' : 'text-gray-600')}>
+                                <p className={cn('text-[11px] font-medium mb-1', theme === 'dark' ? 'text-gray-400' : 'text-gray-600')}>
                                     No lists yet
                                 </p>
-                                <p className={cn('text-[12px] mb-3', theme === 'dark' ? 'text-gray-500' : 'text-gray-400')}>
+                                <p className={cn('text-[10px] mb-2', theme === 'dark' ? 'text-gray-500' : 'text-gray-400')}>
                                     Create your first lead list
                                 </p>
                                 <button
                                     onClick={() => setShowCreateModal(true)}
-                                    className="text-[12px] text-orange-500 hover:underline font-medium"
+                                    className="text-[10px] text-orange-500 hover:underline font-medium"
                                 >
                                     Create list →
                                 </button>
@@ -695,39 +695,39 @@ export function LeadListsPage({ onNavigateToCampaign }: LeadListsPageProps) {
                                         key={list.id}
                                         onClick={() => setSelectedList(list)}
                                         className={cn(
-                                            'w-full flex items-center gap-3 p-3 rounded-lg text-left transition-all group',
+                                            'w-full flex items-center gap-2 p-2 rounded text-left transition-all group',
                                             isActive
-                                                ? theme === 'dark' ? 'bg-white/[0.08]' : 'bg-gray-100'
-                                                : theme === 'dark' ? 'hover:bg-white/[0.04]' : 'hover:bg-gray-50'
+                                                ? theme === 'dark' ? 'bg-neutral-800' : 'bg-gray-100'
+                                                : theme === 'dark' ? 'hover:bg-neutral-800/50' : 'hover:bg-gray-50'
                                         )}
                                     >
                                         <div className={cn(
-                                            'w-9 h-9 rounded-lg flex items-center justify-center shrink-0',
+                                            'w-7 h-7 rounded flex items-center justify-center shrink-0',
                                             isActive
-                                                ? 'bg-gradient-to-br from-orange-500 to-orange-600'
-                                                : theme === 'dark' ? 'bg-white/[0.06]' : 'bg-gray-100'
+                                                ? 'bg-orange-500'
+                                                : theme === 'dark' ? 'bg-neutral-800' : 'bg-gray-100'
                                         )}>
                                             <Users className={cn(
-                                                'w-4 h-4',
+                                                'w-3.5 h-3.5',
                                                 isActive ? 'text-white' : theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                                             )} />
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className={cn(
-                                                'text-[13px] font-medium truncate',
+                                                'text-[11px] font-medium truncate',
                                                 theme === 'dark' ? 'text-white' : 'text-gray-900'
                                             )}>
                                                 {list.name}
                                             </p>
                                             <p className={cn(
-                                                'text-[11px]',
+                                                'text-[9px]',
                                                 theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                                             )}>
                                                 {list.leads.length} leads
                                             </p>
                                         </div>
                                         <ChevronRight className={cn(
-                                            'w-4 h-4 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity',
+                                            'w-3.5 h-3.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity',
                                             theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                                         )} />
                                     </button>
@@ -744,36 +744,36 @@ export function LeadListsPage({ onNavigateToCampaign }: LeadListsPageProps) {
                     <>
                         {/* Header */}
                         <div className={cn(
-                            'flex items-center justify-between px-6 py-4 border-b',
-                            theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
+                            'flex items-center justify-between px-4 py-3 border-b',
+                            theme === 'dark' ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
                         )}>
                             <div>
                                 <h1 className={cn(
-                                    'text-xl font-semibold',
+                                    'text-sm font-semibold',
                                     theme === 'dark' ? 'text-white' : 'text-gray-900'
                                 )}>
                                     {selectedList.name}
                                 </h1>
                                 <p className={cn(
-                                    'text-sm',
-                                    theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                                    'text-[10px]',
+                                    theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                                 )}>
                                     {selectedList.leads.length} leads • Last updated {new Date(selectedList.updatedAt).toLocaleDateString()}
                                 </p>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
+                            <div className="flex items-center gap-1.5">
+                                <button
                                     onClick={() => document.getElementById('csv-import')?.click()}
                                     className={cn(
-                                        'gap-2',
-                                        theme === 'dark' ? 'border-gray-700' : 'border-gray-300'
+                                        'flex items-center gap-1 h-7 px-2.5 rounded text-[10px] font-medium border transition-colors',
+                                        theme === 'dark'
+                                            ? 'border-neutral-700 text-gray-300 hover:bg-neutral-800'
+                                            : 'border-gray-200 text-gray-600 hover:bg-gray-50'
                                     )}
                                 >
-                                    <Upload className="w-4 h-4" />
+                                    <Upload className="w-3 h-3" />
                                     Import
-                                </Button>
+                                </button>
                                 <input
                                     id="csv-import"
                                     type="file"
@@ -781,49 +781,46 @@ export function LeadListsPage({ onNavigateToCampaign }: LeadListsPageProps) {
                                     onChange={handleFileUpload}
                                     className="hidden"
                                 />
-                                <Button
-                                    variant="outline"
-                                    size="sm"
+                                <button
                                     onClick={exportCSV}
                                     className={cn(
-                                        'gap-2',
-                                        theme === 'dark' ? 'border-gray-700' : 'border-gray-300'
+                                        'flex items-center gap-1 h-7 px-2.5 rounded text-[10px] font-medium border transition-colors',
+                                        theme === 'dark'
+                                            ? 'border-neutral-700 text-gray-300 hover:bg-neutral-800'
+                                            : 'border-gray-200 text-gray-600 hover:bg-gray-50'
                                     )}
                                 >
-                                    <Download className="w-4 h-4" />
+                                    <Download className="w-3 h-3" />
                                     Export
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={saveToCampaign}
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        fetchCampaigns();
+                                        setShowExportModal(true);
+                                    }}
                                     disabled={selectedList.leads.length === 0}
-                                    className={cn(
-                                        'gap-2 bg-orange-500/10 border-orange-500/50 text-orange-400 hover:bg-orange-500/20',
-                                        theme === 'dark' ? 'border-orange-500/50' : 'border-orange-400'
-                                    )}
+                                    className="flex items-center gap-1 h-7 px-2.5 rounded text-[10px] font-medium bg-orange-500/10 border border-orange-500/50 text-orange-400 hover:bg-orange-500/20 transition-colors disabled:opacity-50"
                                 >
-                                    <Send className="w-4 h-4" />
+                                    <Send className="w-3 h-3" />
                                     Send to Campaign
-                                </Button>
-                                <Button
-                                    size="sm"
+                                </button>
+                                <button
                                     onClick={addLead}
-                                    className="gap-2 bg-blue-600 hover:bg-blue-500 text-white"
+                                    className="flex items-center gap-1 h-7 px-2.5 rounded text-[10px] font-medium bg-orange-500 text-white hover:bg-orange-600 transition-colors"
                                 >
-                                    <Plus className="w-4 h-4" />
+                                    <Plus className="w-3 h-3" />
                                     Add Lead
-                                </Button>
+                                </button>
                                 <button
                                     onClick={() => deleteList(selectedList.id)}
                                     className={cn(
-                                        'p-2 rounded-lg transition-colors',
+                                        'p-1.5 rounded transition-colors',
                                         theme === 'dark'
                                             ? 'text-red-400 hover:bg-red-500/20'
                                             : 'text-red-500 hover:bg-red-50'
                                     )}
                                 >
-                                    <Trash2 className="w-4 h-4" />
+                                    <Trash2 className="w-3.5 h-3.5" />
                                 </button>
                             </div>
                         </div>
@@ -831,18 +828,18 @@ export function LeadListsPage({ onNavigateToCampaign }: LeadListsPageProps) {
                         {/* Toolbar */}
                         {selectedRows.size > 0 && (
                             <div className={cn(
-                                'flex items-center gap-3 px-6 py-2 border-b',
-                                theme === 'dark' ? 'bg-blue-500/10 border-gray-800' : 'bg-blue-50 border-gray-200'
+                                'flex items-center gap-2 px-4 py-2 border-b',
+                                theme === 'dark' ? 'bg-blue-500/10 border-neutral-800' : 'bg-blue-50 border-gray-200'
                             )}>
                                 <span className={cn(
-                                    'text-sm font-medium',
+                                    'text-[10px] font-medium',
                                     theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
                                 )}>
                                     {selectedRows.size} selected
                                 </span>
                                 <button
                                     onClick={deleteSelectedLeads}
-                                    className="flex items-center gap-1 px-2 py-1 text-xs rounded bg-red-500/20 text-red-400 hover:bg-red-500/30"
+                                    className="flex items-center gap-1 px-2 py-1 text-[9px] rounded bg-red-500/20 text-red-400 hover:bg-red-500/30"
                                 >
                                     <Trash2 className="w-3 h-3" />
                                     Delete
@@ -857,41 +854,40 @@ export function LeadListsPage({ onNavigateToCampaign }: LeadListsPageProps) {
                                     'flex flex-col items-center justify-center h-full',
                                     theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                                 )}>
-                                    <Mail className="w-12 h-12 mb-4 opacity-50" />
-                                    <p className="text-lg font-medium mb-2">No leads yet</p>
-                                    <p className="text-sm mb-4">Add leads manually or import from CSV</p>
-                                    <div className="flex items-center gap-3">
-                                        <Button
+                                    <Mail className="w-10 h-10 mb-3 opacity-50" />
+                                    <p className="text-sm font-medium mb-1">No leads yet</p>
+                                    <p className="text-xs mb-3">Add leads manually or import from CSV</p>
+                                    <div className="flex items-center gap-2">
+                                        <button
                                             onClick={addLead}
-                                            className="gap-2 bg-blue-600 hover:bg-blue-500 text-white"
+                                            className="flex items-center gap-1 h-7 px-2.5 rounded text-[10px] font-medium bg-orange-500 text-white hover:bg-orange-600"
                                         >
-                                            <Plus className="w-4 h-4" />
+                                            <Plus className="w-3 h-3" />
                                             Add Lead
-                                        </Button>
-                                        <Button
-                                            variant="outline"
+                                        </button>
+                                        <button
                                             onClick={() => document.getElementById('csv-import')?.click()}
                                             className={cn(
-                                                'gap-2',
-                                                theme === 'dark' ? 'border-gray-700' : 'border-gray-300'
+                                                'flex items-center gap-1 h-7 px-2.5 rounded text-[10px] font-medium border',
+                                                theme === 'dark' ? 'border-neutral-700 text-gray-300' : 'border-gray-200 text-gray-600'
                                             )}
                                         >
-                                            <Upload className="w-4 h-4" />
+                                            <Upload className="w-3 h-3" />
                                             Import CSV
-                                        </Button>
+                                        </button>
                                     </div>
                                 </div>
                             ) : (
                                 <table className="w-full">
                                     <thead className={cn(
                                         'sticky top-0 z-10',
-                                        theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'
+                                        theme === 'dark' ? 'bg-neutral-900' : 'bg-gray-50'
                                     )}>
                                         <tr className={cn(
                                             'border-b',
-                                            theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
+                                            theme === 'dark' ? 'border-neutral-800' : 'border-gray-200'
                                         )}>
-                                            <th className="w-10 px-3 py-3">
+                                            <th className="w-8 px-2 py-2">
                                                 <input
                                                     type="checkbox"
                                                     checked={selectedRows.size === selectedList.leads.length && selectedList.leads.length > 0}
@@ -902,11 +898,11 @@ export function LeadListsPage({ onNavigateToCampaign }: LeadListsPageProps) {
                                                             setSelectedRows(new Set(selectedList.leads.map(l => l.id)));
                                                         }
                                                     }}
-                                                    className="w-4 h-4 rounded"
+                                                    className="w-3.5 h-3.5 rounded"
                                                 />
                                             </th>
                                             <th className={cn(
-                                                'w-12 px-2 py-3 text-left text-xs font-medium uppercase',
+                                                'w-10 px-2 py-2 text-left text-[9px] font-semibold uppercase tracking-wide',
                                                 theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                                             )}>
                                                 #
@@ -915,16 +911,16 @@ export function LeadListsPage({ onNavigateToCampaign }: LeadListsPageProps) {
                                                 <th
                                                     key={col.id}
                                                     className={cn(
-                                                        'px-2 py-3 text-left text-xs font-medium uppercase',
+                                                        'px-2 py-2 text-left text-[9px] font-semibold uppercase tracking-wide',
                                                         col.width,
-                                                        theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                                                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                                                     )}
                                                 >
                                                     {col.label}
-                                                    {col.required && <span className="text-red-400 ml-1">*</span>}
+                                                    {col.required && <span className="text-red-400 ml-0.5">*</span>}
                                                 </th>
                                             ))}
-                                            <th className="w-16"></th>
+                                            <th className="w-12"></th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -934,12 +930,12 @@ export function LeadListsPage({ onNavigateToCampaign }: LeadListsPageProps) {
                                                 className={cn(
                                                     'group border-b transition-colors',
                                                     theme === 'dark'
-                                                        ? 'border-gray-800 hover:bg-[#252525]'
+                                                        ? 'border-neutral-800 hover:bg-neutral-800/50'
                                                         : 'border-gray-100 hover:bg-gray-50',
                                                     selectedRows.has(lead.id) && (theme === 'dark' ? 'bg-blue-500/10' : 'bg-blue-50')
                                                 )}
                                             >
-                                                <td className="px-3 py-1">
+                                                <td className="px-2 py-1">
                                                     <input
                                                         type="checkbox"
                                                         checked={selectedRows.has(lead.id)}
@@ -952,11 +948,11 @@ export function LeadListsPage({ onNavigateToCampaign }: LeadListsPageProps) {
                                                             }
                                                             setSelectedRows(newSelected);
                                                         }}
-                                                        className="w-4 h-4 rounded"
+                                                        className="w-3.5 h-3.5 rounded"
                                                     />
                                                 </td>
                                                 <td className={cn(
-                                                    'px-2 py-1 text-xs font-mono',
+                                                    'px-2 py-1 text-[10px] font-mono',
                                                     theme === 'dark' ? 'text-gray-600' : 'text-gray-400'
                                                 )}>
                                                     {index + 1}
@@ -981,24 +977,24 @@ export function LeadListsPage({ onNavigateToCampaign }: LeadListsPageProps) {
                                                                 : 'hover:bg-red-50 text-red-500'
                                                         )}
                                                     >
-                                                        <Trash2 className="w-4 h-4" />
+                                                        <Trash2 className="w-3.5 h-3.5" />
                                                     </button>
                                                 </td>
                                             </tr>
                                         ))}
                                         {/* Add row button */}
                                         <tr>
-                                            <td colSpan={columns.length + 3} className="px-2 py-2">
+                                            <td colSpan={columns.length + 3} className="px-2 py-1.5">
                                                 <button
                                                     onClick={addLead}
                                                     className={cn(
-                                                        'flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm transition-colors',
+                                                        'flex items-center gap-1.5 w-full px-2 py-1.5 rounded text-[10px] transition-colors',
                                                         theme === 'dark'
-                                                            ? 'text-gray-500 hover:bg-[#252525] hover:text-gray-300'
+                                                            ? 'text-gray-500 hover:bg-neutral-800 hover:text-gray-300'
                                                             : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
                                                     )}
                                                 >
-                                                    <Plus className="w-4 h-4" />
+                                                    <Plus className="w-3 h-3" />
                                                     New lead
                                                 </button>
                                             </td>
@@ -1014,21 +1010,21 @@ export function LeadListsPage({ onNavigateToCampaign }: LeadListsPageProps) {
                         'flex-1 flex flex-col items-center justify-center',
                         theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                     )}>
-                        <Users className="w-16 h-16 mb-4 opacity-30" />
+                        <Users className="w-12 h-12 mb-3 opacity-30" />
                         <h2 className={cn(
-                            'text-xl font-medium mb-2',
+                            'text-sm font-medium mb-1',
                             theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
                         )}>
                             Select a list
                         </h2>
-                        <p className="text-sm mb-6">Choose a list from the sidebar or create a new one</p>
-                        <Button
+                        <p className="text-xs mb-4">Choose a list from the sidebar or create a new one</p>
+                        <button
                             onClick={() => setShowCreateModal(true)}
-                            className="gap-2 bg-blue-600 hover:bg-blue-500 text-white"
+                            className="flex items-center gap-1 h-7 px-2.5 rounded text-[10px] font-medium bg-orange-500 text-white hover:bg-orange-600"
                         >
-                            <Plus className="w-4 h-4" />
+                            <Plus className="w-3 h-3" />
                             Create New List
-                        </Button>
+                        </button>
                     </div>
                 )}
             </div>
@@ -1046,22 +1042,22 @@ export function LeadListsPage({ onNavigateToCampaign }: LeadListsPageProps) {
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
                             className={cn(
-                                'relative w-full max-w-md rounded-xl shadow-xl p-6',
-                                theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-white'
+                                'relative w-full max-w-sm rounded-lg shadow-xl p-5',
+                                theme === 'dark' ? 'bg-neutral-900' : 'bg-white'
                             )}
                         >
                             <h3 className={cn(
-                                'text-lg font-semibold mb-4',
+                                'text-sm font-semibold mb-3',
                                 theme === 'dark' ? 'text-white' : 'text-gray-900'
                             )}>
                                 Create New List
                             </h3>
 
-                            <div className="space-y-4">
+                            <div className="space-y-3">
                                 <div>
                                     <label className={cn(
-                                        'block text-sm font-medium mb-1',
-                                        theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                                        'block text-[10px] font-medium mb-1',
+                                        theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                                     )}>
                                         List Name *
                                     </label>
@@ -1071,9 +1067,9 @@ export function LeadListsPage({ onNavigateToCampaign }: LeadListsPageProps) {
                                         onChange={(e) => setNewListName(e.target.value)}
                                         placeholder="e.g., Tech Startups Q1"
                                         className={cn(
-                                            'w-full px-4 py-2 rounded-lg border',
+                                            'w-full px-3 py-2 text-xs rounded border',
                                             theme === 'dark'
-                                                ? 'bg-[#252525] border-gray-700 text-white placeholder:text-gray-500'
+                                                ? 'bg-neutral-800 border-neutral-700 text-white placeholder:text-gray-500'
                                                 : 'bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400'
                                         )}
                                         autoFocus
@@ -1082,8 +1078,8 @@ export function LeadListsPage({ onNavigateToCampaign }: LeadListsPageProps) {
 
                                 <div>
                                     <label className={cn(
-                                        'block text-sm font-medium mb-1',
-                                        theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                                        'block text-[10px] font-medium mb-1',
+                                        theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                                     )}>
                                         Description
                                     </label>
@@ -1091,31 +1087,34 @@ export function LeadListsPage({ onNavigateToCampaign }: LeadListsPageProps) {
                                         value={newListDescription}
                                         onChange={(e) => setNewListDescription(e.target.value)}
                                         placeholder="Optional description..."
-                                        rows={3}
+                                        rows={2}
                                         className={cn(
-                                            'w-full px-4 py-2 rounded-lg border resize-none',
+                                            'w-full px-3 py-2 text-xs rounded border resize-none',
                                             theme === 'dark'
-                                                ? 'bg-[#252525] border-gray-700 text-white placeholder:text-gray-500'
+                                                ? 'bg-neutral-800 border-neutral-700 text-white placeholder:text-gray-500'
                                                 : 'bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400'
                                         )}
                                     />
                                 </div>
                             </div>
 
-                            <div className="flex justify-end gap-3 mt-6">
-                                <Button
-                                    variant="ghost"
+                            <div className="flex justify-end gap-2 mt-4">
+                                <button
                                     onClick={() => setShowCreateModal(false)}
+                                    className={cn(
+                                        'h-7 px-3 rounded text-[10px] font-medium transition-colors',
+                                        theme === 'dark' ? 'text-gray-400 hover:bg-neutral-800' : 'text-gray-600 hover:bg-gray-100'
+                                    )}
                                 >
                                     Cancel
-                                </Button>
-                                <Button
+                                </button>
+                                <button
                                     onClick={createList}
                                     disabled={!newListName.trim()}
-                                    className="bg-blue-600 hover:bg-blue-500 text-white"
+                                    className="h-7 px-3 rounded text-[10px] font-medium bg-orange-500 text-white hover:bg-orange-600 disabled:opacity-50"
                                 >
                                     Create List
-                                </Button>
+                                </button>
                             </div>
                         </motion.div>
                     </div>
@@ -1135,93 +1134,93 @@ export function LeadListsPage({ onNavigateToCampaign }: LeadListsPageProps) {
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
                             className={cn(
-                                'relative w-full max-w-md rounded-xl shadow-xl p-6',
-                                theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-white'
+                                'relative w-full max-w-sm rounded-lg shadow-xl p-5',
+                                theme === 'dark' ? 'bg-neutral-900' : 'bg-white'
                             )}
                         >
                             <h3 className={cn(
-                                'text-lg font-semibold mb-2',
+                                'text-sm font-semibold mb-1',
                                 theme === 'dark' ? 'text-white' : 'text-gray-900'
                             )}>
                                 Send to Campaign
                             </h3>
                             <p className={cn(
-                                'text-sm mb-4',
-                                theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                                'text-[10px] mb-3',
+                                theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
                             )}>
                                 Export {selectedList?.leads.length || 0} leads from "{selectedList?.name}" to a campaign
                             </p>
 
                             {/* Create New Campaign Section */}
                             <div className={cn(
-                                'p-4 rounded-lg border-2 border-dashed mb-4',
+                                'p-3 rounded border-2 border-dashed mb-3',
                                 theme === 'dark' ? 'border-blue-500/50 bg-blue-500/10' : 'border-blue-300 bg-blue-50'
                             )}>
-                                <div className="flex items-center gap-2 mb-3">
+                                <div className="flex items-center gap-1.5 mb-2">
                                     <Plus className={cn(
-                                        'w-5 h-5',
+                                        'w-3.5 h-3.5',
                                         theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
                                     )} />
                                     <span className={cn(
-                                        'text-sm font-medium',
+                                        'text-[10px] font-medium',
                                         theme === 'dark' ? 'text-blue-400' : 'text-blue-700'
                                     )}>
                                         Create New Campaign
                                     </span>
                                 </div>
-                                <div className="flex gap-2">
+                                <div className="flex gap-1.5">
                                     <input
                                         type="text"
                                         value={newCampaignName}
                                         onChange={(e) => setNewCampaignName(e.target.value)}
                                         placeholder={`Campaign from ${selectedList?.name || 'list'}`}
                                         className={cn(
-                                            'flex-1 px-3 py-2 text-sm rounded-lg border',
+                                            'flex-1 px-2.5 py-1.5 text-xs rounded border',
                                             theme === 'dark'
-                                                ? 'bg-[#252525] border-gray-700 text-white placeholder:text-gray-500'
+                                                ? 'bg-neutral-800 border-neutral-700 text-white placeholder:text-gray-500'
                                                 : 'bg-white border-gray-300 text-gray-900 placeholder:text-gray-400'
                                         )}
                                     />
-                                    <Button
+                                    <button
                                         onClick={createNewCampaignWithLeads}
                                         disabled={creatingCampaign}
-                                        className="gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4"
+                                        className="flex items-center gap-1 h-7 px-2.5 rounded text-[10px] font-medium bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50"
                                     >
                                         {creatingCampaign ? (
-                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            <Loader2 className="w-3 h-3 animate-spin" />
                                         ) : (
-                                            <Plus className="w-4 h-4" />
+                                            <Plus className="w-3 h-3" />
                                         )}
                                         Create
-                                    </Button>
+                                    </button>
                                 </div>
                             </div>
 
                             {/* Divider */}
-                            <div className="flex items-center gap-3 mb-4">
+                            <div className="flex items-center gap-2 mb-3">
                                 <div className={cn(
                                     'flex-1 h-px',
-                                    theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
+                                    theme === 'dark' ? 'bg-neutral-700' : 'bg-gray-200'
                                 )} />
                                 <span className={cn(
-                                    'text-xs uppercase',
+                                    'text-[9px] uppercase',
                                     theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                                 )}>
                                     or add to existing
                                 </span>
                                 <div className={cn(
                                     'flex-1 h-px',
-                                    theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
+                                    theme === 'dark' ? 'bg-neutral-700' : 'bg-gray-200'
                                 )} />
                             </div>
 
-                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                            <div className="space-y-1.5 max-h-40 overflow-y-auto">
                                 {campaigns.length === 0 ? (
                                     <div className={cn(
-                                        'text-center py-4',
+                                        'text-center py-3',
                                         theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                                     )}>
-                                        <p className="text-sm">No existing campaigns</p>
+                                        <p className="text-[10px]">No existing campaigns</p>
                                     </div>
                                 ) : (
                                     campaigns.map(campaign => (
@@ -1230,37 +1229,37 @@ export function LeadListsPage({ onNavigateToCampaign }: LeadListsPageProps) {
                                             onClick={() => exportToCampaign(campaign.id)}
                                             disabled={exporting}
                                             className={cn(
-                                                'w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors',
+                                                'w-full flex items-center gap-2 p-2 rounded text-left transition-colors',
                                                 theme === 'dark'
-                                                    ? 'hover:bg-gray-800 border border-gray-800'
+                                                    ? 'hover:bg-neutral-800 border border-neutral-800'
                                                     : 'hover:bg-gray-50 border border-gray-200'
                                             )}
                                         >
                                             <Megaphone className={cn(
-                                                'w-5 h-5',
+                                                'w-3.5 h-3.5',
                                                 campaign.status === 'active'
                                                     ? 'text-green-500'
                                                     : theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                                             )} />
                                             <div className="flex-1">
                                                 <p className={cn(
-                                                    'text-sm font-medium',
+                                                    'text-[10px] font-medium',
                                                     theme === 'dark' ? 'text-white' : 'text-gray-900'
                                                 )}>
                                                     {campaign.name}
                                                 </p>
                                                 <p className={cn(
-                                                    'text-xs',
+                                                    'text-[9px]',
                                                     theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                                                 )}>
                                                     {campaign.status}
                                                 </p>
                                             </div>
                                             {exporting ? (
-                                                <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                                                <Loader2 className="w-3 h-3 animate-spin text-blue-500" />
                                             ) : (
                                                 <ChevronRight className={cn(
-                                                    'w-4 h-4',
+                                                    'w-3.5 h-3.5',
                                                     theme === 'dark' ? 'text-gray-600' : 'text-gray-400'
                                                 )} />
                                             )}
@@ -1269,13 +1268,16 @@ export function LeadListsPage({ onNavigateToCampaign }: LeadListsPageProps) {
                                 )}
                             </div>
 
-                            <div className="flex justify-end mt-6">
-                                <Button
-                                    variant="ghost"
+                            <div className="flex justify-end mt-4">
+                                <button
                                     onClick={() => setShowExportModal(false)}
+                                    className={cn(
+                                        'h-7 px-3 rounded text-[10px] font-medium transition-colors',
+                                        theme === 'dark' ? 'text-gray-400 hover:bg-neutral-800' : 'text-gray-600 hover:bg-gray-100'
+                                    )}
                                 >
                                     Cancel
-                                </Button>
+                                </button>
                             </div>
                         </motion.div>
                     </div>

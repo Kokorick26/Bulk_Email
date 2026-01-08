@@ -68,7 +68,7 @@ interface EmailStats {
 
 export default function UnifiedDashboard() {
     const { theme } = useTheme();
-    const { activeSection, activeSubItem, setActiveSubItem, setNavigateToSettings } = useDashboardContext();
+    const { activeSection, activeSubItem, setActiveSubItem, setNavigateToSettings, setActiveSection, setInboxFilterAccountIds, setInboxFilterCampaignId } = useDashboardContext();
     const isDark = theme === 'dark';
 
     const [smtpAccounts, setSmtpAccounts] = useState<SmtpAccount[]>([]);
@@ -175,6 +175,13 @@ export default function UnifiedDashboard() {
         }
     };
 
+    const handleViewInbox = (campaignId: string, accountIds: string[]) => {
+        // Set the filter and navigate to inbox
+        setInboxFilterCampaignId(campaignId);
+        setInboxFilterAccountIds(accountIds);
+        setActiveSection('inbox');
+    };
+
     if (loading && !stats) {
         return (
             <div className="h-full flex items-center justify-center">
@@ -194,7 +201,7 @@ export default function UnifiedDashboard() {
 
         // Inbox
         if (activeSection === 'inbox') {
-            return <InboxView smtpAccounts={smtpAccounts} onRefreshAccounts={fetchData} />;
+            return <InboxView smtpAccounts={smtpAccounts} campaigns={organizedCampaigns} onRefreshAccounts={fetchData} />;
         }
 
         // Campaigns
@@ -227,6 +234,7 @@ export default function UnifiedDashboard() {
                     onCreateNew={() => setCampaignView('create')}
                     onViewCampaign={(id: string) => { setSelectedCampaignId(id); setCampaignView('detail'); }}
                     onDeleteCampaign={handleDeleteCampaign}
+                    onViewInbox={handleViewInbox}
                 />
             );
         }
@@ -266,6 +274,7 @@ export default function UnifiedDashboard() {
                 onCreateNew={() => setCampaignView('create')}
                 onViewCampaign={(id: string) => { setSelectedCampaignId(id); setCampaignView('detail'); }}
                 onDeleteCampaign={handleDeleteCampaign}
+                onViewInbox={handleViewInbox}
             />
         );
     };

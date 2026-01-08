@@ -190,193 +190,170 @@ export function SequencesTab({ campaignId, sequence, onSequenceUpdate, leads = [
     };
 
     return (
-        <div className={cn('max-w-7xl mx-auto flex flex-col h-[calc(100vh-220px)] gap-6 animate-in fade-in duration-500', className)}>
-            {/* Header Area */}
-            <div className="flex items-center justify-between border-b border-dashed pb-6" style={{ borderColor: theme === 'dark' ? '#252a33' : '#e5e7eb' }}>
-                <div className="space-y-1">
+        <div className={cn('flex flex-col h-full', className)}>
+            {/* Compact Toolbar */}
+            <div className={cn(
+                'flex items-center justify-between px-4 py-3 border-b flex-shrink-0',
+                theme === 'dark' ? 'bg-[#0d0d0d] border-neutral-800' : 'bg-white border-gray-200'
+            )}>
+                <div className="flex items-center gap-3">
                     <h2 className={cn(
-                        'text-3xl font-[Syne] font-bold tracking-tight',
+                        'text-sm font-semibold',
                         theme === 'dark' ? 'text-white' : 'text-gray-900'
                     )}>
-                        Workflow <span className="text-[#d97757]">Sequencer</span>
+                        Sequences
                     </h2>
-                    <p className={cn(
-                        'text-sm font-light opacity-60',
-                        theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                    <div className={cn(
+                        'text-xs px-2 py-0.5 rounded',
+                        theme === 'dark' ? 'bg-neutral-800 text-gray-400' : 'bg-gray-100 text-gray-500'
                     )}>
-                        Design your multi-step engagement logic.
-                    </p>
+                        {steps.length} {steps.length === 1 ? 'Step' : 'Steps'}
+                    </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <Button
-                        onClick={handleSave}
-                        disabled={isSaving}
-                        className={cn(
-                            'h-11 px-8 rounded-xl font-[Syne] font-bold transition-all duration-300 shadow-lg shadow-[#d97757]/10',
-                            theme === 'dark'
-                                ? 'bg-[#d97757] hover:bg-[#c46144] text-white'
-                                : 'bg-blue-600 text-white'
-                        )}
-                    >
-                        {isSaving ? (
-                            <>
-                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
-                                Saving...
-                            </>
-                        ) : (
-                            <>
-                                <Check className="w-4 h-4 mr-2" />
-                                Save Sequence
-                            </>
-                        )}
-                    </Button>
-                </div>
+                <Button
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    size="sm"
+                    className={cn(
+                        'h-8 text-xs gap-1.5',
+                        theme === 'dark'
+                            ? 'bg-blue-600 hover:bg-blue-500 text-white'
+                            : 'bg-blue-600 hover:bg-blue-700 text-white'
+                    )}
+                >
+                    {isSaving ? (
+                        <>
+                            <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            Saving...
+                        </>
+                    ) : (
+                        <>
+                            <Check className="w-3.5 h-3.5" />
+                            Save
+                        </>
+                    )}
+                </Button>
             </div>
 
-            <div className="flex-1 flex gap-8 min-h-0">
+            <div className="flex-1 flex gap-6 min-h-0 p-4 overflow-hidden">
                 {/* Steps Navigation (Left Sidebar) */}
-                <div className="w-80 flex-shrink-0 flex flex-col space-y-6">
-                    <div className="flex items-center justify-between px-2">
-                        <h3 className="font-[Syne] text-sm font-bold uppercase tracking-widest text-[#d97757]">
+                <div className="w-72 flex-shrink-0 flex flex-col space-y-4">
+                    <div className="flex items-center justify-between">
+                        <h3 className={cn(
+                            'text-xs font-semibold uppercase tracking-wider',
+                            theme === 'dark' ? 'text-orange-500' : 'text-blue-600'
+                        )}>
                             Sequence Flow
                         </h3>
-                        <div className="flex items-center gap-2">
-                            <span className={cn(
-                                'text-[10px] font-mono px-2 py-0.5 rounded border uppercase tracking-wider',
-                                theme === 'dark'
-                                    ? 'border-[#3a424f] text-[#a0aab8] bg-[#12151a]'
-                                    : 'border-gray-200 text-gray-400 bg-gray-50'
-                            )}>
-                                {steps.length} Steps
-                            </span>
-                        </div>
+                        <span className={cn(
+                            'text-[10px] font-medium px-1.5 py-0.5 rounded border',
+                            theme === 'dark'
+                                ? 'border-neutral-700 text-gray-400 bg-neutral-800'
+                                : 'border-gray-200 text-gray-400 bg-gray-50'
+                        )}>
+                            {steps.length} Steps
+                        </span>
                     </div>
 
-                    <div className="flex-1 space-y-3 overflow-y-auto pr-2 custom-scrollbar">
+                    <div className="flex-1 space-y-2 overflow-y-auto custom-scrollbar">
                         {steps.map((step, index) => (
-                            <div key={step.id} className="relative group perspective-1000">
-                                {/* Connector Line */}
-                                {index < steps.length - 1 && (
-                                    <div className={cn(
-                                        'absolute left-6 top-16 bottom-0 w-px z-0',
-                                        theme === 'dark'
-                                            ? 'bg-gradient-to-b from-[#3a424f] to-transparent'
-                                            : 'bg-gray-200'
-                                    )} style={{ height: 'calc(100% + 12px)' }} />
+                            <button
+                                key={step.id}
+                                onClick={() => setActiveStepId(step.id)}
+                                className={cn(
+                                    'relative w-full flex items-center gap-3 p-3 rounded text-left transition-all',
+                                    activeStepId === step.id
+                                        ? theme === 'dark'
+                                            ? 'bg-neutral-800 border border-neutral-700'
+                                            : 'bg-gray-100 border border-gray-200'
+                                        : theme === 'dark'
+                                            ? 'bg-neutral-900 border border-neutral-800 hover:bg-neutral-800'
+                                            : 'bg-white border border-gray-100 hover:bg-gray-50'
                                 )}
+                            >
+                                <div className={cn(
+                                    'flex-shrink-0 w-7 h-7 rounded flex items-center justify-center text-xs font-bold',
+                                    activeStepId === step.id
+                                        ? 'bg-orange-500 text-white'
+                                        : theme === 'dark'
+                                            ? 'bg-neutral-800 text-gray-400 border border-neutral-700'
+                                            : 'bg-gray-100 text-gray-400'
+                                )}>
+                                    {index + 1}
+                                </div>
 
-                                <button
-                                    onClick={() => setActiveStepId(step.id)}
-                                    className={cn(
-                                        'relative z-10 w-full flex items-start gap-4 p-4 rounded-xl text-left transition-all duration-300 group-hover:translate-x-1',
+                                <div className="flex-1 min-w-0">
+                                    <p className={cn(
+                                        'text-xs font-medium truncate',
                                         activeStepId === step.id
-                                            ? theme === 'dark'
-                                                ? 'bg-[#1a1e25] border border-[#d97757]/30 shadow-[0_0_20px_rgba(217,119,87,0.1)]'
-                                                : 'bg-white border-blue-500 shadow-lg'
-                                            : theme === 'dark'
-                                                ? 'bg-[#12151a] border border-[#252a33] hover:border-[#d97757]/20'
-                                                : 'bg-white border-gray-100 hover:border-blue-200 hover:shadow-md'
-                                    )}
-                                >
-                                    <div className={cn(
-                                        'flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-sm font-[Syne] font-bold transition-all duration-300',
-                                        activeStepId === step.id
-                                            ? 'bg-gradient-to-br from-[#d97757] to-[#c46144] text-white shadow-lg'
-                                            : theme === 'dark'
-                                                ? 'bg-[#1a1e25] text-[#6b7684] border border-[#252a33]'
-                                                : 'bg-gray-100 text-gray-400'
+                                            ? theme === 'dark' ? 'text-white' : 'text-gray-900'
+                                            : theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                                     )}>
-                                        {index + 1}
+                                        {step.subject || <span className="italic opacity-50">Untitled</span>}
+                                    </p>
+                                    <span className={cn(
+                                        'text-[10px]',
+                                        index === 0
+                                            ? 'text-orange-500'
+                                            : theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                    )}>
+                                        {index === 0 ? '✓ Immediate' : `${step.delayDays}d delay`}
+                                    </span>
+                                </div>
+
+                                {steps.length > 1 && (
+                                    <div
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteStep(step.id);
+                                        }}
+                                        className={cn(
+                                            'p-1 rounded opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity cursor-pointer',
+                                            theme === 'dark'
+                                                ? 'hover:bg-red-500/20 text-gray-500 hover:text-red-400'
+                                                : 'hover:bg-red-50 text-gray-400 hover:text-red-600'
+                                        )}
+                                    >
+                                        <Trash2 className="w-3 h-3" />
                                     </div>
-
-                                    <div className="flex-1 min-w-0">
-                                        <p className={cn(
-                                            'text-sm font-semibold truncate mb-1 transition-colors',
-                                            activeStepId === step.id
-                                                ? theme === 'dark' ? 'text-white' : 'text-gray-900'
-                                                : theme === 'dark' ? 'text-[#a0aab8]' : 'text-gray-500'
-                                        )}>
-                                            {step.subject || <span className="italic opacity-50">Untitled Step</span>}
-                                        </p>
-
-                                        <div className="flex flex-wrap gap-2 text-[11px] font-medium opacity-80">
-                                            {index === 0 ? (
-                                                <span className={cn(
-                                                    'flex items-center gap-1 px-1.5 py-0.5 rounded',
-                                                    theme === 'dark' ? 'bg-[#d97757]/10 text-[#d97757]' : 'bg-blue-50 text-blue-600'
-                                                )}>
-                                                    <Send className="w-3 h-3" />
-                                                    Immediate
-                                                </span>
-                                            ) : (
-                                                <span className={cn(
-                                                    'flex items-center gap-1 px-1.5 py-0.5 rounded',
-                                                    theme === 'dark' ? 'bg-[#252a33] text-[#a0aab8]' : 'bg-gray-100 text-gray-500'
-                                                )}>
-                                                    <Clock className="w-3 h-3" />
-                                                    {step.delayDays}d delay
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {steps.length > 1 && (
-                                        <div
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleDeleteStep(step.id);
-                                            }}
-                                            className={cn(
-                                                'absolute top-2 right-2 p-1.5 rounded-md opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-pointer',
-                                                theme === 'dark'
-                                                    ? 'hover:bg-red-500/20 text-[#6b7684] hover:text-red-400'
-                                                    : 'hover:bg-red-50 text-gray-400 hover:text-red-600'
-                                            )}
-                                        >
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                        </div>
-                                    )}
-                                </button>
-                            </div>
+                                )}
+                            </button>
                         ))}
 
-                        <Button
+                        <button
                             onClick={handleAddStep}
-                            variant="outline"
                             className={cn(
-                                'w-full py-6 mt-4 border-dashed border-2 flex flex-col items-center gap-2 transition-all duration-300 group',
+                                'w-full flex items-center justify-center gap-2 py-3 border border-dashed rounded text-xs font-medium transition-all',
                                 theme === 'dark'
-                                    ? 'border-[#252a33] bg-transparent text-[#6b7684] hover:border-[#d97757] hover:bg-[#d97757]/5 hover:text-[#d97757]'
-                                    : 'border-gray-200 text-gray-400 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600'
+                                    ? 'border-neutral-700 text-gray-500 hover:border-orange-500 hover:text-orange-500'
+                                    : 'border-gray-200 text-gray-400 hover:border-blue-400 hover:text-blue-600'
                             )}
                         >
-                            <div className={cn(
-                                'w-8 h-8 rounded-full flex items-center justify-center transition-transform duration-300 group-hover:rotate-90',
-                                theme === 'dark' ? 'bg-[#1a1e25]' : 'bg-gray-100'
-                            )}>
-                                <Plus className="w-4 h-4" />
-                            </div>
-                            <span className="text-xs font-semibold uppercase tracking-wider">Add Sequence Step</span>
-                        </Button>
+                            <Plus className="w-3.5 h-3.5" />
+                            Add Sequence Step
+                        </button>
                     </div>
                 </div>
 
                 {/* Main Editor Area */}
                 <div className={cn(
-                    'flex-1 flex flex-col rounded-2xl overflow-hidden shadow-2xl transition-all duration-500',
+                    'flex-1 flex flex-col rounded overflow-hidden',
                     theme === 'dark'
-                        ? 'bg-[#12151a] border border-[#252a33]'
-                        : 'bg-white border border-gray-100 shadow-xl'
+                        ? 'bg-neutral-900 border border-neutral-800'
+                        : 'bg-white border border-gray-200'
                 )}>
                     {/* Editor Header / Subject Line */}
                     <div className={cn(
-                        'px-8 py-6 border-b flex flex-col gap-4',
-                        theme === 'dark' ? 'border-[#1a1e25] bg-gradient-to-r from-[#12151a] to-[#1a1e25]' : 'border-gray-100 bg-white'
+                        'px-4 py-3 border-b',
+                        theme === 'dark' ? 'border-neutral-800 bg-neutral-900' : 'border-gray-100 bg-white'
                     )}>
-                        <div className="flex items-start gap-4">
+                        <div className="flex items-center gap-4">
                             <div className="flex-1">
-                                <label className="block text-xs font-[Syne] font-bold uppercase tracking-widest text-[#d97757] mb-2 opacity-80">
+                                <label className={cn(
+                                    'block text-[10px] font-semibold uppercase tracking-wider mb-1',
+                                    theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                )}>
                                     Email Subject
                                 </label>
                                 <input
@@ -385,8 +362,8 @@ export function SequencesTab({ campaignId, sequence, onSequenceUpdate, leads = [
                                     onChange={(e) => handleUpdateStep(activeStepId, { subject: e.target.value })}
                                     placeholder="Enter a compelling subject line..."
                                     className={cn(
-                                        'w-full bg-transparent text-xl md:text-2xl font-[Syne] font-semibold focus:outline-none placeholder:opacity-40 transition-all',
-                                        theme === 'dark' ? 'text-white placeholder:text-[#6b7684]' : 'text-gray-900 placeholder:text-gray-300'
+                                        'w-full bg-transparent text-lg font-semibold focus:outline-none placeholder:opacity-40 transition-all',
+                                        theme === 'dark' ? 'text-white placeholder:text-gray-600' : 'text-gray-900 placeholder:text-gray-300'
                                     )}
                                 />
                             </div>
@@ -394,23 +371,23 @@ export function SequencesTab({ campaignId, sequence, onSequenceUpdate, leads = [
                             {/* Delay Settings for non-first steps */}
                             {activeStep.order > 1 && (
                                 <div className={cn(
-                                    'flex items-center gap-3 px-4 py-2 rounded-xl border',
-                                    theme === 'dark' ? 'bg-[#1a1e25] border-[#252a33]' : 'bg-gray-50 border-gray-200'
+                                    'flex items-center gap-2 px-3 py-1.5 rounded border',
+                                    theme === 'dark' ? 'bg-neutral-800 border-neutral-700' : 'bg-gray-50 border-gray-200'
                                 )}>
-                                    <Clock className={cn('w-4 h-4', theme === 'dark' ? 'text-[#a0aab8]' : 'text-gray-500')} />
-                                    <div className="flex items-center gap-2">
-                                        <span className={cn('text-xs font-medium uppercase', theme === 'dark' ? 'text-[#6b7684]' : 'text-gray-500')}>Wait</span>
+                                    <Clock className={cn('w-3.5 h-3.5', theme === 'dark' ? 'text-gray-400' : 'text-gray-500')} />
+                                    <div className="flex items-center gap-1.5">
+                                        <span className={cn('text-[10px] font-medium uppercase', theme === 'dark' ? 'text-gray-500' : 'text-gray-500')}>Wait</span>
                                         <input
                                             type="number"
                                             min="0"
                                             value={activeStep.delayDays}
                                             onChange={(e) => handleUpdateStep(activeStepId, { delayDays: parseInt(e.target.value) || 0 })}
                                             className={cn(
-                                                'w-10 text-center bg-transparent font-mono text-sm font-bold focus:outline-none border-b',
-                                                theme === 'dark' ? 'text-white border-[#3a424f] focus:border-[#d97757]' : 'text-gray-900 border-gray-300'
+                                                'w-8 text-center bg-transparent font-mono text-xs font-bold focus:outline-none border-b',
+                                                theme === 'dark' ? 'text-white border-neutral-600 focus:border-orange-500' : 'text-gray-900 border-gray-300'
                                             )}
                                         />
-                                        <span className={cn('text-xs', theme === 'dark' ? 'text-[#6b7684]' : 'text-gray-500')}>days</span>
+                                        <span className={cn('text-[10px]', theme === 'dark' ? 'text-gray-500' : 'text-gray-500')}>days</span>
                                     </div>
                                 </div>
                             )}
@@ -418,42 +395,41 @@ export function SequencesTab({ campaignId, sequence, onSequenceUpdate, leads = [
                     </div>
 
                     {/* Rich Text Editor Area */}
-                    <div className="flex-1 relative group bg-pattern-dots">
+                    <div className="flex-1 relative">
                         <textarea
                             ref={bodyRef}
                             value={activeStep.body}
                             onChange={(e) => handleUpdateStep(activeStepId, { body: e.target.value })}
                             placeholder="Hi {{firstName}}, write something amazing..."
                             className={cn(
-                                'w-full h-full p-8 bg-transparent border-0 resize-none focus:outline-none text-base leading-relaxed font-sans transition-colors',
-                                theme === 'dark' ? 'text-[#f9fafb] placeholder:text-[#3a424f]' : 'text-gray-800 placeholder:text-gray-300'
+                                'w-full h-full p-4 bg-transparent border-0 resize-none focus:outline-none text-sm leading-relaxed',
+                                theme === 'dark' ? 'text-gray-200 placeholder:text-gray-600' : 'text-gray-800 placeholder:text-gray-300'
                             )}
-                            style={{ lineHeight: '1.8' }}
                         />
 
                         {/* Floating Toolbar */}
                         <div className={cn(
-                            'absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 px-2 py-2 rounded-2xl border shadow-2xl transition-all duration-300 opacity-90 hover:opacity-100',
+                            'absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1 px-1.5 py-1.5 rounded border shadow-lg',
                             theme === 'dark'
-                                ? 'bg-[#1a1e25]/90 backdrop-blur-md border-[#252a33]'
-                                : 'bg-white/90 backdrop-blur-md border-gray-200'
+                                ? 'bg-neutral-900/95 backdrop-blur-sm border-neutral-700'
+                                : 'bg-white/95 backdrop-blur-sm border-gray-200'
                         )}>
                             <button
                                 onClick={() => setShowVariables(!showVariables)}
                                 className={cn(
-                                    'relative flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all',
+                                    'relative flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-semibold uppercase tracking-wide transition-all',
                                     theme === 'dark'
-                                        ? 'hover:bg-[#252a33] text-[#a0aab8] hover:text-white'
-                                        : 'hover:bg-gray-100 text-gray-600'
+                                        ? 'hover:bg-neutral-800 text-gray-400 hover:text-white'
+                                        : 'hover:bg-gray-100 text-gray-500'
                                 )}
                             >
-                                <Hash className="w-4 h-4" />
+                                <Hash className="w-3.5 h-3.5" />
                                 <span>Variables</span>
 
                                 {showVariables && (
                                     <div className={cn(
-                                        'absolute bottom-full left-0 mb-4 w-48 rounded-xl border shadow-xl overflow-hidden py-2 animate-in slide-in-from-bottom-2',
-                                        theme === 'dark' ? 'bg-[#1a1e25] border-[#252a33]' : 'bg-white border-gray-100'
+                                        'absolute bottom-full left-0 mb-2 w-40 rounded border shadow-xl overflow-hidden py-1',
+                                        theme === 'dark' ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-100'
                                     )}>
                                         {mergeFields.map(field => (
                                             <div
@@ -463,8 +439,8 @@ export function SequencesTab({ campaignId, sequence, onSequenceUpdate, leads = [
                                                     insertVariable(field);
                                                 }}
                                                 className={cn(
-                                                    'px-4 py-2 text-xs font-mono cursor-pointer transition-colors',
-                                                    theme === 'dark' ? 'text-[#a0aab8] hover:bg-[#252a33] hover:text-[#d97757]' : 'text-gray-600 hover:bg-gray-50'
+                                                    'px-3 py-1.5 text-[10px] font-mono cursor-pointer transition-colors',
+                                                    theme === 'dark' ? 'text-gray-400 hover:bg-neutral-800 hover:text-orange-500' : 'text-gray-600 hover:bg-gray-50'
                                                 )}
                                             >
                                                 {`{{${field}}}`}
@@ -474,18 +450,18 @@ export function SequencesTab({ campaignId, sequence, onSequenceUpdate, leads = [
                                 )}
                             </button>
 
-                            <div className={cn('w-px h-6', theme === 'dark' ? 'bg-[#3a424f]' : 'bg-gray-200')} />
+                            <div className={cn('w-px h-5', theme === 'dark' ? 'bg-neutral-700' : 'bg-gray-200')} />
 
                             <button
                                 onClick={() => setShowAiModal(!showAiModal)}
                                 className={cn(
-                                    'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all',
+                                    'flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-semibold uppercase tracking-wide transition-all',
                                     theme === 'dark'
-                                        ? 'bg-gradient-to-r from-purple-500/10 to-blue-500/10 hover:from-purple-500/20 hover:to-blue-500/20 text-purple-300 border border-purple-500/20'
+                                        ? 'bg-purple-500/20 text-purple-400 hover:bg-purple-500/30'
                                         : 'bg-purple-50 text-purple-600 hover:bg-purple-100'
                                 )}
                             >
-                                <Sparkles className="w-4 h-4" />
+                                <Sparkles className="w-3.5 h-3.5" />
                                 <span>AI Assist</span>
                             </button>
                         </div>

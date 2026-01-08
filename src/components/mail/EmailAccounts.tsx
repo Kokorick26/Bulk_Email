@@ -174,7 +174,7 @@ export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsP
                 setHistoryLoading(true);
                 try {
                     const token = localStorage.getItem('bulkEmailToken');
-                    const res = await fetch(`${API_BASE} /smtp-accounts/${selectedAccount.id}/history`, {
+                    const res = await fetch(`${API_BASE}/smtp-accounts/${selectedAccount.id}/history`, {
                         headers: { Authorization: `Bearer ${token}` }
                     });
                     if (res.ok) {
@@ -310,38 +310,38 @@ export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsP
         <div className="flex flex-1 min-h-0 h-full">
             {/* SIDEBAR - List of Accounts */}
             <div className={cn(
-                'w-[280px] flex-shrink-0 flex flex-col border-r h-full',
-                isDark ? 'bg-[#0c0c0c] border-neutral-800' : 'bg-gray-50 border-gray-200'
+                'w-[260px] flex-shrink-0 flex flex-col border-r h-full',
+                isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-gray-50 border-gray-200'
             )}>
                 {/* Header */}
-                <div className={cn('p-4 border-b flex flex-col gap-4', isDark ? 'border-neutral-800' : 'border-gray-200')}>
+                <div className={cn('px-3 py-3 border-b flex flex-col gap-3', isDark ? 'border-neutral-800' : 'border-gray-200')}>
                     <div className="flex items-center justify-between">
-                        <h2 className={cn('text-[15px] font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
+                        <h2 className={cn('text-xs font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
                             Email Accounts
                         </h2>
                         <div className="flex gap-2">
                             <button
                                 onClick={handleAddNew}
-                                className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:opacity-90 transition-opacity"
+                                className="flex items-center gap-1 h-7 px-2.5 rounded text-[10px] font-medium bg-orange-500 text-white hover:bg-orange-600 transition-colors"
                             >
-                                <Plus className="w-3.5 h-3.5" />
+                                <Plus className="w-3 h-3" />
                                 New
                             </button>
                         </div>
                     </div>
                     {/* Search */}
                     <div className={cn(
-                        'flex items-center gap-2 h-9 px-3 rounded-lg',
-                        isDark ? 'bg-white/[0.04]' : 'bg-gray-100'
+                        'flex items-center gap-2 h-8 px-2.5 rounded',
+                        isDark ? 'bg-neutral-800' : 'bg-gray-100'
                     )}>
-                        <Search className={cn('w-4 h-4', isDark ? 'text-gray-500' : 'text-gray-400')} />
+                        <Search className={cn('w-3.5 h-3.5', isDark ? 'text-gray-500' : 'text-gray-400')} />
                         <input
                             type="text"
                             placeholder="Search accounts..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className={cn(
-                                'flex-1 bg-transparent border-0 outline-none text-[13px]',
+                                'flex-1 bg-transparent border-0 outline-none text-[11px]',
                                 isDark ? 'text-white placeholder:text-gray-500' : 'text-gray-900 placeholder:text-gray-400'
                             )}
                         />
@@ -354,19 +354,19 @@ export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsP
                 <ScrollArea className="flex-1">
                     <div className="p-2 space-y-0.5">
                         {filteredAccounts.length === 0 ? (
-                            <div className="text-center py-12 px-4">
+                            <div className="text-center py-10 px-3">
                                 <div className={cn(
-                                    'w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center',
-                                    isDark ? 'bg-white/[0.04]' : 'bg-gray-100'
+                                    'w-10 h-10 rounded mx-auto mb-2 flex items-center justify-center',
+                                    isDark ? 'bg-neutral-800' : 'bg-gray-100'
                                 )}>
-                                    <Mail className={cn('w-6 h-6', isDark ? 'text-gray-500' : 'text-gray-400')} />
+                                    <Mail className={cn('w-5 h-5', isDark ? 'text-gray-500' : 'text-gray-400')} />
                                 </div>
-                                <p className={cn('text-[13px] font-medium mb-1', isDark ? 'text-gray-400' : 'text-gray-600')}>
+                                <p className={cn('text-[11px] font-medium mb-1', isDark ? 'text-gray-400' : 'text-gray-600')}>
                                     No accounts
                                 </p>
                                 <button
                                     onClick={handleAddNew}
-                                    className="text-[12px] text-orange-500 hover:underline font-medium"
+                                    className="text-[10px] text-orange-500 hover:underline font-medium"
                                 >
                                     Add your first account →
                                 </button>
@@ -379,25 +379,25 @@ export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsP
                                         key={account.id}
                                         onClick={() => setSelectedAccount(account)}
                                         className={cn(
-                                            'w-full flex items-center gap-3 p-3 rounded-lg text-left transition-all group relative',
+                                            'w-full flex items-center gap-2 p-2 rounded text-left transition-all group relative',
                                             isActive
-                                                ? isDark ? 'bg-white/[0.08]' : 'bg-gray-100'
-                                                : isDark ? 'hover:bg-white/[0.04]' : 'hover:bg-gray-50'
+                                                ? isDark ? 'bg-neutral-800' : 'bg-gray-100'
+                                                : isDark ? 'hover:bg-neutral-800/50' : 'hover:bg-gray-50'
                                         )}
                                     >
                                         <div className={cn(
-                                            'w-9 h-9 rounded-lg flex items-center justify-center shrink-0',
+                                            'w-7 h-7 rounded flex items-center justify-center shrink-0',
                                             isActive
-                                                ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white'
-                                                : isDark ? 'bg-white/[0.06] text-gray-400' : 'bg-gray-100 text-gray-500'
+                                                ? 'bg-orange-500 text-white'
+                                                : isDark ? 'bg-neutral-800 text-gray-400' : 'bg-gray-100 text-gray-500'
                                         )}>
-                                            <Mail className="w-4 h-4" />
+                                            <Mail className="w-3.5 h-3.5" />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className={cn('text-[13px] font-medium truncate', isDark ? 'text-white' : 'text-gray-900')}>
+                                            <p className={cn('text-[11px] font-medium truncate', isDark ? 'text-white' : 'text-gray-900')}>
                                                 {account.fromEmail}
                                             </p>
-                                            <p className={cn('text-[11px] truncate', isDark ? 'text-gray-500' : 'text-gray-400')}>
+                                            <p className={cn('text-[9px] truncate', isDark ? 'text-gray-500' : 'text-gray-400')}>
                                                 {account.name}
                                             </p>
                                         </div>
@@ -407,10 +407,10 @@ export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsP
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
                                                     <div className={cn(
-                                                        'p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/10 dark:hover:bg-white/10',
-                                                        isActive ? 'opacity-100 text-white' : isDark ? 'text-gray-400' : 'text-gray-500'
+                                                        'p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity',
+                                                        isActive ? 'opacity-100 text-white' : isDark ? 'text-gray-400 hover:bg-neutral-700' : 'text-gray-500 hover:bg-gray-200'
                                                     )}>
-                                                        <MoreHorizontal className="w-4 h-4" />
+                                                        <MoreHorizontal className="w-3.5 h-3.5" />
                                                     </div>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
@@ -596,16 +596,16 @@ export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsP
                         >
                             {/* Header */}
                             <div className={cn(
-                                'flex items-center justify-between px-8 py-6 border-b',
-                                isDark ? 'border-neutral-800' : 'border-gray-200'
+                                'flex items-center justify-between px-4 py-3 border-b',
+                                isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
                             )}>
                                 <div>
-                                    <h1 className={cn('text-2xl font-bold mb-1', isDark ? 'text-white' : 'text-gray-900')}>
+                                    <h1 className={cn('text-sm font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
                                         {selectedAccount.fromEmail}
                                     </h1>
-                                    <div className="flex items-center gap-4 text-sm text-gray-500">
-                                        <span className="flex items-center gap-1.5">
-                                            <div className={cn("w-2 h-2 rounded-full", selectedAccount.healthScore && selectedAccount.healthScore > 80 ? "bg-emerald-500" : "bg-yellow-500")} />
+                                    <div className="flex items-center gap-3 text-[10px] text-gray-500 mt-0.5">
+                                        <span className="flex items-center gap-1">
+                                            <div className={cn("w-1.5 h-1.5 rounded-full", selectedAccount.healthScore && selectedAccount.healthScore > 80 ? "bg-emerald-500" : "bg-yellow-500")} />
                                             Health: {selectedAccount.healthScore || 100}%
                                         </span>
                                         <span>•</span>
@@ -615,31 +615,31 @@ export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsP
                                 <Button
                                     onClick={saveSenderProfile}
                                     disabled={sidebarSaving}
-                                    className="gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white"
+                                    className="gap-1.5 h-7 px-2.5 rounded text-[10px] bg-orange-500 hover:bg-orange-600 text-white"
                                 >
-                                    {sidebarSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                    {sidebarSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
                                     Save Changes
                                 </Button>
                             </div>
 
                             {/* Content */}
                             <ScrollArea className="flex-1">
-                                <div className="p-8 max-w-4xl mx-auto space-y-8">
+                                <div className="p-4 max-w-4xl mx-auto space-y-4">
 
                                     {/* Email Activity Section */}
-                                    <div className={cn('rounded-xl border', isDark ? 'bg-neutral-900/30 border-neutral-800' : 'bg-white border-gray-200')}>
-                                        <div className="px-6 py-4 border-b border-gray-200 dark:border-neutral-800 flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
-                                                    <Mail className="w-4 h-4" />
+                                    <div className={cn('rounded border', isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200')}>
+                                        <div className={cn('px-4 py-3 border-b flex items-center justify-between', isDark ? 'border-neutral-800' : 'border-gray-100')}>
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-6 h-6 rounded bg-blue-500/10 flex items-center justify-center text-blue-500">
+                                                    <Mail className="w-3 h-3" />
                                                 </div>
                                                 <div>
-                                                    <h3 className={cn('font-semibold', isDark ? 'text-white' : 'text-gray-900')}>Email Activity</h3>
-                                                    <p className="text-xs text-gray-500">Sent and scheduled emails from this account</p>
+                                                    <h3 className={cn('text-xs font-semibold', isDark ? 'text-white' : 'text-gray-900')}>Email Activity</h3>
+                                                    <p className="text-[9px] text-gray-500">Sent and scheduled emails from this account</p>
                                                 </div>
                                             </div>
                                             {emailHistory && (
-                                                <div className={cn('px-3 py-1.5 rounded-full text-xs font-medium',
+                                                <div className={cn('px-2 py-1 rounded text-[9px] font-medium',
                                                     emailHistory.remainingToday > 0
                                                         ? isDark ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600'
                                                         : isDark ? 'bg-red-500/10 text-red-400' : 'bg-red-50 text-red-600'
@@ -648,7 +648,7 @@ export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsP
                                                 </div>
                                             )}
                                         </div>
-                                        <div className="p-6">
+                                        <div className="p-4">
                                             {historyLoading ? (
                                                 <div className="flex flex-col items-center justify-center py-12 text-gray-400">
                                                     <Loader2 className="w-8 h-8 animate-spin mb-4" />
@@ -771,140 +771,140 @@ export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsP
 
 
                                     {/* Sender Profile Section */}
-                                    <div className={cn('rounded-xl border', isDark ? 'bg-neutral-900/30 border-neutral-800' : 'bg-white border-gray-200')}>
-                                        <div className="px-6 py-4 border-b border-gray-200 dark:border-neutral-800 flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-500">
-                                                <User className="w-4 h-4" />
+                                    <div className={cn('rounded border', isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200')}>
+                                        <div className={cn('px-4 py-3 border-b flex items-center gap-2', isDark ? 'border-neutral-800' : 'border-gray-100')}>
+                                            <div className="w-6 h-6 rounded bg-orange-500/10 flex items-center justify-center text-orange-500">
+                                                <User className="w-3 h-3" />
                                             </div>
                                             <div>
-                                                <h3 className={cn('font-semibold', isDark ? 'text-white' : 'text-gray-900')}>Sender Profile</h3>
-                                                <p className="text-xs text-gray-500">How you appear in recipients' inboxes</p>
+                                                <h3 className={cn('text-xs font-semibold', isDark ? 'text-white' : 'text-gray-900')}>Sender Profile</h3>
+                                                <p className="text-[9px] text-gray-500">How you appear in recipients' inboxes</p>
                                             </div>
                                         </div>
 
-                                        <div className="p-6 grid grid-cols-2 gap-6">
+                                        <div className="p-4 grid grid-cols-2 gap-4">
                                             <div className="col-span-1">
-                                                <label className="text-sm font-medium mb-1.5 block">Full Name</label>
+                                                <label className="text-[10px] font-medium mb-1 block text-gray-500">Full Name</label>
                                                 <input
                                                     type="text"
                                                     value={senderProfile.senderFullName}
                                                     onChange={e => setSenderProfile(p => ({ ...p, senderFullName: e.target.value }))}
-                                                    className={cn('w-full h-10 px-3 rounded-lg border bg-transparent', isDark ? 'border-neutral-700' : 'border-gray-200')}
+                                                    className={cn('w-full h-8 px-2.5 text-xs rounded border bg-transparent', isDark ? 'border-neutral-700' : 'border-gray-200')}
                                                 />
                                             </div>
                                             <div className="col-span-1">
-                                                <label className="text-sm font-medium mb-1.5 block">Position / Title</label>
+                                                <label className="text-[10px] font-medium mb-1 block text-gray-500">Position / Title</label>
                                                 <input
                                                     type="text"
                                                     value={senderProfile.senderPosition}
                                                     onChange={e => setSenderProfile(p => ({ ...p, senderPosition: e.target.value }))}
-                                                    className={cn('w-full h-10 px-3 rounded-lg border bg-transparent', isDark ? 'border-neutral-700' : 'border-gray-200')}
+                                                    className={cn('w-full h-8 px-2.5 text-xs rounded border bg-transparent', isDark ? 'border-neutral-700' : 'border-gray-200')}
                                                 />
                                             </div>
                                             <div className="col-span-2">
-                                                <label className="text-sm font-medium mb-1.5 block">Company Name</label>
+                                                <label className="text-[10px] font-medium mb-1 block text-gray-500">Company Name</label>
                                                 <input
                                                     type="text"
                                                     value={senderProfile.senderCompany}
                                                     onChange={e => setSenderProfile(p => ({ ...p, senderCompany: e.target.value }))}
-                                                    className={cn('w-full h-10 px-3 rounded-lg border bg-transparent', isDark ? 'border-neutral-700' : 'border-gray-200')}
+                                                    className={cn('w-full h-8 px-2.5 text-xs rounded border bg-transparent', isDark ? 'border-neutral-700' : 'border-gray-200')}
                                                 />
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* Contact Details */}
-                                    <div className={cn('rounded-xl border', isDark ? 'bg-neutral-900/30 border-neutral-800' : 'bg-white border-gray-200')}>
-                                        <div className="px-6 py-4 border-b border-gray-200 dark:border-neutral-800 flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
-                                                <Building2 className="w-4 h-4" />
+                                    <div className={cn('rounded border', isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200')}>
+                                        <div className={cn('px-4 py-3 border-b flex items-center gap-2', isDark ? 'border-neutral-800' : 'border-gray-100')}>
+                                            <div className="w-6 h-6 rounded bg-blue-500/10 flex items-center justify-center text-blue-500">
+                                                <Building2 className="w-3 h-3" />
                                             </div>
                                             <div>
-                                                <h3 className={cn('font-semibold', isDark ? 'text-white' : 'text-gray-900')}>Contact & Social</h3>
-                                                <p className="text-xs text-gray-500">Additional details for your signature</p>
+                                                <h3 className={cn('text-xs font-semibold', isDark ? 'text-white' : 'text-gray-900')}>Contact & Social</h3>
+                                                <p className="text-[9px] text-gray-500">Additional details for your signature</p>
                                             </div>
                                         </div>
 
-                                        <div className="p-6 grid grid-cols-2 gap-6">
+                                        <div className="p-4 grid grid-cols-2 gap-4">
                                             <div className="col-span-1">
-                                                <label className="text-sm font-medium mb-1.5 block">Phone Number</label>
+                                                <label className="text-[10px] font-medium mb-1 block text-gray-500">Phone Number</label>
                                                 <input
                                                     type="text"
                                                     value={senderProfile.senderPhone}
                                                     onChange={e => setSenderProfile(p => ({ ...p, senderPhone: e.target.value }))}
-                                                    className={cn('w-full h-10 px-3 rounded-lg border bg-transparent', isDark ? 'border-neutral-700' : 'border-gray-200')}
+                                                    className={cn('w-full h-8 px-2.5 text-xs rounded border bg-transparent', isDark ? 'border-neutral-700' : 'border-gray-200')}
                                                 />
                                             </div>
                                             <div className="col-span-1">
-                                                <label className="text-sm font-medium mb-1.5 block">Website</label>
+                                                <label className="text-[10px] font-medium mb-1 block text-gray-500">Website</label>
                                                 <input
                                                     type="text"
                                                     value={senderProfile.senderWebsite}
                                                     onChange={e => setSenderProfile(p => ({ ...p, senderWebsite: e.target.value }))}
-                                                    className={cn('w-full h-10 px-3 rounded-lg border bg-transparent', isDark ? 'border-neutral-700' : 'border-gray-200')}
+                                                    className={cn('w-full h-8 px-2.5 text-xs rounded border bg-transparent', isDark ? 'border-neutral-700' : 'border-gray-200')}
                                                 />
                                             </div>
                                             <div className="col-span-2">
-                                                <label className="text-sm font-medium mb-1.5 block">LinkedIn Profile</label>
+                                                <label className="text-[10px] font-medium mb-1 block text-gray-500">LinkedIn Profile</label>
                                                 <input
                                                     type="text"
                                                     value={senderProfile.senderLinkedIn}
                                                     onChange={e => setSenderProfile(p => ({ ...p, senderLinkedIn: e.target.value }))}
-                                                    className={cn('w-full h-10 px-3 rounded-lg border bg-transparent', isDark ? 'border-neutral-700' : 'border-gray-200')}
+                                                    className={cn('w-full h-8 px-2.5 text-xs rounded border bg-transparent', isDark ? 'border-neutral-700' : 'border-gray-200')}
                                                 />
                                             </div>
                                             <div className="col-span-2">
-                                                <label className="text-sm font-medium mb-1.5 block">Physical Address</label>
+                                                <label className="text-[10px] font-medium mb-1 block text-gray-500">Physical Address</label>
                                                 <input
                                                     type="text"
                                                     value={senderProfile.senderAddress}
                                                     onChange={e => setSenderProfile(p => ({ ...p, senderAddress: e.target.value }))}
-                                                    className={cn('w-full h-10 px-3 rounded-lg border bg-transparent', isDark ? 'border-neutral-700' : 'border-gray-200')}
+                                                    className={cn('w-full h-8 px-2.5 text-xs rounded border bg-transparent', isDark ? 'border-neutral-700' : 'border-gray-200')}
                                                 />
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* Server Configuration Section */}
-                                    <div className={cn('rounded-xl border', isDark ? 'bg-neutral-900/30 border-neutral-800' : 'bg-white border-gray-200')}>
-                                        <div className="px-6 py-4 border-b border-gray-200 dark:border-neutral-800 flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-500">
-                                                <Server className="w-4 h-4" />
+                                    <div className={cn('rounded border', isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200')}>
+                                        <div className={cn('px-4 py-3 border-b flex items-center gap-2', isDark ? 'border-neutral-800' : 'border-gray-100')}>
+                                            <div className="w-6 h-6 rounded bg-purple-500/10 flex items-center justify-center text-purple-500">
+                                                <Server className="w-3 h-3" />
                                             </div>
                                             <div>
-                                                <h3 className={cn('font-semibold', isDark ? 'text-white' : 'text-gray-900')}>Server Configuration</h3>
-                                                <p className="text-xs text-gray-500">SMTP and IMAP server details</p>
+                                                <h3 className={cn('text-xs font-semibold', isDark ? 'text-white' : 'text-gray-900')}>Server Configuration</h3>
+                                                <p className="text-[9px] text-gray-500">SMTP and IMAP server details</p>
                                             </div>
                                         </div>
 
-                                        <div className="p-6 grid grid-cols-2 gap-6">
+                                        <div className="p-4 grid grid-cols-2 gap-4">
                                             <div className="col-span-2">
-                                                <div className="flex items-center gap-2 mb-3">
-                                                    <Mail className="w-4 h-4 text-orange-500" />
-                                                    <span className="text-sm font-medium">SMTP Settings (Outgoing)</span>
+                                                <div className="flex items-center gap-1.5 mb-2">
+                                                    <Mail className="w-3 h-3 text-orange-500" />
+                                                    <span className="text-[10px] font-medium">SMTP Settings (Outgoing)</span>
                                                 </div>
-                                                <div className="grid grid-cols-2 gap-4 p-4 rounded-lg bg-white/[0.03] border border-neutral-800">
+                                                <div className={cn('grid grid-cols-2 gap-3 p-3 rounded border', isDark ? 'bg-neutral-800/50 border-neutral-800' : 'bg-gray-50 border-gray-100')}>
                                                     <div>
-                                                        <p className="text-xs text-gray-500 mb-1">Host</p>
-                                                        <p className={cn('text-sm font-mono', isDark ? 'text-white' : 'text-gray-900')}>
+                                                        <p className="text-[9px] text-gray-500 mb-0.5">Host</p>
+                                                        <p className={cn('text-[10px] font-mono', isDark ? 'text-white' : 'text-gray-900')}>
                                                             {selectedAccount?.host || 'Not configured'}
                                                         </p>
                                                     </div>
                                                     <div>
-                                                        <p className="text-xs text-gray-500 mb-1">Port</p>
-                                                        <p className={cn('text-sm font-mono', isDark ? 'text-white' : 'text-gray-900')}>
+                                                        <p className="text-[9px] text-gray-500 mb-0.5">Port</p>
+                                                        <p className={cn('text-[10px] font-mono', isDark ? 'text-white' : 'text-gray-900')}>
                                                             {selectedAccount?.port || '-'}
                                                         </p>
                                                     </div>
                                                     <div>
-                                                        <p className="text-xs text-gray-500 mb-1">Username</p>
-                                                        <p className={cn('text-sm font-mono truncate', isDark ? 'text-white' : 'text-gray-900')}>
+                                                        <p className="text-[9px] text-gray-500 mb-0.5">Username</p>
+                                                        <p className={cn('text-[10px] font-mono truncate', isDark ? 'text-white' : 'text-gray-900')}>
                                                             {selectedAccount?.username || selectedAccount?.fromEmail || '-'}
                                                         </p>
                                                     </div>
                                                     <div>
-                                                        <p className="text-xs text-gray-500 mb-1">From Email</p>
-                                                        <p className={cn('text-sm font-mono truncate', isDark ? 'text-white' : 'text-gray-900')}>
+                                                        <p className="text-[9px] text-gray-500 mb-0.5">From Email</p>
+                                                        <p className={cn('text-[10px] font-mono truncate', isDark ? 'text-white' : 'text-gray-900')}>
                                                             {selectedAccount?.fromEmail || '-'}
                                                         </p>
                                                     </div>
@@ -912,25 +912,25 @@ export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsP
                                             </div>
 
                                             <div className="col-span-2">
-                                                <div className="flex items-center gap-2 mb-3">
-                                                    <Inbox className="w-4 h-4 text-blue-500" />
-                                                    <span className="text-sm font-medium">IMAP Settings (Incoming)</span>
+                                                <div className="flex items-center gap-1.5 mb-2">
+                                                    <Inbox className="w-3 h-3 text-blue-500" />
+                                                    <span className="text-[10px] font-medium">IMAP Settings (Incoming)</span>
                                                     {selectedAccount?.imapConfigured ? (
-                                                        <span className="px-2 py-0.5 text-xs rounded-full bg-green-500/20 text-green-500">Configured</span>
+                                                        <span className="px-1.5 py-0.5 text-[9px] rounded bg-green-500/20 text-green-500">Configured</span>
                                                     ) : (
-                                                        <span className="px-2 py-0.5 text-xs rounded-full bg-yellow-500/20 text-yellow-500">Not Configured</span>
+                                                        <span className="px-1.5 py-0.5 text-[9px] rounded bg-yellow-500/20 text-yellow-500">Not Configured</span>
                                                     )}
                                                 </div>
-                                                <div className="grid grid-cols-2 gap-4 p-4 rounded-lg bg-white/[0.03] border border-neutral-800">
+                                                <div className={cn('grid grid-cols-2 gap-3 p-3 rounded border', isDark ? 'bg-neutral-800/50 border-neutral-800' : 'bg-gray-50 border-gray-100')}>
                                                     <div>
-                                                        <p className="text-xs text-gray-500 mb-1">Host</p>
-                                                        <p className={cn('text-sm font-mono', isDark ? 'text-white' : 'text-gray-900')}>
+                                                        <p className="text-[9px] text-gray-500 mb-0.5">Host</p>
+                                                        <p className={cn('text-[10px] font-mono', isDark ? 'text-white' : 'text-gray-900')}>
                                                             {selectedAccount?.imapHost || 'Not configured'}
                                                         </p>
                                                     </div>
                                                     <div>
-                                                        <p className="text-xs text-gray-500 mb-1">Port</p>
-                                                        <p className={cn('text-sm font-mono', isDark ? 'text-white' : 'text-gray-900')}>
+                                                        <p className="text-[9px] text-gray-500 mb-0.5">Port</p>
+                                                        <p className={cn('text-[10px] font-mono', isDark ? 'text-white' : 'text-gray-900')}>
                                                             {selectedAccount?.imapPort || '-'}
                                                         </p>
                                                     </div>
@@ -941,23 +941,23 @@ export function EmailAccounts({ accounts, onRefresh, className }: EmailAccountsP
 
                                     {/* Placeholders Guide */}
                                     <div className={cn(
-                                        'p-4 rounded-xl border flex gap-4',
-                                        isDark ? 'bg-neutral-900/30 border-neutral-800' : 'bg-orange-50 border-orange-100'
+                                        'p-3 rounded border flex gap-3',
+                                        isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-orange-50 border-orange-100'
                                     )}>
-                                        <div className="p-2 bg-orange-500/10 rounded-lg h-fit">
-                                            <LayoutDashboard className="w-5 h-5 text-orange-500" />
+                                        <div className="p-1.5 bg-orange-500/10 rounded h-fit">
+                                            <LayoutDashboard className="w-4 h-4 text-orange-500" />
                                         </div>
                                         <div>
-                                            <h4 className={cn('text-sm font-medium mb-1', isDark ? 'text-white' : 'text-gray-900')}>
+                                            <h4 className={cn('text-[10px] font-medium mb-0.5', isDark ? 'text-white' : 'text-gray-900')}>
                                                 Using these in your campaigns
                                             </h4>
-                                            <p className={cn('text-xs mb-3', isDark ? 'text-neutral-400' : 'text-gray-600')}>
+                                            <p className={cn('text-[9px] mb-2', isDark ? 'text-neutral-400' : 'text-gray-600')}>
                                                 You can use these placeholders in your email templates. We'll automatically replace them with the correct info for each account.
                                             </p>
-                                            <div className="flex flex-wrap gap-2">
+                                            <div className="flex flex-wrap gap-1.5">
                                                 {['[Your Name]', '[Your Position]', '[Your Company]', '[Your Phone]', '[Your Website]'].map(p => (
                                                     <code key={p} className={cn(
-                                                        'px-2 py-1 rounded text-[10px] font-mono border',
+                                                        'px-1.5 py-0.5 rounded text-[9px] font-mono border',
                                                         isDark ? 'bg-neutral-800 border-neutral-700 text-orange-400' : 'bg-white border-gray-200 text-orange-600'
                                                     )}>
                                                         {p}

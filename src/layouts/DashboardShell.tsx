@@ -34,6 +34,10 @@ interface DashboardContextType {
     setActiveSubItem: (item: string) => void;
     navigateToSettings: () => void;
     setNavigateToSettings: (fn: () => void) => void;
+    inboxFilterAccountIds: string[];
+    setInboxFilterAccountIds: (ids: string[]) => void;
+    inboxFilterCampaignId: string | null;
+    setInboxFilterCampaignId: (id: string | null) => void;
 }
 
 const DashboardContext = createContext<DashboardContextType | null>(null);
@@ -685,6 +689,8 @@ export default function DashboardShell() {
     const [inboxCounts, setInboxCounts] = useState<InboxCounts>({
         all: 0, unread: 0, starred: 0, sent: 0, drafts: 0, trash: 0, archive: 0, spam: 0
     });
+    const [inboxFilterAccountIds, setInboxFilterAccountIds] = useState<string[]>([]);
+    const [inboxFilterCampaignId, setInboxFilterCampaignId] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchCounts = async () => {
@@ -723,7 +729,11 @@ export default function DashboardShell() {
             activeSubItem,
             setActiveSubItem,
             navigateToSettings: () => navigateToSettingsRef.current(),
-            setNavigateToSettings
+            setNavigateToSettings,
+            inboxFilterAccountIds,
+            setInboxFilterAccountIds,
+            inboxFilterCampaignId,
+            setInboxFilterCampaignId
         }}>
             <div className={cn("h-screen flex flex-col overflow-hidden", isDark ? 'bg-[#0a0a0a]' : 'bg-gray-50')}>
                 <Toaster

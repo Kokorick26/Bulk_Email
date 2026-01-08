@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Inbox, RefreshCw, Mail, MailOpen, Star, Trash2,
-    Loader2, AlertCircle, Settings2, Search, Paperclip
+    Loader2, AlertCircle, Settings2, Search, Paperclip,
+    Filter, Megaphone, Check, ChevronRight, ChevronLeft
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../../lib/utils';
@@ -54,6 +55,7 @@ interface SmtpAccount {
 
 interface InboxViewProps {
     smtpAccounts: SmtpAccount[];
+    campaigns?: any[];
     onRefreshAccounts: () => void;
     onReply?: (message: Message) => void;
     onForward?: (message: Message) => void;
@@ -74,9 +76,9 @@ const SIDEBAR_TO_FOLDER: Record<string, { folder?: string; filter?: FilterType }
     'trash': { folder: 'Trash' },
 };
 
-export default function InboxView({ smtpAccounts, onRefreshAccounts, onReply, onForward }: InboxViewProps) {
+export default function InboxView({ smtpAccounts, campaigns = [], onRefreshAccounts, onReply, onForward }: InboxViewProps) {
     const { theme } = useTheme();
-    const { activeSubItem, setActiveSubItem } = useDashboardContext();
+    const { activeSubItem, setActiveSubItem, inboxFilterAccountIds, setInboxFilterAccountIds, inboxFilterCampaignId, setInboxFilterCampaignId } = useDashboardContext();
     const isDark = theme === 'dark';
 
     const [selectedAccount, setSelectedAccount] = useState<SmtpAccount | null>(null);
@@ -94,14 +96,80 @@ export default function InboxView({ smtpAccounts, onRefreshAccounts, onReply, on
     const activeFolder = sidebarConfig.folder || 'INBOX';
     const activeFilter: FilterType = sidebarConfig.filter || 'all';
 
-    const configuredAccounts = smtpAccounts.filter(a => a.imapConfigured);
+    const [viewMode, setViewMode] = useState<'selection' | 'inbox'>(
+        inboxFilterCampaignId || inboxFilterAccountIds.length > 0 ? 'inbox' : 'selection'
+    );
+
+    // Filter accounts based on inboxFilterAccountIds (for campaign or account selection)
+    const configuredAccounts = smtpAccounts.filter(a => {
+        if (!a.imapConfigured) return false;
+        // If filtering by specific accounts (either from campaign or direct selection)
+        if (inboxFilterAccountIds.length > 0) {
+            return inboxFilterAccountIds.includes(a.id);
+        }
+        // Otherwise show all configured accounts
+        return true;
+    });
     const unconfiguredAccounts = smtpAccounts.filter(a => !a.imapConfigured);
 
+    // Clear campaign filter function
+    const clearCampaignFilter = () => {
+        setInboxFilterAccountIds([]);
+        setInboxFilterCampaignId(null);
+        setViewMode('selection');
+    };
+
     useEffect(() => {
-        if (!selectedAccount && configuredAccounts.length > 0) {
-            setSelectedAccount(configuredAccounts[0]);
+        if (inboxFilterCampaignId || inboxFilterAccountIds.length > 0) {
+            setViewMode('inbox');
+        }
+    }, [inboxFilterCampaignId, inboxFilterAccountIds]);
+
+    useEffect(() => {
+        // If no account selected, or current selection is not in the (potentially filtered) list
+        if (configuredAccounts.length > 0) {
+            const currentIsValid = selectedAccount && configuredAccounts.some(a => a.id === selectedAccount.id);
+            if (!currentIsValid) {
+                setSelectedAccount(configuredAccounts[0]);
+            }
+        } else if (configuredAccounts.length === 0) {
+            setSelectedAccount(null);
         }
     }, [configuredAccounts, selectedAccount]);
+
+    // ... (fetchMessages code omitted for brevity but preserved in context) see next tools if needed
+
+    // ... (rest of logic) ...
+
+    // Selection View Handler
+    const handleSelection = (type: 'all' | 'account' | 'campaign', id?: string) => {
+        if (type === 'all') {
+            setInboxFilterAccountIds([]);
+            setInboxFilterCampaignId(null);
+            setViewMode('inbox');
+        } else if (type === 'account' && id) {
+            setInboxFilterAccountIds([id]);
+            setInboxFilterCampaignId(null); // Explicit account select clears campaign context
+            setViewMode('inbox');
+        } else if (type === 'campaign' && id) {
+            const campaign = campaigns.find(c => c && c.id === id);
+            if (campaign) {
+                setInboxFilterCampaignId(id);
+                setInboxFilterAccountIds(campaign.options?.selectedAccountIds || []);
+                setViewMode('inbox');
+            }
+        }
+    };
+
+
+
+    // No configured accounts (Moved this check down so selection can show even if none configured? No, if none configured, selection is moot for 'account'/'campaign'. 'All' would be empty.
+    // Actually, stick to existing logic: if `viewMode === 'inbox'`, run standard checks.
+    // If I put this check *after* viewMode check, `configuredAccounts` filtering logic inside `handleSelection` (via map) needs to be safe. It is safe above.
+    // If no accounts are configured at all, `configuredAccounts` length is 0.Selection screen shows empty lists for accounts. 'All' shows empty inbox.
+    // So logic holds.
+
+    // ... (Continue to fetchMessages)
 
     const fetchMessages = useCallback(async (fresh = false) => {
         if (!selectedAccount) return;
@@ -225,6 +293,11 @@ export default function InboxView({ smtpAccounts, onRefreshAccounts, onReply, on
     };
 
     const filteredMessages = messages.filter(m => {
+        // Filter by campaign if active
+        if (inboxFilterCampaignId) {
+            if (m.campaign !== inboxFilterCampaignId) return false;
+        }
+
         if (activeFilter === 'unread' && m.isRead) return false;
         if (activeFilter === 'starred' && !m.isStarred) return false;
         if (activeFilter === 'has_attachments' && !m.hasAttachments) return false;
@@ -236,6 +309,173 @@ export default function InboxView({ smtpAccounts, onRefreshAccounts, onReply, on
     });
 
     const unreadCount = messages.filter(m => !m.isRead).length;
+
+    if (viewMode === 'selection') {
+        return (
+            <div className={cn(
+                "flex-1 flex flex-col p-6 overflow-hidden",
+                isDark ? "bg-[#0a0a0a]" : "bg-gray-50"
+            )}>
+                <div className="max-w-5xl mx-auto w-full h-full flex flex-col">
+                    <div className="mb-6">
+                        <h1 className={cn("text-lg font-semibold mb-1", isDark ? "text-white" : "text-gray-900")}>
+                            Inbox View
+                        </h1>
+                        <p className={cn("text-xs", isDark ? "text-gray-500" : "text-gray-500")}>
+                            Select how you would like to view your emails
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1 min-h-0">
+                        {/* Option 1: All Emails */}
+                        <motion.button
+                            whileHover={{ scale: 1.01 }}
+                            whileTap={{ scale: 0.99 }}
+                            onClick={() => handleSelection('all')}
+                            className={cn(
+                                "flex flex-col items-center justify-center p-6 rounded-lg border transition-all text-center h-full max-h-[400px]",
+                                isDark ? "bg-neutral-900 border-neutral-800 hover:bg-neutral-800 hover:border-orange-500/20" : "bg-white border-gray-200 hover:border-orange-300"
+                            )}
+                        >
+                            <div className={cn(
+                                "w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-colors",
+                                isDark ? "bg-orange-500/10 text-orange-500 group-hover:bg-orange-500/20" : "bg-orange-50 text-orange-600"
+                            )}>
+                                <Inbox className="w-6 h-6" />
+                            </div>
+                            <h3 className={cn("text-sm font-semibold mb-1", isDark ? "text-white" : "text-gray-900")}>
+                                All Emails
+                            </h3>
+                            <p className={cn("text-[10px] max-w-[200px] leading-relaxed", isDark ? "text-gray-500" : "text-gray-500")}>
+                                View emails from all connected accounts in one unified timeline
+                            </p>
+                        </motion.button>
+
+                        {/* Option 2: Select Account */}
+                        <div className={cn(
+                            "flex flex-col rounded-lg border overflow-hidden h-full max-h-[400px]",
+                            isDark ? "bg-neutral-900 border-neutral-800" : "bg-white border-gray-200"
+                        )}>
+                            <div className={cn(
+                                "flex items-center gap-2 p-3 border-b",
+                                isDark ? "border-neutral-800" : "border-gray-100"
+                            )}>
+                                <div className={cn(
+                                    "w-7 h-7 rounded flex items-center justify-center",
+                                    isDark ? "bg-blue-500/10 text-blue-500" : "bg-blue-50 text-blue-600"
+                                )}>
+                                    <Mail className="w-3.5 h-3.5" />
+                                </div>
+                                <div>
+                                    <h3 className={cn("text-xs font-semibold", isDark ? "text-white" : "text-gray-900")}>
+                                        By Account
+                                    </h3>
+                                </div>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                                {smtpAccounts.filter(a => a.imapConfigured).map(account => (
+                                    <button
+                                        key={account.id}
+                                        onClick={() => handleSelection('account', account.id)}
+                                        className={cn(
+                                            "w-full flex items-center gap-2.5 p-2 rounded text-left transition-all group",
+                                            isDark ? "hover:bg-neutral-800 border border-transparent hover:border-neutral-800" : "hover:bg-gray-50 border border-transparent hover:border-gray-200"
+                                        )}
+                                    >
+                                        <div className={cn(
+                                            "w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold shrink-0",
+                                            isDark ? "bg-neutral-800 text-gray-400 group-hover:bg-neutral-700" : "bg-gray-100 text-gray-600 group-hover:bg-white"
+                                        )}>
+                                            {account.fromEmail.charAt(0).toUpperCase()}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className={cn("text-[11px] font-medium truncate group-hover:text-blue-400 transition-colors", isDark ? "text-gray-300" : "text-gray-800")}>
+                                                {account.name}
+                                            </p>
+                                            <p className={cn("text-[10px] truncate opacity-60", isDark ? "text-gray-500" : "text-gray-500")}>
+                                                {account.fromEmail}
+                                            </p>
+                                        </div>
+                                        <ChevronRight className={cn(
+                                            "w-3 h-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity",
+                                            isDark ? "text-gray-500" : "text-gray-400"
+                                        )} />
+                                    </button>
+                                ))}
+                                {smtpAccounts.filter(a => a.imapConfigured).length === 0 && (
+                                    <div className="flex flex-col items-center justify-center h-32 text-center opacity-40">
+                                        <Mail className="w-6 h-6 mb-2" />
+                                        <p className="text-[10px]">No IMAP accounts configured</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Option 3: Campaign Wise */}
+                        <div className={cn(
+                            "flex flex-col rounded-lg border overflow-hidden h-full max-h-[400px]",
+                            isDark ? "bg-neutral-900 border-neutral-800" : "bg-white border-gray-200"
+                        )}>
+                            <div className={cn(
+                                "flex items-center gap-2 p-3 border-b",
+                                isDark ? "border-neutral-800" : "border-gray-100"
+                            )}>
+                                <div className={cn(
+                                    "w-7 h-7 rounded flex items-center justify-center",
+                                    isDark ? "bg-purple-500/10 text-purple-500" : "bg-purple-50 text-purple-600"
+                                )}>
+                                    <Megaphone className="w-3.5 h-3.5" />
+                                </div>
+                                <div>
+                                    <h3 className={cn("text-xs font-semibold", isDark ? "text-white" : "text-gray-900")}>
+                                        By Campaign
+                                    </h3>
+                                </div>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                                {campaigns.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center h-32 text-center opacity-40">
+                                        <Megaphone className="w-6 h-6 mb-2" />
+                                        <p className="text-[10px]">No campaigns found</p>
+                                    </div>
+                                ) : (
+                                    campaigns.map(campaign => (
+                                        <button
+                                            key={campaign.id}
+                                            onClick={() => handleSelection('campaign', campaign.id)}
+                                            className={cn(
+                                                "w-full flex items-center gap-2.5 p-2 rounded text-left transition-all group",
+                                                isDark ? "hover:bg-neutral-800 border border-transparent hover:border-neutral-800" : "hover:bg-gray-50 border border-transparent hover:border-gray-200"
+                                            )}
+                                        >
+                                            <div className={cn(
+                                                "w-6 h-6 rounded flex items-center justify-center text-[10px] shrink-0",
+                                                isDark ? "bg-neutral-800 text-purple-400 group-hover:bg-neutral-700" : "bg-purple-50 text-purple-600 group-hover:bg-white"
+                                            )}>
+                                                <Megaphone className="w-3 h-3" />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className={cn("text-[11px] font-medium truncate group-hover:text-purple-400 transition-colors", isDark ? "text-gray-300" : "text-gray-800")}>
+                                                    {campaign.name}
+                                                </p>
+                                                <p className={cn("text-[10px] truncate opacity-60", isDark ? "text-gray-500" : "text-gray-500")}>
+                                                    {campaign.options?.selectedAccountIds?.length || 0} accounts linked
+                                                </p>
+                                            </div>
+                                            <ChevronRight className={cn(
+                                                "w-3 h-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity",
+                                                isDark ? "text-gray-500" : "text-gray-400"
+                                            )} />
+                                        </button>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     // No configured accounts
     if (configuredAccounts.length === 0) {
@@ -317,12 +557,41 @@ export default function InboxView({ smtpAccounts, onRefreshAccounts, onReply, on
 
     return (
         <div className="flex-1 flex flex-col overflow-hidden h-full">
+            {/* Campaign Filter Banner */}
+            {inboxFilterAccountIds.length > 0 && (
+                <div className={cn(
+                    'px-4 py-2 text-xs flex items-center justify-between flex-shrink-0',
+                    isDark ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-700'
+                )}>
+                    <div className="flex items-center gap-2">
+                        <Inbox className="w-3.5 h-3.5" />
+                        <span>Viewing accounts for selected campaign</span>
+                    </div>
+                    <button
+                        onClick={clearCampaignFilter}
+                        className="hover:underline opacity-80 hover:opacity-100 font-medium"
+                    >
+                        Clear Filter
+                    </button>
+                </div>
+            )}
+
             {/* Account Tabs + Refresh */}
             <div className={cn(
                 'flex items-center justify-between px-4 py-2 border-b flex-shrink-0',
                 isDark ? 'border-neutral-800' : 'border-gray-200'
             )}>
                 <div className="flex items-center gap-1 overflow-x-auto">
+                    <button
+                        onClick={() => setViewMode('selection')}
+                        className={cn(
+                            'flex items-center gap-1 px-2 py-1.5 rounded-lg text-[12px] font-medium transition-colors mr-2',
+                            isDark ? 'text-gray-400 hover:text-white hover:bg-neutral-800' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+                        )}
+                        title="Back to selection"
+                    >
+                        <ChevronLeft className="w-4 h-4" />
+                    </button>
                     {configuredAccounts.map(account => (
                         <button
                             key={account.id}

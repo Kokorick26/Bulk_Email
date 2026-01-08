@@ -126,80 +126,78 @@ export function HistoryTab({ campaignId, className }: HistoryTabProps) {
     }
 
     return (
-        <div className={cn('max-w-6xl mx-auto space-y-6', className)}>
-            {/* System Status Bar */}
+        <div className={cn('h-full flex flex-col', className)}>
+            {/* Compact Toolbar */}
             <div className={cn(
-                'grid grid-cols-2 lg:grid-cols-6 gap-px border rounded-2xl overflow-hidden',
-                theme === 'dark' ? 'bg-[#252a33] border-[#252a33]' : 'bg-gray-200 border-gray-200'
+                'flex items-center justify-between px-4 py-3 border-b flex-shrink-0',
+                theme === 'dark' ? 'bg-[#0d0d0d] border-neutral-800' : 'bg-white border-gray-200'
             )}>
-                {[
-                    { label: 'Total Sent', count: stats.total, color: 'text-blue-400' },
-                    { label: 'Delivered', count: stats.sent, color: 'text-emerald-400' },
-                    { label: 'Failed', count: stats.failed, color: 'text-red-400' },
-                    { label: 'Opened', count: stats.opened, color: 'text-blue-300' },
-                    { label: 'Clicked', count: stats.clicked, color: 'text-purple-400' },
-                    { label: 'Replied', count: stats.replied, color: 'text-amber-400' },
-                ].map((stat) => (
-                    <div
-                        key={stat.label}
-                        className={cn(
-                            'p-4 flex flex-col items-center justify-center gap-1',
-                            theme === 'dark' ? 'bg-[#12151a]' : 'bg-white'
-                        )}
-                    >
-                        <p className={cn(
-                            'text-[10px] font-bold uppercase tracking-widest opacity-60',
-                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                        )}>{stat.label}</p>
-                        <p className={cn(
-                            'text-2xl font-[Syne] font-bold',
-                            theme === 'dark' ? stat.color : stat.color.replace('400', '600').replace('300', '500')
-                        )}>{stat.count}</p>
+                {/* Left: Title and Stats */}
+                <div className="flex items-center gap-4">
+                    <h2 className={cn(
+                        'text-sm font-semibold',
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                    )}>
+                        Email History
+                    </h2>
+                    <div className="flex items-center gap-2">
+                        {[
+                            { label: 'Total', count: stats.total },
+                            { label: 'Delivered', count: stats.sent, color: 'text-emerald-500' },
+                            { label: 'Failed', count: stats.failed, color: 'text-red-500' },
+                        ].filter(s => s.count > 0).map((stat) => (
+                            <div key={stat.label} className={cn(
+                                'text-xs px-2 py-0.5 rounded flex items-center gap-1',
+                                theme === 'dark' ? 'bg-neutral-800' : 'bg-gray-100'
+                            )}>
+                                <span className={stat.color || (theme === 'dark' ? 'text-gray-400' : 'text-gray-500')}>
+                                    {stat.count}
+                                </span>
+                                <span className={theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}>
+                                    {stat.label}
+                                </span>
+                            </div>
+                        ))}
                     </div>
-                ))}
-            </div>
-
-            {/* Command Bar */}
-            <div className={cn(
-                'flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between p-2 rounded-xl border',
-                theme === 'dark' ? 'bg-[#12151a] border-[#252a33]' : 'bg-white border-gray-100 shadow-sm'
-            )}>
-                {/* Search Console */}
-                <div className="relative flex-1 w-full sm:max-w-md group">
-                    <Search className={cn(
-                        'absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors',
-                        theme === 'dark' ? 'text-gray-600 group-hover:text-[#d97757]' : 'text-gray-400 group-hover:text-[#d97757]'
-                    )} />
-                    <input
-                        type="text"
-                        placeholder="Filter log stream..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className={cn(
-                            'w-full pl-11 pr-4 py-3 rounded-lg border-none text-sm font-mono focus:ring-1 focus:ring-[#d97757] transition-all',
-                            theme === 'dark'
-                                ? 'bg-[#1a1e25] text-white placeholder:text-gray-600'
-                                : 'bg-gray-50 text-gray-900 placeholder:text-gray-400'
-                        )}
-                    />
                 </div>
 
-                <div className="flex items-center gap-3 w-full sm:w-auto">
-                    {/* Status Toggles */}
+                {/* Right: Search and Filters */}
+                <div className="flex items-center gap-2">
+                    {/* Search */}
                     <div className={cn(
-                        'flex items-center gap-1 p-1 rounded-lg border overflow-x-auto',
-                        theme === 'dark' ? 'bg-[#1a1e25] border-[#252a33]' : 'bg-gray-50 border-gray-100'
+                        'flex items-center gap-2 px-3 py-1.5 rounded-lg',
+                        theme === 'dark' ? 'bg-neutral-800' : 'bg-gray-100'
                     )}>
-                        {(['all', 'sent', 'failed', 'opened', 'clicked'] as const).map((status) => (
+                        <Search className={cn('w-3.5 h-3.5', theme === 'dark' ? 'text-gray-500' : 'text-gray-400')} />
+                        <input
+                            type="text"
+                            placeholder="Search..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className={cn(
+                                'bg-transparent border-0 outline-none text-xs w-32',
+                                theme === 'dark'
+                                    ? 'text-white placeholder:text-gray-500'
+                                    : 'text-gray-900 placeholder:text-gray-400'
+                            )}
+                        />
+                    </div>
+
+                    {/* Status Filter */}
+                    <div className={cn(
+                        'flex items-center gap-0.5 p-0.5 rounded-lg',
+                        theme === 'dark' ? 'bg-neutral-800' : 'bg-gray-100'
+                    )}>
+                        {(['all', 'sent', 'failed'] as const).map((status) => (
                             <button
                                 key={status}
                                 onClick={() => setStatusFilter(status as any)}
                                 className={cn(
-                                    'px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all whitespace-nowrap',
+                                    'px-2 py-1 rounded text-xs font-medium transition-all capitalize',
                                     statusFilter === status
                                         ? theme === 'dark'
-                                            ? 'bg-[#d97757] text-white shadow-lg'
-                                            : 'bg-blue-600 text-white shadow-md'
+                                            ? 'bg-neutral-700 text-white'
+                                            : 'bg-white text-gray-900 shadow-sm'
                                         : theme === 'dark'
                                             ? 'text-gray-500 hover:text-gray-300'
                                             : 'text-gray-400 hover:text-gray-600'
@@ -213,64 +211,52 @@ export function HistoryTab({ campaignId, className }: HistoryTabProps) {
                     {/* Refresh */}
                     <Button
                         variant="ghost"
-                        size="icon"
+                        size="sm"
                         onClick={fetchEmailLogs}
                         className={cn(
-                            'h-10 w-10 rounded-full',
+                            'h-8 w-8 p-0',
                             theme === 'dark'
-                                ? 'text-gray-400 hover:text-white hover:bg-[#252a33]'
+                                ? 'text-gray-400 hover:text-white hover:bg-neutral-800'
                                 : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
                         )}
                     >
-                        <RefreshCw className="w-4 h-4" />
+                        <RefreshCw className="w-3.5 h-3.5" />
                     </Button>
                 </div>
             </div>
 
-            {/* Email Logs Table */}
-            {filteredLogs.length === 0 ? (
-                <div className={cn(
-                    'flex flex-col items-center justify-center py-16 rounded-xl border',
-                    theme === 'dark' ? 'bg-[#1a1a1a] border-gray-800' : 'bg-white border-gray-200'
-                )}>
-                    <Mail className={cn(
-                        'w-12 h-12 mb-4',
-                        theme === 'dark' ? 'text-gray-600' : 'text-gray-300'
-                    )} />
-                    <p className={cn(
-                        'text-lg font-medium mb-1',
-                        theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+            {/* Table Container */}
+            <div className="flex-1 overflow-hidden">
+                {filteredLogs.length === 0 ? (
+                    <div className={cn(
+                        'flex flex-col items-center justify-center h-full',
+                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                     )}>
-                        {emailLogs.length === 0 ? 'No emails sent yet' : 'No matching emails'}
-                    </p>
-                    <p className={cn(
-                        'text-sm',
-                        theme === 'dark' ? 'text-gray-600' : 'text-gray-400'
-                    )}>
-                        {emailLogs.length === 0
-                            ? 'Start the campaign to begin sending emails'
-                            : 'Try adjusting your search or filter criteria'}
-                    </p>
-                </div>
-            ) : (
-                <div className={cn(
-                    'rounded-2xl border overflow-hidden',
-                    theme === 'dark' ? 'bg-[#0a0c0f] border-[#252a33]' : 'bg-white border-gray-200'
-                )}>
-                    <ScrollArea className="h-[500px]">
+                        <Mail className="w-10 h-10 mb-3 opacity-50" />
+                        <p className="text-sm font-medium mb-1">
+                            {emailLogs.length === 0 ? 'No emails sent yet' : 'No matching emails'}
+                        </p>
+                        <p className="text-xs opacity-70">
+                            {emailLogs.length === 0
+                                ? 'Start the campaign to begin sending'
+                                : 'Try adjusting your search'}
+                        </p>
+                    </div>
+                ) : (
+                    <ScrollArea className="h-full">
                         <Table>
-                            <TableHeader className="sticky top-0 z-10 backdrop-blur-md">
+                            <TableHeader className="sticky top-0 z-10">
                                 <TableRow className={cn(
                                     'border-b',
-                                    theme === 'dark' ? 'bg-[#12151a]/90 border-[#252a33] hover:bg-[#12151a]/90' : 'bg-gray-50/90 border-gray-100'
+                                    theme === 'dark' ? 'bg-[#0d0d0d] border-neutral-800' : 'bg-gray-50 border-gray-200'
                                 )}>
-                                    <TableHead className={cn('w-16 text-center font-mono text-[10px] uppercase tracking-wider', theme === 'dark' ? 'text-gray-500' : 'text-gray-400')}>#</TableHead>
-                                    <TableHead className={cn('font-mono text-[10px] uppercase tracking-wider', theme === 'dark' ? 'text-gray-500' : 'text-gray-400')}>Recipient Node</TableHead>
-                                    <TableHead className={cn('font-mono text-[10px] uppercase tracking-wider', theme === 'dark' ? 'text-gray-500' : 'text-gray-400')}>Packet Payload</TableHead>
-                                    <TableHead className={cn('font-mono text-[10px] uppercase tracking-wider w-32', theme === 'dark' ? 'text-gray-500' : 'text-gray-400')}>Timestamp</TableHead>
-                                    <TableHead className={cn('font-mono text-[10px] uppercase tracking-wider w-20', theme === 'dark' ? 'text-gray-500' : 'text-gray-400')}>Step</TableHead>
-                                    <TableHead className={cn('font-mono text-[10px] uppercase tracking-wider w-32', theme === 'dark' ? 'text-gray-500' : 'text-gray-400')}>State</TableHead>
-                                    <TableHead className={cn('font-mono text-[10px] uppercase tracking-wider w-20 text-right', theme === 'dark' ? 'text-gray-500' : 'text-gray-400')}>Inspect</TableHead>
+                                    <TableHead className={cn('w-12', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>#</TableHead>
+                                    <TableHead className={cn('min-w-[180px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Recipient</TableHead>
+                                    <TableHead className={cn('min-w-[200px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Subject</TableHead>
+                                    <TableHead className={cn('min-w-[120px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Sent At</TableHead>
+                                    <TableHead className={cn('w-16', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Step</TableHead>
+                                    <TableHead className={cn('w-24', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Status</TableHead>
+                                    <TableHead className={cn('w-20', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -371,8 +357,8 @@ export function HistoryTab({ campaignId, className }: HistoryTabProps) {
                             </TableBody>
                         </Table>
                     </ScrollArea>
-                </div>
-            )}
+                )}
+            </div>
 
             {/* Email Preview Modal */}
             <AnimatePresence>

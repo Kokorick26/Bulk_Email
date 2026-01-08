@@ -279,51 +279,46 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
             {/* ... Sidebar ... */}
             {/* Same sidebar code as before, we are focusing on Main Content Header for replace context */}
             <div className={cn(
-                'w-64 flex-shrink-0 flex flex-col border-r',
+                'w-56 flex-shrink-0 flex flex-col border-r',
                 theme === 'dark' ? 'bg-[#0c0c0c] border-neutral-800' : 'bg-gray-50 border-gray-200'
             )}>
                 {/* Back Link */}
                 <div className={cn(
-                    'p-4 border-b',
+                    'px-3 py-2 border-b',
                     theme === 'dark' ? 'border-neutral-800' : 'border-gray-200'
                 )}>
                     <button
                         onClick={onBack}
                         className={cn(
-                            'flex items-center gap-2 text-sm font-medium transition-colors w-full px-2 py-1.5 rounded-lg',
+                            'flex items-center gap-2 text-xs font-medium transition-colors w-full px-2 py-1.5 rounded',
                             theme === 'dark'
-                                ? 'text-neutral-400 hover:text-white hover:bg-white/[0.04]'
-                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'
+                                ? 'text-neutral-500 hover:text-white hover:bg-white/[0.04]'
+                                : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
                         )}
                     >
-                        <ChevronLeft className="w-4 h-4" />
+                        <ChevronLeft className="w-3.5 h-3.5" />
                         Back to Campaigns
                     </button>
                 </div>
 
                 {/* Navigation Items */}
-                <div className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
+                <div className="flex-1 py-2 px-2 space-y-0.5 overflow-y-auto">
                     {tabs.map((tab) => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={cn(
-                                'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-left',
+                                'w-full flex items-center gap-2.5 px-2.5 py-2 rounded text-xs font-medium transition-colors text-left',
                                 activeTab === tab.id
                                     ? theme === 'dark'
-                                        ? 'bg-orange-500/10 text-orange-400'
-                                        : 'bg-orange-50 text-orange-600'
+                                        ? 'bg-neutral-800 text-white'
+                                        : 'bg-gray-200 text-gray-900'
                                     : theme === 'dark'
-                                        ? 'text-neutral-400 hover:bg-white/[0.04] hover:text-neutral-200'
+                                        ? 'text-neutral-400 hover:bg-neutral-800/50 hover:text-neutral-200'
                                         : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                             )}
                         >
-                            <tab.icon className={cn(
-                                "w-4 h-4",
-                                activeTab === tab.id
-                                    ? "opacity-100"
-                                    : "opacity-70 group-hover:opacity-100"
-                            )} />
+                            <tab.icon className="w-3.5 h-3.5 opacity-70" />
                             {tab.label}
                         </button>
                     ))}
@@ -334,37 +329,37 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background">
                 {/* Header Actions */}
                 <div className={cn(
-                    'flex items-center justify-between px-6 py-4 border-b flex-shrink-0',
-                    theme === 'dark' ? 'border-neutral-800 bg-[#080808]' : 'border-gray-200 bg-white'
+                    'flex items-center justify-between px-4 py-3 border-b flex-shrink-0',
+                    theme === 'dark' ? 'border-neutral-800 bg-[#0a0a0a]' : 'border-gray-200 bg-white'
                 )}>
                     <div>
                         <h1 className={cn(
-                            'text-xl font-semibold',
+                            'text-base font-semibold',
                             theme === 'dark' ? 'text-white' : 'text-gray-900'
                         )}>
                             {campaign?.name || 'Campaign'}
                         </h1>
                         <p className={cn(
-                            'text-sm mt-1',
-                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                            'text-xs',
+                            theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                         )}>
                             {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} View
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                         {failedLeadsCount > 0 && (
                             <Button
                                 onClick={handleRetryCampaign}
                                 variant="outline"
                                 size="sm"
                                 className={cn(
-                                    'gap-2 text-red-500 border-red-500/20 hover:bg-red-500/10',
+                                    'h-8 text-xs gap-1.5 text-red-500 border-red-500/20 hover:bg-red-500/10',
                                     theme === 'dark' ? 'hover:text-red-400' : 'hover:text-red-600'
                                 )}
                             >
-                                <RotateCw className="w-4 h-4" />
-                                Retry Failed ({failedLeadsCount})
+                                <RotateCw className="w-3.5 h-3.5" />
+                                Retry ({failedLeadsCount})
                             </Button>
                         )}
 
@@ -374,22 +369,22 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
                                 variant="outline"
                                 size="sm"
                                 className={cn(
-                                    'gap-2',
+                                    'h-8 text-xs gap-1.5',
                                     theme === 'dark'
-                                        ? 'border-gray-700 text-gray-300 hover:bg-gray-800'
+                                        ? 'border-neutral-700 text-gray-300 hover:bg-neutral-800'
                                         : 'border-gray-300 text-gray-700 hover:bg-gray-100'
                                 )}
                             >
-                                <Pause className="w-4 h-4" />
+                                <Pause className="w-3.5 h-3.5" />
                                 Pause
                             </Button>
                         ) : (
                             <Button
                                 onClick={handleResumeCampaign}
                                 size="sm"
-                                className="gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:opacity-90"
+                                className="h-8 text-xs gap-1.5 bg-orange-500 hover:bg-orange-600 text-white"
                             >
-                                <Play className="w-4 h-4" />
+                                <Play className="w-3.5 h-3.5" />
                                 Resume
                             </Button>
                         )}
@@ -423,59 +418,62 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
                     </div>
                 </div>
 
-                {/* Content */}
-                <ScrollArea className="flex-1">
-                    <div className="p-6">
-                        {activeTab === 'analytics' && (
-                            <AnalyticsTab
-                                campaign={campaign!}
-                                leads={leads}
-                            />
-                        )}
-                        {activeTab === 'leads' && (
-                            <LeadsTab
-                                campaignId={campaignId}
-                                leads={leads}
-                                onLeadsUpdate={handleLeadsUpdate}
-                            />
-                        )}
-                        {activeTab === 'sequences' && (
-                            <SequencesTab
-                                campaignId={campaignId}
-                                sequence={sequence}
-                                onSequenceUpdate={setSequence}
-                                leads={leads}
-                            />
-                        )}
-                        {activeTab === 'schedule' && (
-                            <ScheduleTab
-                                campaignId={campaignId}
-                                schedule={schedule}
-                                onScheduleUpdate={setSchedule}
-                            />
-                        )}
-                        {activeTab === 'options' && (
-                            <OptionsTab
-                                campaignId={campaignId}
-                                options={options}
-                                onOptionsUpdate={setOptions}
-                            />
-                        )}
-                        {activeTab === 'accounts' && (
-                            <AccountsTab
-                                campaignId={campaignId}
-                                leads={leads}
-                                sequence={sequence}
-                                onLeadsUpdate={handleLeadsUpdate}
-                            />
-                        )}
-                        {activeTab === 'history' && (
-                            <HistoryTab
-                                campaignId={campaignId}
-                            />
-                        )}
+                {/* Content - Full height tabs vs scrolling */}
+                {activeTab === 'leads' ? (
+                    <div className="flex-1 overflow-hidden">
+                        <LeadsTab
+                            campaignId={campaignId}
+                            leads={leads}
+                            onLeadsUpdate={handleLeadsUpdate}
+                        />
                     </div>
-                </ScrollArea>
+                ) : activeTab === 'history' ? (
+                    <div className="flex-1 overflow-hidden">
+                        <HistoryTab campaignId={campaignId} />
+                    </div>
+                ) : activeTab === 'sequences' ? (
+                    <div className="flex-1 overflow-hidden">
+                        <SequencesTab
+                            campaignId={campaignId}
+                            sequence={sequence}
+                            onSequenceUpdate={setSequence}
+                            leads={leads}
+                        />
+                    </div>
+                ) : (
+                    <ScrollArea className="flex-1">
+                        <div className="p-6">
+                            {activeTab === 'analytics' && (
+                                <AnalyticsTab
+                                    campaign={campaign!}
+                                    leads={leads}
+                                />
+                            )}
+                            {activeTab === 'schedule' && (
+                                <ScheduleTab
+                                    campaignId={campaignId}
+                                    schedule={schedule}
+                                    onScheduleUpdate={setSchedule}
+                                />
+                            )}
+                            {activeTab === 'options' && (
+                                <OptionsTab
+                                    campaignId={campaignId}
+                                    options={options}
+                                    onOptionsUpdate={setOptions}
+                                />
+                            )}
+                            {activeTab === 'accounts' && (
+                                <AccountsTab
+                                    campaignId={campaignId}
+                                    leads={leads}
+                                    sequence={sequence}
+                                    onLeadsUpdate={handleLeadsUpdate}
+                                />
+                            )}
+                        </div>
+                    </ScrollArea>
+                )}
             </div>
         </div>
     );

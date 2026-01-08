@@ -74,125 +74,120 @@ export function ScheduleTab({ campaignId, schedule, onScheduleUpdate, className 
     };
 
     return (
-        <div className={cn(
-            'max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700',
-            className
-        )}>
-            {/* Header Area */}
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-12 border-b border-dashed pb-8" style={{ borderColor: theme === 'dark' ? '#252a33' : '#e5e7eb' }}>
-                <div className="space-y-1 text-center md:text-left">
+        <div className={cn('space-y-6', className)}>
+            {/* Compact Header */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
                     <h2 className={cn(
-                        'text-4xl font-[Syne] font-bold tracking-tight',
+                        'text-lg font-semibold',
                         theme === 'dark' ? 'text-white' : 'text-gray-900'
                     )}>
-                        Campaign <span className="text-[#d97757]">Rhythm</span>
+                        Schedule
                     </h2>
-                    <p className={cn(
-                        'text-sm font-light leading-relaxed opacity-60',
-                        theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                    <div className={cn(
+                        'text-xs px-2 py-0.5 rounded flex items-center gap-1.5',
+                        theme === 'dark' ? 'bg-neutral-800' : 'bg-gray-100'
                     )}>
-                        Define precisely when your audience hears from you.
-                    </p>
+                        <Globe className="w-3 h-3" />
+                        <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
+                            {localSchedule?.timezone || 'UTC'}
+                        </span>
+                    </div>
                 </div>
 
                 <Button
                     onClick={handleSave}
                     disabled={isSaving}
+                    size="sm"
                     className={cn(
-                        'h-12 px-8 rounded-xl font-[Syne] font-bold transition-all duration-300 shadow-lg shadow-[#d97757]/10',
+                        'h-8 text-xs gap-1.5',
                         theme === 'dark'
-                            ? 'bg-[#d97757] hover:bg-[#c46144] text-white'
-                            : 'bg-blue-600 text-white'
+                            ? 'bg-blue-600 hover:bg-blue-500 text-white'
+                            : 'bg-blue-600 hover:bg-blue-700 text-white'
                     )}
                 >
                     {isSaving ? (
                         <>
-                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
-                            Synchronizing...
+                            <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            Saving...
                         </>
                     ) : (
                         <>
-                            <Save className="w-4 h-4 mr-2" />
-                            Save Schedule
+                            <Save className="w-3.5 h-3.5" />
+                            Save
                         </>
                     )}
                 </Button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
                 {/* Main Schedule Card */}
                 <div className={cn(
-                    'lg:col-span-8 p-8 rounded-3xl border relative overflow-hidden group',
+                    'lg:col-span-8 p-4 rounded border',
                     theme === 'dark'
-                        ? 'bg-[#12151a] border-[#252a33]'
-                        : 'bg-white border-gray-100 shadow-xl'
+                        ? 'bg-neutral-900 border-neutral-800'
+                        : 'bg-white border-gray-200'
                 )}>
-                    {/* Background Pattern */}
-                    <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#d97757_1px,transparent_1px)] [background-size:24px_24px]" />
-
-                    <div className="relative space-y-10">
+                    <div className="space-y-6">
                         {/* Time Window Section */}
-                        <div className="space-y-6">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className={cn(
-                                    'p-2 rounded-lg',
-                                    theme === 'dark' ? 'bg-[#1a1e25] text-[#d97757]' : 'bg-orange-50 text-orange-600'
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                                <Clock className={cn('w-4 h-4', theme === 'dark' ? 'text-orange-500' : 'text-blue-600')} />
+                                <h3 className={cn(
+                                    'text-xs font-semibold uppercase tracking-wider',
+                                    theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                                 )}>
-                                    <Clock className="w-5 h-5" />
-                                </div>
-                                <h3 className="font-[Syne] text-lg font-bold uppercase tracking-widest opacity-90">
                                     Active Hours
                                 </h3>
                             </div>
 
-                            <div className="flex flex-col sm:flex-row items-center gap-6 p-6 rounded-2xl border bg-opacity-50 transition-all hover:border-[#d97757]/50"
-                                style={{
-                                    backgroundColor: theme === 'dark' ? 'rgba(26, 30, 37, 0.5)' : 'rgba(249, 250, 251, 0.5)',
-                                    borderColor: theme === 'dark' ? '#252a33' : '#e5e7eb'
-                                }}
-                            >
-                                <div className="flex-1 w-full space-y-2">
-                                    <label className="text-xs uppercase tracking-widest font-semibold opacity-60 ml-1">Start Time</label>
+                            <div className="flex items-center gap-4">
+                                <div className="flex-1 space-y-1">
+                                    <label className={cn(
+                                        'text-[10px] uppercase tracking-wide font-medium',
+                                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                    )}>Start Time</label>
                                     <div className="relative">
                                         <input
                                             type="time"
                                             value={localSchedule?.startTime || '09:00'}
                                             onChange={(e) => setLocalSchedule((prev: any) => ({ ...prev, startTime: e.target.value }))}
                                             className={cn(
-                                                'w-full px-6 py-4 rounded-xl text-xl font-mono font-medium outline-none transition-all',
+                                                'w-full px-3 py-2 rounded text-sm font-mono outline-none transition-all',
                                                 theme === 'dark'
-                                                    ? 'bg-[#0a0c0f] border border-[#252a33] focus:border-[#d97757] text-white'
-                                                    : 'bg-white border border-gray-200 focus:border-blue-500 text-gray-900'
+                                                    ? 'bg-neutral-800 border border-neutral-700 focus:border-orange-500 text-white'
+                                                    : 'bg-gray-50 border border-gray-200 focus:border-blue-500 text-gray-900'
                                             )}
                                         />
                                         <Sun className={cn(
-                                            'absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 opacity-40',
-                                            theme === 'dark' ? 'text-yellow-400' : 'text-orange-400'
+                                            'absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4',
+                                            theme === 'dark' ? 'text-yellow-500/50' : 'text-orange-400/50'
                                         )} />
                                     </div>
                                 </div>
 
-                                <div className="hidden sm:block pt-6">
-                                    <ArrowRight className="w-6 h-6 opacity-30" />
-                                </div>
+                                <ArrowRight className={cn('w-4 h-4 mt-5', theme === 'dark' ? 'text-gray-600' : 'text-gray-300')} />
 
-                                <div className="flex-1 w-full space-y-2">
-                                    <label className="text-xs uppercase tracking-widest font-semibold opacity-60 ml-1">End Time</label>
+                                <div className="flex-1 space-y-1">
+                                    <label className={cn(
+                                        'text-[10px] uppercase tracking-wide font-medium',
+                                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                    )}>End Time</label>
                                     <div className="relative">
                                         <input
                                             type="time"
                                             value={localSchedule?.endTime || '17:00'}
                                             onChange={(e) => setLocalSchedule((prev: any) => ({ ...prev, endTime: e.target.value }))}
                                             className={cn(
-                                                'w-full px-6 py-4 rounded-xl text-xl font-mono font-medium outline-none transition-all',
+                                                'w-full px-3 py-2 rounded text-sm font-mono outline-none transition-all',
                                                 theme === 'dark'
-                                                    ? 'bg-[#0a0c0f] border border-[#252a33] focus:border-[#d97757] text-white'
-                                                    : 'bg-white border border-gray-200 focus:border-blue-500 text-gray-900'
+                                                    ? 'bg-neutral-800 border border-neutral-700 focus:border-orange-500 text-white'
+                                                    : 'bg-gray-50 border border-gray-200 focus:border-blue-500 text-gray-900'
                                             )}
                                         />
                                         <Moon className={cn(
-                                            'absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 opacity-40',
-                                            theme === 'dark' ? 'text-blue-400' : 'text-indigo-400'
+                                            'absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4',
+                                            theme === 'dark' ? 'text-blue-400/50' : 'text-indigo-400/50'
                                         )} />
                                     </div>
                                 </div>
@@ -200,20 +195,18 @@ export function ScheduleTab({ campaignId, schedule, onScheduleUpdate, className 
                         </div>
 
                         {/* Days Selection Section */}
-                        <div className="space-y-6">
-                            <div className="flex items-center gap-3 mb-2">
-                                <div className={cn(
-                                    'p-2 rounded-lg',
-                                    theme === 'dark' ? 'bg-[#1a1e25] text-[#d97757]' : 'bg-orange-50 text-orange-600'
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                                <Calendar className={cn('w-4 h-4', theme === 'dark' ? 'text-orange-500' : 'text-blue-600')} />
+                                <h3 className={cn(
+                                    'text-xs font-semibold uppercase tracking-wider',
+                                    theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                                 )}>
-                                    <Calendar className="w-5 h-5" />
-                                </div>
-                                <h3 className="font-[Syne] text-lg font-bold uppercase tracking-widest opacity-90">
                                     Sending Days
                                 </h3>
                             </div>
 
-                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                            <div className="flex gap-2 flex-wrap">
                                 {DAYS.map(day => {
                                     const isSelected = localSchedule?.days?.includes(day.id);
                                     return (
@@ -221,20 +214,17 @@ export function ScheduleTab({ campaignId, schedule, onScheduleUpdate, className 
                                             key={day.id}
                                             onClick={() => toggleDay(day.id)}
                                             className={cn(
-                                                'relative h-14 rounded-xl font-[Syne] font-bold text-sm transition-all duration-300 overflow-hidden group/day',
+                                                'px-4 py-2 rounded text-xs font-semibold transition-all',
                                                 isSelected
                                                     ? theme === 'dark'
-                                                        ? 'bg-[#d97757] text-white shadow-[0_0_20px_rgba(217,119,87,0.3)]'
-                                                        : 'bg-blue-600 text-white shadow-lg'
+                                                        ? 'bg-orange-500 text-white'
+                                                        : 'bg-blue-600 text-white'
                                                     : theme === 'dark'
-                                                        ? 'bg-[#1a1e25] text-gray-500 hover:bg-[#252a33] hover:text-gray-300'
-                                                        : 'bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+                                                        ? 'bg-neutral-800 text-gray-400 hover:bg-neutral-700 hover:text-gray-300'
+                                                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-600'
                                             )}
                                         >
-                                            <span className="relative z-10">{day.label}</span>
-                                            {isSelected && (
-                                                <div className="absolute inset-0 bg-gradient-to-tr from-black/10 to-transparent" />
-                                            )}
+                                            {day.label}
                                         </button>
                                     );
                                 })}
@@ -244,29 +234,27 @@ export function ScheduleTab({ campaignId, schedule, onScheduleUpdate, className 
                 </div>
 
                 {/* Sidebar Card (Timezone & Info) */}
-                <div className="lg:col-span-4 space-y-6">
+                <div className="lg:col-span-4 space-y-4">
                     {/* Timezone Card */}
                     <div className={cn(
-                        'p-6 rounded-3xl border',
-                        theme === 'dark' ? 'bg-[#0a0c0f] border-[#252a33]' : 'bg-white border-gray-100 shadow-lg'
+                        'p-4 rounded border',
+                        theme === 'dark' ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
                     )}>
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className={cn(
-                                'p-2 rounded-lg',
-                                theme === 'dark' ? 'bg-[#1a1e25] text-[#d97757]' : 'bg-orange-50 text-orange-600'
+                        <div className="flex items-center gap-2 mb-4">
+                            <Globe className={cn('w-4 h-4', theme === 'dark' ? 'text-orange-500' : 'text-blue-600')} />
+                            <h3 className={cn(
+                                'text-xs font-semibold uppercase tracking-wider',
+                                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                             )}>
-                                <Globe className="w-5 h-5" />
-                            </div>
-                            <h3 className="font-[Syne] text-lg font-bold uppercase tracking-widest opacity-90">
                                 Timezone
                             </h3>
                         </div>
 
-                        <div className="space-y-3">
+                        <div className="space-y-2">
                             {/* Search Input */}
                             <div className="relative">
                                 <Search className={cn(
-                                    'absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4',
+                                    'absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5',
                                     theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                                 )} />
                                 <input
@@ -276,9 +264,9 @@ export function ScheduleTab({ campaignId, schedule, onScheduleUpdate, className 
                                     onChange={(e) => setTimezoneSearch(e.target.value)}
                                     onFocus={() => setShowTimezoneDropdown(true)}
                                     className={cn(
-                                        'w-full pl-11 pr-4 py-3 rounded-xl text-sm outline-none transition-all',
+                                        'w-full pl-9 pr-3 py-2 rounded text-xs outline-none transition-all',
                                         theme === 'dark'
-                                            ? 'bg-[#1a1e25] border border-[#252a33] text-white focus:border-[#d97757]'
+                                            ? 'bg-neutral-800 border border-neutral-700 text-white focus:border-orange-500'
                                             : 'bg-gray-50 border border-gray-200 text-gray-900 focus:border-blue-500'
                                     )}
                                 />
@@ -286,13 +274,13 @@ export function ScheduleTab({ campaignId, schedule, onScheduleUpdate, className 
 
                             {/* Current Selection */}
                             <div className={cn(
-                                'px-4 py-3 rounded-xl text-sm font-medium',
-                                theme === 'dark' ? 'bg-[#1a1e25] text-white' : 'bg-gray-100 text-gray-900'
+                                'px-3 py-2 rounded text-xs font-medium',
+                                theme === 'dark' ? 'bg-neutral-800 text-white' : 'bg-gray-100 text-gray-900'
                             )}>
                                 <div className="flex items-center justify-between">
                                     <span>{formatTimezone(localSchedule?.timezone || 'UTC')}</span>
                                     <span className={cn(
-                                        'text-xs',
+                                        'text-[10px]',
                                         theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
                                     )}>
                                         {getTimezoneOffset(localSchedule?.timezone || 'UTC')}
@@ -398,10 +386,10 @@ export function ScheduleTab({ campaignId, schedule, onScheduleUpdate, className 
                         )}
 
                         <div className={cn(
-                            'mt-6 p-4 rounded-xl text-xs leading-relaxed flex gap-3',
-                            theme === 'dark' ? 'bg-[#1a1e25]/50 text-gray-400' : 'bg-blue-50 text-blue-700'
+                            'mt-4 p-3 rounded text-[10px] leading-relaxed flex gap-2',
+                            theme === 'dark' ? 'bg-neutral-800/50 text-gray-500' : 'bg-blue-50 text-blue-600'
                         )}>
-                            <Zap className="w-4 h-4 flex-shrink-0 mt-0.5 opacity-70" />
+                            <Zap className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
                             <p>
                                 Sending times are adjusted to this timezone. We recommend matching your prospect's primary location.
                             </p>
@@ -410,23 +398,26 @@ export function ScheduleTab({ campaignId, schedule, onScheduleUpdate, className 
 
                     {/* Stats / Info */}
                     <div className={cn(
-                        'p-6 rounded-3xl border flex items-center justify-between',
-                        theme === 'dark' ? 'bg-[#12151a] border-[#252a33]' : 'bg-white border-gray-100 shadow-md'
+                        'p-4 rounded border flex items-center justify-between',
+                        theme === 'dark' ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
                     )}>
                         <div>
-                            <p className="text-xs uppercase tracking-widest opacity-50 font-bold mb-1">Total Hours</p>
                             <p className={cn(
-                                'text-2xl font-[Syne] font-bold',
+                                'text-[10px] uppercase tracking-wider font-medium mb-0.5',
+                                theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                            )}>Total Hours</p>
+                            <p className={cn(
+                                'text-lg font-bold',
                                 theme === 'dark' ? 'text-white' : 'text-gray-900'
                             )}>
                                 {parseInt(localSchedule.endTime) - parseInt(localSchedule.startTime)}h / day
                             </p>
                         </div>
                         <div className={cn(
-                            'w-12 h-12 rounded-full flex items-center justify-center border-2',
-                            theme === 'dark' ? 'border-[#3a424f] text-[#d97757]' : 'border-gray-200 text-blue-600'
+                            'w-10 h-10 rounded-full flex items-center justify-center border',
+                            theme === 'dark' ? 'border-neutral-700 text-orange-500' : 'border-gray-200 text-blue-600'
                         )}>
-                            <Clock className="w-5 h-5" />
+                            <Clock className="w-4 h-4" />
                         </div>
                     </div>
                 </div>

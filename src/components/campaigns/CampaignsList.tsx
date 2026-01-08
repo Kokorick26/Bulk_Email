@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import {
     Plus, Search, MoreHorizontal, Play, Pause, Trash2, Copy,
     TrendingUp, Eye, Loader2, ChevronRight, Megaphone, Send,
-    Clock, Users, MousePointer, ArrowUpRight
+    Clock, Users, MousePointer, ArrowUpRight, Inbox
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useTheme } from '../../lib/ThemeContext';
@@ -27,6 +27,7 @@ interface CampaignsListProps {
     onDuplicateCampaign?: (id: string) => void;
     onPauseCampaign?: (id: string) => void;
     onResumeCampaign?: (id: string) => void;
+    onViewInbox?: (campaignId: string, accountIds: string[]) => void;
     className?: string;
 }
 
@@ -48,6 +49,7 @@ export function CampaignsList({
     onDuplicateCampaign,
     onPauseCampaign,
     onResumeCampaign,
+    onViewInbox,
     className
 }: CampaignsListProps) {
     const { theme } = useTheme();
@@ -74,36 +76,36 @@ export function CampaignsList({
                 LEFT PANEL - Campaign List
                 ═══════════════════════════════════════════════════════════════════ */}
             <div className={cn(
-                'w-[320px] flex-shrink-0 flex flex-col border-r',
-                isDark ? 'bg-[#0c0c0c] border-neutral-800' : 'bg-white border-gray-200'
+                'w-[280px] flex-shrink-0 flex flex-col border-r',
+                isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
             )}>
                 {/* Header */}
-                <div className={cn('p-4 border-b', isDark ? 'border-neutral-800' : 'border-gray-200')}>
-                    <div className="flex items-center justify-between mb-3">
-                        <h2 className={cn('text-[15px] font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
+                <div className={cn('px-3 py-3 border-b', isDark ? 'border-neutral-800' : 'border-gray-200')}>
+                    <div className="flex items-center justify-between mb-2">
+                        <h2 className={cn('text-xs font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
                             Campaigns
                         </h2>
                         <button
                             onClick={onCreateNew}
-                            className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:opacity-90 transition-opacity"
+                            className="flex items-center gap-1 h-7 px-2.5 rounded text-[10px] font-medium bg-orange-500 text-white hover:bg-orange-600 transition-colors"
                         >
-                            <Plus className="w-3.5 h-3.5" />
+                            <Plus className="w-3 h-3" />
                             New
                         </button>
                     </div>
                     {/* Search */}
                     <div className={cn(
-                        'flex items-center gap-2 h-9 px-3 rounded-lg',
-                        isDark ? 'bg-white/[0.04]' : 'bg-gray-100'
+                        'flex items-center gap-2 h-8 px-2.5 rounded',
+                        isDark ? 'bg-neutral-800' : 'bg-gray-100'
                     )}>
-                        <Search className={cn('w-4 h-4', isDark ? 'text-gray-500' : 'text-gray-400')} />
+                        <Search className={cn('w-3.5 h-3.5', isDark ? 'text-gray-500' : 'text-gray-400')} />
                         <input
                             type="text"
                             placeholder="Search campaigns..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className={cn(
-                                'flex-1 bg-transparent border-0 outline-none text-[13px]',
+                                'flex-1 bg-transparent border-0 outline-none text-[11px]',
                                 isDark ? 'text-white placeholder:text-gray-500' : 'text-gray-900 placeholder:text-gray-400'
                             )}
                         />
@@ -207,21 +209,21 @@ export function CampaignsList({
             {/* ═══════════════════════════════════════════════════════════════════
                 RIGHT PANEL - Campaign Details
                 ═══════════════════════════════════════════════════════════════════ */}
-            <div className={cn('flex-1 flex flex-col overflow-hidden', isDark ? 'bg-[#080808]' : 'bg-gray-50/50')}>
+            <div className={cn('flex-1 flex flex-col overflow-hidden', isDark ? 'bg-[#0a0a0a]' : 'bg-gray-50/50')}>
                 {selected ? (
                     <>
                         {/* Header */}
                         <div className={cn(
-                            'flex items-center justify-between px-6 py-4 border-b',
-                            isDark ? 'bg-[#0c0c0c] border-neutral-800' : 'bg-white border-gray-200'
+                            'flex items-center justify-between px-4 py-3 border-b',
+                            isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
                         )}>
                             <div>
-                                <div className="flex items-center gap-2.5">
-                                    <h1 className={cn('text-[17px] font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
+                                <div className="flex items-center gap-2">
+                                    <h1 className={cn('text-sm font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
                                         {selected.name}
                                     </h1>
                                     <span className={cn(
-                                        'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium',
+                                        'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium',
                                         STATUS_STYLES[selected.status]?.bg,
                                         STATUS_STYLES[selected.status]?.text
                                     )}>
@@ -229,7 +231,7 @@ export function CampaignsList({
                                         {selected.status.charAt(0).toUpperCase() + selected.status.slice(1)}
                                     </span>
                                 </div>
-                                <p className={cn('text-[12px] mt-0.5', isDark ? 'text-gray-500' : 'text-gray-400')}>
+                                <p className={cn('text-[10px] mt-0.5', isDark ? 'text-gray-500' : 'text-gray-400')}>
                                     Created {formatDate(selected.createdAt)} • {selected.totalRecipients} recipients
                                 </p>
                             </div>
@@ -238,11 +240,11 @@ export function CampaignsList({
                                     <button
                                         onClick={() => onPauseCampaign(selected.id)}
                                         className={cn(
-                                            'flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium border transition-colors',
-                                            isDark ? 'border-white/10 text-gray-300 hover:bg-white/5' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                                            'flex items-center gap-1 h-7 px-2.5 rounded text-[10px] font-medium border transition-colors',
+                                            isDark ? 'border-neutral-700 text-gray-300 hover:bg-neutral-800' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
                                         )}
                                     >
-                                        <Pause className="w-3.5 h-3.5" />
+                                        <Pause className="w-3 h-3" />
                                         Pause
                                     </button>
                                 )}
@@ -250,19 +252,31 @@ export function CampaignsList({
                                     <button
                                         onClick={() => onResumeCampaign(selected.id)}
                                         className={cn(
-                                            'flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium border transition-colors',
-                                            isDark ? 'border-white/10 text-gray-300 hover:bg-white/5' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                                            'flex items-center gap-1 h-7 px-2.5 rounded text-[10px] font-medium border transition-colors',
+                                            isDark ? 'border-neutral-700 text-gray-300 hover:bg-neutral-800' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
                                         )}
                                     >
-                                        <Play className="w-3.5 h-3.5" />
+                                        <Play className="w-3 h-3" />
                                         Resume
+                                    </button>
+                                )}
+                                {onViewInbox && (
+                                    <button
+                                        onClick={() => onViewInbox(selected.id, selected.options?.selectedAccountIds || [])}
+                                        className={cn(
+                                            'flex items-center gap-1 h-7 px-2.5 rounded text-[10px] font-medium border transition-colors',
+                                            isDark ? 'border-neutral-700 text-gray-300 hover:bg-neutral-800' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                                        )}
+                                    >
+                                        <Inbox className="w-3 h-3" />
+                                        Inbox
                                     </button>
                                 )}
                                 <button
                                     onClick={() => onViewCampaign(selected.id)}
-                                    className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:opacity-90 transition-opacity"
+                                    className="flex items-center gap-1 h-7 px-2.5 rounded text-[10px] font-medium bg-orange-500 text-white hover:bg-orange-600 transition-colors"
                                 >
-                                    <Eye className="w-3.5 h-3.5" />
+                                    <Eye className="w-3 h-3" />
                                     View Details
                                 </button>
                                 <DropdownMenu>
@@ -292,8 +306,8 @@ export function CampaignsList({
                         </div>
 
                         {/* Stats */}
-                        <div className="p-6">
-                            <div className="grid grid-cols-4 gap-4">
+                        <div className="p-4">
+                            <div className="grid grid-cols-4 gap-3">
                                 {[
                                     { label: 'Progress', value: `${selected.totalRecipients > 0 ? Math.round((selected.sentCount / selected.totalRecipients) * 100) : 0}%`, icon: TrendingUp },
                                     { label: 'Emails Sent', value: selected.sentCount.toLocaleString(), sub: `of ${selected.totalRecipients}`, icon: Send },
@@ -303,26 +317,26 @@ export function CampaignsList({
                                     <div
                                         key={i}
                                         className={cn(
-                                            'p-4 rounded-xl border',
-                                            isDark ? 'bg-[#0c0c0c] border-neutral-800' : 'bg-white border-gray-200'
+                                            'p-3 rounded border',
+                                            isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
                                         )}
                                     >
-                                        <div className="flex items-center gap-2 mb-3">
+                                        <div className="flex items-center gap-2 mb-2">
                                             <div className={cn(
-                                                'w-8 h-8 rounded-lg flex items-center justify-center',
+                                                'w-6 h-6 rounded flex items-center justify-center',
                                                 isDark ? 'bg-orange-500/10' : 'bg-orange-50'
                                             )}>
-                                                <stat.icon className="w-4 h-4 text-orange-500" />
+                                                <stat.icon className="w-3 h-3 text-orange-500" />
                                             </div>
-                                            <span className={cn('text-[12px] font-medium', isDark ? 'text-gray-400' : 'text-gray-500')}>
+                                            <span className={cn('text-[10px] font-medium', isDark ? 'text-gray-400' : 'text-gray-500')}>
                                                 {stat.label}
                                             </span>
                                         </div>
-                                        <p className={cn('text-2xl font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
+                                        <p className={cn('text-lg font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
                                             {stat.value}
                                         </p>
                                         {stat.sub && (
-                                            <p className={cn('text-[11px] mt-0.5', isDark ? 'text-gray-500' : 'text-gray-400')}>
+                                            <p className={cn('text-[9px] mt-0.5', isDark ? 'text-gray-500' : 'text-gray-400')}>
                                                 {stat.sub}
                                             </p>
                                         )}
@@ -332,19 +346,19 @@ export function CampaignsList({
 
                             {/* Quick Overview */}
                             <div className={cn(
-                                'mt-6 p-5 rounded-xl border',
-                                isDark ? 'bg-[#0c0c0c] border-neutral-800' : 'bg-white border-gray-200'
+                                'mt-4 p-4 rounded border',
+                                isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
                             )}>
-                                <h3 className={cn('text-[13px] font-semibold mb-4', isDark ? 'text-white' : 'text-gray-900')}>
+                                <h3 className={cn('text-xs font-semibold mb-3', isDark ? 'text-white' : 'text-gray-900')}>
                                     Quick Overview
                                 </h3>
-                                <div className="space-y-4">
+                                <div className="space-y-3">
                                     {/* Primary Info */}
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-2 gap-3">
                                         <div>
-                                            <p className={cn('text-[11px] mb-1', isDark ? 'text-gray-500' : 'text-gray-400')}>Status</p>
+                                            <p className={cn('text-[9px] uppercase tracking-wide mb-0.5', isDark ? 'text-gray-500' : 'text-gray-400')}>Status</p>
                                             <span className={cn(
-                                                'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium',
+                                                'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium',
                                                 STATUS_STYLES[selected.status]?.bg,
                                                 STATUS_STYLES[selected.status]?.text
                                             )}>
@@ -352,25 +366,25 @@ export function CampaignsList({
                                             </span>
                                         </div>
                                         <div>
-                                            <p className={cn('text-[11px] mb-1', isDark ? 'text-gray-500' : 'text-gray-400')}>Created</p>
-                                            <p className={cn('text-[12px] font-medium', isDark ? 'text-white' : 'text-gray-900')}>
+                                            <p className={cn('text-[9px] uppercase tracking-wide mb-0.5', isDark ? 'text-gray-500' : 'text-gray-400')}>Created</p>
+                                            <p className={cn('text-[10px] font-medium', isDark ? 'text-white' : 'text-gray-900')}>
                                                 {formatDate(selected.createdAt)}
                                             </p>
                                         </div>
                                     </div>
 
                                     {/* Engagement Stats */}
-                                    <div className="pt-4 border-t border-dashed border-gray-700/20">
-                                        <p className={cn('text-[11px] font-medium mb-3', isDark ? 'text-gray-400' : 'text-gray-500')}>Engagement</p>
+                                    <div className={cn('pt-3 border-t', isDark ? 'border-neutral-800' : 'border-gray-100')}>
+                                        <p className={cn('text-[9px] uppercase tracking-wide font-medium mb-2', isDark ? 'text-gray-500' : 'text-gray-400')}>Engagement</p>
                                         <div className="grid grid-cols-3 gap-2">
                                             {[
                                                 { label: 'Open Rate', val: selected.sentCount > 0 ? Math.round((selected.openCount || 0) / selected.sentCount * 100) : 0 },
                                                 { label: 'Click Rate', val: selected.sentCount > 0 ? Math.round((selected.clickCount || 0) / selected.sentCount * 100) : 0 },
                                                 { label: 'Reply Rate', val: selected.sentCount > 0 ? Math.round((selected.replyCount || 0) / selected.sentCount * 100) : 0 },
                                             ].map((stat, i) => (
-                                                <div key={i} className={cn('p-2 rounded-lg text-center', isDark ? 'bg-white/[0.04]' : 'bg-gray-50')}>
-                                                    <div className={cn('text-lg font-semibold', isDark ? 'text-white' : 'text-gray-900')}>{stat.val}%</div>
-                                                    <div className={cn('text-[10px]', isDark ? 'text-gray-500' : 'text-gray-400')}>{stat.label}</div>
+                                                <div key={i} className={cn('p-2 rounded text-center', isDark ? 'bg-neutral-800' : 'bg-gray-50')}>
+                                                    <div className={cn('text-base font-semibold', isDark ? 'text-white' : 'text-gray-900')}>{stat.val}%</div>
+                                                    <div className={cn('text-[9px]', isDark ? 'text-gray-500' : 'text-gray-400')}>{stat.label}</div>
                                                 </div>
                                             ))}
                                         </div>
@@ -378,15 +392,15 @@ export function CampaignsList({
 
                                     {/* Schedule Info */}
                                     {selected.schedule && (
-                                        <div className="pt-4 border-t border-dashed border-gray-700/20">
-                                            <p className={cn('text-[11px] font-medium mb-2', isDark ? 'text-gray-400' : 'text-gray-500')}>Schedule</p>
-                                            <div className="flex items-start gap-2">
-                                                <Clock className={cn('w-3.5 h-3.5 mt-0.5', isDark ? 'text-gray-500' : 'text-gray-400')} />
+                                        <div className={cn('pt-3 border-t', isDark ? 'border-neutral-800' : 'border-gray-100')}>
+                                            <p className={cn('text-[9px] uppercase tracking-wide font-medium mb-1.5', isDark ? 'text-gray-500' : 'text-gray-400')}>Schedule</p>
+                                            <div className="flex items-start gap-1.5">
+                                                <Clock className={cn('w-3 h-3 mt-0.5', isDark ? 'text-gray-500' : 'text-gray-400')} />
                                                 <div>
-                                                    <p className={cn('text-[12px]', isDark ? 'text-gray-300' : 'text-gray-700')}>
+                                                    <p className={cn('text-[10px]', isDark ? 'text-gray-300' : 'text-gray-700')}>
                                                         {selected.schedule.days.map(d => d.slice(0, 3)).join(', ')}
                                                     </p>
-                                                    <p className={cn('text-[11px]', isDark ? 'text-gray-500' : 'text-gray-400')}>
+                                                    <p className={cn('text-[9px]', isDark ? 'text-gray-500' : 'text-gray-400')}>
                                                         {selected.schedule.startTime} - {selected.schedule.endTime} ({selected.schedule.timezone})
                                                     </p>
                                                 </div>
@@ -396,15 +410,15 @@ export function CampaignsList({
 
                                     {/* Config Hints */}
                                     {selected.options && (
-                                        <div className="pt-4 border-t border-dashed border-gray-700/20">
-                                            <div className="flex gap-4">
+                                        <div className={cn('pt-3 border-t', isDark ? 'border-neutral-800' : 'border-gray-100')}>
+                                            <div className="flex gap-3">
                                                 {selected.options.trackOpens && (
-                                                    <span className={cn('text-[11px] flex items-center gap-1.5', isDark ? 'text-gray-400' : 'text-gray-500')}>
+                                                    <span className={cn('text-[9px] flex items-center gap-1', isDark ? 'text-gray-400' : 'text-gray-500')}>
                                                         <Eye className="w-3 h-3" /> Track Opens
                                                     </span>
                                                 )}
                                                 {selected.options.trackClicks && (
-                                                    <span className={cn('text-[11px] flex items-center gap-1.5', isDark ? 'text-gray-400' : 'text-gray-500')}>
+                                                    <span className={cn('text-[9px] flex items-center gap-1', isDark ? 'text-gray-400' : 'text-gray-500')}>
                                                         <MousePointer className="w-3 h-3" /> Track Clicks
                                                     </span>
                                                 )}
