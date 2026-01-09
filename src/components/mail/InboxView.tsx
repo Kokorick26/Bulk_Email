@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Inbox, RefreshCw, Mail, MailOpen, Star, Trash2,
     Loader2, AlertCircle, Settings2, Search, Paperclip,
-    Filter, Megaphone, Check, ChevronRight, ChevronLeft
+    Filter, Megaphone, Check, ChevronRight, ChevronLeft, Plus, Pencil
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../../lib/utils';
@@ -14,6 +14,7 @@ import { useTheme } from '../../lib/ThemeContext';
 import { useDashboardContext } from '../../layouts/DashboardShell';
 import EmailViewer from './EmailViewer';
 import ImapConfigDialog from './ImapConfigDialog';
+import ComposeEmailModal, { OriginalMessage } from './ComposeEmailModal';
 
 const API_BASE = '/api/inbox';
 
@@ -99,6 +100,11 @@ export default function InboxView({ smtpAccounts, campaigns = [], onRefreshAccou
     const [searchQuery, setSearchQuery] = useState('');
     const [showImapConfig, setShowImapConfig] = useState(false);
     const [accountToConfig, setAccountToConfig] = useState<SmtpAccount | null>(null);
+
+    // Compose modal state
+    const [showComposeModal, setShowComposeModal] = useState(false);
+    const [composeMode, setComposeMode] = useState<'compose' | 'reply' | 'replyAll' | 'forward'>('compose');
+    const [composeOriginalMessage, setComposeOriginalMessage] = useState<OriginalMessage | null>(null);
 
     // Derive active folder and filter from context
     const sidebarConfig = SIDEBAR_TO_FOLDER[activeSubItem] || { folder: 'INBOX', filter: 'all' };
@@ -281,6 +287,36 @@ export default function InboxView({ smtpAccounts, campaigns = [], onRefreshAccou
         onRefreshAccounts();
         setShowImapConfig(false);
         toast.success('IMAP configured successfully!');
+    };
+
+    // Compose/Reply/Forward handlers
+    const handleCompose = () => {
+        setComposeMode('compose');
+        setComposeOriginalMessage(null);
+        setShowComposeModal(true);
+    };
+
+    const handleReply = (message: Message) => {
+        setComposeMode('reply');
+        setComposeOriginalMessage(message as OriginalMessage);
+        setShowComposeModal(true);
+    };
+
+    const handleReplyAll = (message: Message) => {
+        setComposeMode('replyAll');
+        setComposeOriginalMessage(message as OriginalMessage);
+        setShowComposeModal(true);
+    };
+
+    const handleForward = (message: Message) => {
+        setComposeMode('forward');
+        setComposeOriginalMessage(message as OriginalMessage);
+        setShowComposeModal(true);
+    };
+
+    const handleComposeSuccess = () => {
+        // Refresh messages after sending
+        fetchMessages(true);
     };
 
     const formatDate = (dateStr: string) => {
@@ -543,19 +579,46 @@ export default function InboxView({ smtpAccounts, campaigns = [], onRefreshAccou
     // Email viewer
     if (selectedMessage) {
         return (
-            <EmailViewer
-                message={selectedMessage}
-                onBack={() => setSelectedMessage(null)}
-                onDelete={() => handleDelete(selectedMessage)}
-                onMarkAsRead={() => handleMarkAsRead(selectedMessage)}
-                onReply={() => onReply?.(selectedMessage)}
-                onForward={() => onForward?.(selectedMessage)}
-            />
+            <>
+                <EmailViewer
+                    message={selectedMessage}
+                    onBack={() => setSelectedMessage(null)}
+                    onDelete={() => handleDelete(selectedMessage)}
+                    onMarkAsRead={() => handleMarkAsRead(selectedMessage)}
+                    onReply={() => handleReply(selectedMessage)}
+                    onReplyAll={() => handleReplyAll(selectedMessage)}
+                    onForward={() => handleForward(selectedMessage)}
+                    onArchive={() => {
+                        setMessages(prev => prev.filter(m => m.id !== selectedMessage.id));
+                        setSelectedMessage(null);
+                    }}
+                    onMessageUpdate={(updatedMessage) => {
+                        setMessages(prev => prev.map(m =>
+                            m.id === updatedMessage.id ? { ...m, ...updatedMessage } : m
+                        ));
+                        setSelectedMessage(updatedMessage);
+                    }}
+                />
+                <ComposeEmailModal
+                    isOpen={showComposeModal}
+                    onClose={() => setShowComposeModal(false)}
+                    smtpAccounts={smtpAccounts.map(a => ({
+                        id: a.id,
+                        name: a.name,
+                        fromEmail: a.fromEmail,
+                        fromName: a.name,
+                    }))}
+                    mode={composeMode}
+                    originalMessage={composeOriginalMessage}
+                    onSuccess={handleComposeSuccess}
+                    defaultAccountId={selectedAccount?.id}
+                />
+            </>
         );
     }
 
     return (
-        <div className="flex-1 flex flex-col overflow-hidden h-full">
+        <div className="flex-1 flex flex-col overflow-hidden h-full relative">
             {/* Campaign Filter Banner */}
             {inboxFilterAccountIds.length > 0 && (
                 <div className={cn(
@@ -731,11 +794,42 @@ export default function InboxView({ smtpAccounts, campaigns = [], onRefreshAccou
                 )}
             </ScrollArea>
 
+            {/* Floating Compose Button */}
+            <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleCompose}
+                className={cn(
+                    'absolute bottom-6 right-6 flex items-center gap-2 px-5 py-3 rounded-2xl shadow-lg transition-all font-medium',
+                    isDark
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                )}
+            >
+                <Pencil className="w-5 h-5" />
+                <span className="hidden sm:inline">Compose</span>
+            </motion.button>
+
             <ImapConfigDialog
                 open={showImapConfig}
                 onOpenChange={setShowImapConfig}
                 account={accountToConfig}
                 onSuccess={handleImapConfigured}
+            />
+
+            <ComposeEmailModal
+                isOpen={showComposeModal}
+                onClose={() => setShowComposeModal(false)}
+                smtpAccounts={smtpAccounts.map(a => ({
+                    id: a.id,
+                    name: a.name,
+                    fromEmail: a.fromEmail,
+                    fromName: a.name,
+                }))}
+                mode={composeMode}
+                originalMessage={composeOriginalMessage}
+                onSuccess={handleComposeSuccess}
+                defaultAccountId={selectedAccount?.id}
             />
         </div>
     );

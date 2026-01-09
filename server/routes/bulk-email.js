@@ -802,12 +802,23 @@ function personalizeEmailContent(campaign, recipient, recipientIndex, totalRecip
     htmlContent = generateContentVariation(htmlContent, recipientIndex, totalRecipients, campaignId);
     textContent = generateContentVariation(textContent, recipientIndex, totalRecipients, campaignId);
 
-    // 4. Add unique identifiers for tracking (without revealing to user)
+    // 4. Add unique identifiers for tracking
     const uniqueId = `${campaignId}-${recipientIndex}-${Date.now()}`;
-    const trackingPixel = `<img src="${process.env.API_BASE || 'http://localhost:3001'}/api/tracking/${uniqueId}" width="1" height="1" style="display:none;" alt="">`;
-    htmlContent = htmlContent.replace('</body>', `${trackingPixel}</body>`);
+    const baseUrl = process.env.API_BASE || 'http://localhost:5000';
 
-    // 5. Generate unique message ID
+    // 5. Wrap links with click tracking
+    htmlContent = wrapLinksWithTracking(htmlContent, uniqueId, baseUrl);
+
+    // 6. Add open tracking pixel
+    const trackingPixel = `<img src="${baseUrl}/api/tracking/${uniqueId}" width="1" height="1" style="display:none;" alt="">`;
+    // Add pixel at end of content if no body tag
+    if (htmlContent.includes('</body>')) {
+        htmlContent = htmlContent.replace('</body>', `${trackingPixel}</body>`);
+    } else {
+        htmlContent = htmlContent + trackingPixel;
+    }
+
+    // 7. Generate unique message ID
     const domain = process.env.SMTP_FROM?.split('@')[1] || 'kokorick.uk';
     const messageId = `<${Date.now()}.${Math.random().toString(36).substr(2, 9)}@${domain}>`;
 
@@ -818,6 +829,24 @@ function personalizeEmailContent(campaign, recipient, recipientIndex, totalRecip
         messageId,
         uniqueId
     };
+}
+
+// Wrap all links in HTML with click tracking URLs
+function wrapLinksWithTracking(html, uniqueId, baseUrl) {
+    if (!html) return html;
+
+    // Match href attributes with URLs (not mailto: or tel:)
+    const linkRegex = /href=["'](https?:\/\/[^"']+)["']/gi;
+
+    return html.replace(linkRegex, (match, url) => {
+        // Don't track unsubscribe links
+        if (url.includes('unsubscribe') || url.includes('optout') || url.includes('opt-out')) {
+            return match;
+        }
+
+        const trackingUrl = `${baseUrl}/api/tracking/click/${uniqueId}?url=${encodeURIComponent(url)}`;
+        return `href="${trackingUrl}"`;
+    });
 }
 
 // AI rewrite function to create unique variations of email content
@@ -2151,6 +2180,42 @@ router.get('/analytics/geo', auth, async (req, res) => {
     } catch (err) {
         console.error('Error fetching analytics:', err);
         res.status(500).json({ error: 'Could not fetch analytics data' });
+    }
+});
+
+// DEBUG: Check email log content
+router.get('/debug/logs/:campaignId', auth, async (req, res) => {
+    try {
+        const { campaignId } = req.params;
+        const logs = await dynamoDB.scan({
+            TableName: EMAIL_LOGS_TABLE,
+            FilterExpression: 'campaignId = :campaignId',
+            ExpressionAttributeValues: { ':campaignId': campaignId }
+        }).promise();
+
+        // Return logs with info about content
+        const logsWithInfo = (logs.Items || []).map(log => ({
+            id: log.id,
+            email: log.email,
+            subject: log.subject,
+            status: log.status,
+            sentAt: log.sentAt,
+            hasHtmlContent: !!log.htmlContent,
+            htmlContentLength: log.htmlContent?.length || 0,
+            hasTextContent: !!log.textContent,
+            textContentLength: log.textContent?.length || 0,
+            htmlPreview: log.htmlContent?.substring(0, 200) || null,
+            textPreview: log.textContent?.substring(0, 200) || null
+        }));
+
+        res.json({
+            totalLogs: logsWithInfo.length,
+            logsWithContent: logsWithInfo.filter(l => l.hasHtmlContent || l.hasTextContent).length,
+            logs: logsWithInfo
+        });
+    } catch (err) {
+        console.error('Debug logs error:', err);
+        res.status(500).json({ error: err.message });
     }
 });
 

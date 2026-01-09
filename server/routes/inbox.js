@@ -832,4 +832,755 @@ function getMailboxFolders(imapConfig) {
     });
 }
 
+// ============ DRAFTS TABLE ============
+const DRAFTS_TABLE = 'EmailDrafts';
+
+// ============ COMPOSE & SEND EMAIL ============
+
+// Send a new email (compose)
+router.post('/send', auth, async (req, res) => {
+    try {
+        const { accountId, to, cc, bcc, subject, htmlContent, textContent, attachments, inReplyTo, references, threadId } = req.body;
+        const userId = req.user.userId;
+
+        if (!accountId || !to || !subject) {
+            return res.status(400).json({ error: 'Account, recipient, and subject are required' });
+        }
+
+        // Get account details
+        const account = await dynamoDB.get({
+            TableName: SMTP_ACCOUNTS_TABLE,
+            Key: { id: accountId }
+        }).promise();
+
+        if (!account.Item) {
+            return res.status(404).json({ error: 'SMTP account not found' });
+        }
+
+        const nodemailer = (await import('nodemailer')).default;
+
+        // Create transporter
+        const transporter = nodemailer.createTransport({
+            host: account.Item.host,
+            port: account.Item.port,
+            secure: account.Item.port === 465,
+            auth: {
+                user: account.Item.username,
+                pass: account.Item.password,
+            },
+        });
+
+        // Build email options
+        const mailOptions = {
+            from: `"${account.Item.fromName || account.Item.name}" <${account.Item.fromEmail}>`,
+            to: Array.isArray(to) ? to.join(', ') : to,
+            subject,
+            text: textContent || '',
+            html: htmlContent || '',
+        };
+
+        if (cc) mailOptions.cc = Array.isArray(cc) ? cc.join(', ') : cc;
+        if (bcc) mailOptions.bcc = Array.isArray(bcc) ? bcc.join(', ') : bcc;
+        if (inReplyTo) mailOptions.inReplyTo = inReplyTo;
+        if (references) mailOptions.references = Array.isArray(references) ? references.join(' ') : references;
+
+        // Handle attachments
+        if (attachments && attachments.length > 0) {
+            mailOptions.attachments = attachments.map(att => ({
+                filename: att.filename,
+                content: Buffer.from(att.content, 'base64'),
+                contentType: att.contentType,
+            }));
+        }
+
+        // Send email
+        const info = await transporter.sendMail(mailOptions);
+
+        // Log the sent email
+        const emailLog = {
+            id: uuidv4(),
+            userId,
+            accountId,
+            to: mailOptions.to,
+            cc: mailOptions.cc || '',
+            bcc: mailOptions.bcc || '',
+            subject,
+            messageId: info.messageId,
+            status: 'sent',
+            sentAt: new Date().toISOString(),
+            threadId: threadId || null,
+            inReplyTo: inReplyTo || null,
+        };
+
+        await dynamoDB.put({
+            TableName: EMAIL_LOGS_TABLE,
+            Item: emailLog,
+        }).promise();
+
+        res.json({
+            success: true,
+            messageId: info.messageId,
+            message: 'Email sent successfully'
+        });
+    } catch (err) {
+        console.error('Error sending email:', err);
+        res.status(500).json({ error: err.message || 'Failed to send email' });
+    }
+});
+
+// ============ REPLY & FORWARD ============
+
+// Reply to an email
+router.post('/reply', auth, async (req, res) => {
+    try {
+        const { accountId, originalMessage, replyContent, replyAll, htmlContent } = req.body;
+        const userId = req.user.userId;
+
+        if (!accountId || !originalMessage || !replyContent) {
+            return res.status(400).json({ error: 'Account, original message, and reply content are required' });
+        }
+
+        const account = await dynamoDB.get({
+            TableName: SMTP_ACCOUNTS_TABLE,
+            Key: { id: accountId }
+        }).promise();
+
+        if (!account.Item) {
+            return res.status(404).json({ error: 'SMTP account not found' });
+        }
+
+        const nodemailer = (await import('nodemailer')).default;
+
+        const transporter = nodemailer.createTransport({
+            host: account.Item.host,
+            port: account.Item.port,
+            secure: account.Item.port === 465,
+            auth: {
+                user: account.Item.username,
+                pass: account.Item.password,
+            },
+        });
+
+        // Build recipients
+        let to = originalMessage.fromEmail;
+        let cc = '';
+
+        if (replyAll) {
+            // Include all original recipients except self
+            const originalTo = originalMessage.to?.split(',').map(e => e.trim()) || [];
+            const originalCc = originalMessage.cc?.split(',').map(e => e.trim()) || [];
+            const allRecipients = [...originalTo, ...originalCc].filter(
+                email => email && email !== account.Item.fromEmail
+            );
+            cc = allRecipients.join(', ');
+        }
+
+        // Build quoted content
+        const quotedContent = `
+            <br><br>
+            <div style="border-left: 2px solid #ccc; padding-left: 10px; margin-left: 10px; color: #666;">
+                <p>On ${new Date(originalMessage.date).toLocaleString()}, ${originalMessage.from} wrote:</p>
+                ${originalMessage.html || `<p>${originalMessage.text}</p>`}
+            </div>
+        `;
+
+        const fullHtml = (htmlContent || `<p>${replyContent.replace(/\n/g, '<br>')}</p>`) + quotedContent;
+
+        // Build references chain
+        const references = originalMessage.references || [];
+        if (originalMessage.messageId && !references.includes(originalMessage.messageId)) {
+            references.push(originalMessage.messageId);
+        }
+
+        const mailOptions = {
+            from: `"${account.Item.fromName || account.Item.name}" <${account.Item.fromEmail}>`,
+            to,
+            cc: cc || undefined,
+            subject: originalMessage.subject.startsWith('Re:') ? originalMessage.subject : `Re: ${originalMessage.subject}`,
+            text: replyContent,
+            html: fullHtml,
+            inReplyTo: originalMessage.messageId,
+            references: references.join(' '),
+        };
+
+        const info = await transporter.sendMail(mailOptions);
+
+        // Log the reply
+        await dynamoDB.put({
+            TableName: EMAIL_LOGS_TABLE,
+            Item: {
+                id: uuidv4(),
+                userId,
+                accountId,
+                to: mailOptions.to,
+                cc: mailOptions.cc || '',
+                subject: mailOptions.subject,
+                messageId: info.messageId,
+                status: 'sent',
+                sentAt: new Date().toISOString(),
+                inReplyTo: originalMessage.messageId,
+                isReply: true,
+            },
+        }).promise();
+
+        res.json({
+            success: true,
+            messageId: info.messageId,
+            message: 'Reply sent successfully'
+        });
+    } catch (err) {
+        console.error('Error sending reply:', err);
+        res.status(500).json({ error: err.message || 'Failed to send reply' });
+    }
+});
+
+// Forward an email
+router.post('/forward', auth, async (req, res) => {
+    try {
+        const { accountId, originalMessage, to, cc, additionalContent, htmlContent, includeAttachments } = req.body;
+        const userId = req.user.userId;
+
+        if (!accountId || !originalMessage || !to) {
+            return res.status(400).json({ error: 'Account, original message, and recipient are required' });
+        }
+
+        const account = await dynamoDB.get({
+            TableName: SMTP_ACCOUNTS_TABLE,
+            Key: { id: accountId }
+        }).promise();
+
+        if (!account.Item) {
+            return res.status(404).json({ error: 'SMTP account not found' });
+        }
+
+        const nodemailer = (await import('nodemailer')).default;
+
+        const transporter = nodemailer.createTransport({
+            host: account.Item.host,
+            port: account.Item.port,
+            secure: account.Item.port === 465,
+            auth: {
+                user: account.Item.username,
+                pass: account.Item.password,
+            },
+        });
+
+        // Build forwarded content
+        const forwardedContent = `
+            <br><br>
+            <div style="border-top: 1px solid #ccc; padding-top: 10px;">
+                <p><strong>---------- Forwarded message ---------</strong></p>
+                <p><strong>From:</strong> ${originalMessage.from}</p>
+                <p><strong>Date:</strong> ${new Date(originalMessage.date).toLocaleString()}</p>
+                <p><strong>Subject:</strong> ${originalMessage.subject}</p>
+                <p><strong>To:</strong> ${originalMessage.to}</p>
+                <br>
+                ${originalMessage.html || `<p>${originalMessage.text}</p>`}
+            </div>
+        `;
+
+        const additionalHtml = htmlContent || (additionalContent ? `<p>${additionalContent.replace(/\n/g, '<br>')}</p>` : '');
+        const fullHtml = additionalHtml + forwardedContent;
+
+        const mailOptions = {
+            from: `"${account.Item.fromName || account.Item.name}" <${account.Item.fromEmail}>`,
+            to: Array.isArray(to) ? to.join(', ') : to,
+            cc: cc ? (Array.isArray(cc) ? cc.join(', ') : cc) : undefined,
+            subject: originalMessage.subject.startsWith('Fwd:') ? originalMessage.subject : `Fwd: ${originalMessage.subject}`,
+            text: additionalContent || '',
+            html: fullHtml,
+        };
+
+        // TODO: Include attachments if requested and available
+
+        const info = await transporter.sendMail(mailOptions);
+
+        await dynamoDB.put({
+            TableName: EMAIL_LOGS_TABLE,
+            Item: {
+                id: uuidv4(),
+                userId,
+                accountId,
+                to: mailOptions.to,
+                subject: mailOptions.subject,
+                messageId: info.messageId,
+                status: 'sent',
+                sentAt: new Date().toISOString(),
+                isForward: true,
+            },
+        }).promise();
+
+        res.json({
+            success: true,
+            messageId: info.messageId,
+            message: 'Email forwarded successfully'
+        });
+    } catch (err) {
+        console.error('Error forwarding email:', err);
+        res.status(500).json({ error: err.message || 'Failed to forward email' });
+    }
+});
+
+// ============ STAR/FLAG TOGGLE ============
+
+// Toggle star/flag on a message
+router.post('/message/:accountId/:uid/star', auth, async (req, res) => {
+    try {
+        const { accountId, uid } = req.params;
+        const { starred } = req.body; // true = add star, false = remove star
+
+        const account = await dynamoDB.get({
+            TableName: SMTP_ACCOUNTS_TABLE,
+            Key: { id: accountId }
+        }).promise();
+
+        if (!account.Item || !account.Item.imapConfigured) {
+            return res.status(400).json({ error: 'IMAP not configured' });
+        }
+
+        const imapConfig = {
+            user: account.Item.imapUser || account.Item.username,
+            password: account.Item.imapPassword || account.Item.password,
+            host: account.Item.imapHost,
+            port: account.Item.imapPort || 993,
+            tls: account.Item.imapTls !== false,
+            tlsOptions: { rejectUnauthorized: false },
+        };
+
+        await toggleStarOnMessage(imapConfig, Number(uid), starred);
+
+        // Update cached message in DynamoDB
+        const fullId = `${accountId}-${uid}`;
+        try {
+            await dynamoDB.update({
+                TableName: INBOX_MESSAGES_TABLE,
+                Key: { id: fullId },
+                UpdateExpression: 'SET isStarred = :starred',
+                ExpressionAttributeValues: { ':starred': starred },
+            }).promise();
+        } catch (e) {
+            console.log('Could not update cache:', e.message);
+        }
+
+        res.json({ success: true, starred });
+    } catch (err) {
+        console.error('Error toggling star:', err);
+        res.status(500).json({ error: 'Could not toggle star' });
+    }
+});
+
+// Helper function to toggle star
+function toggleStarOnMessage(imapConfig, uid, addStar) {
+    return new Promise((resolve, reject) => {
+        const imap = new Imap(imapConfig);
+
+        imap.once('ready', () => {
+            imap.openBox('INBOX', false, (err) => {
+                if (err) {
+                    imap.end();
+                    return reject(err);
+                }
+
+                const method = addStar ? 'addFlags' : 'delFlags';
+                imap[method](uid, ['\\Flagged'], (err) => {
+                    imap.end();
+                    if (err) reject(err);
+                    else resolve();
+                });
+            });
+        });
+
+        imap.once('error', reject);
+        imap.connect();
+    });
+}
+
+// ============ MOVE TO FOLDER ============
+
+// Move message to a different folder
+router.post('/message/:accountId/:uid/move', auth, async (req, res) => {
+    try {
+        const { accountId, uid } = req.params;
+        const { fromFolder = 'INBOX', toFolder } = req.body;
+
+        if (!toFolder) {
+            return res.status(400).json({ error: 'Target folder is required' });
+        }
+
+        const account = await dynamoDB.get({
+            TableName: SMTP_ACCOUNTS_TABLE,
+            Key: { id: accountId }
+        }).promise();
+
+        if (!account.Item || !account.Item.imapConfigured) {
+            return res.status(400).json({ error: 'IMAP not configured' });
+        }
+
+        const imapConfig = {
+            user: account.Item.imapUser || account.Item.username,
+            password: account.Item.imapPassword || account.Item.password,
+            host: account.Item.imapHost,
+            port: account.Item.imapPort || 993,
+            tls: account.Item.imapTls !== false,
+            tlsOptions: { rejectUnauthorized: false },
+        };
+
+        await moveMessage(imapConfig, Number(uid), fromFolder, toFolder);
+
+        // Remove from cache since it moved
+        const fullId = `${accountId}-${uid}`;
+        try {
+            await dynamoDB.delete({
+                TableName: INBOX_MESSAGES_TABLE,
+                Key: { id: fullId },
+            }).promise();
+        } catch (e) {
+            console.log('Could not delete from cache:', e.message);
+        }
+
+        res.json({ success: true, message: `Moved to ${toFolder}` });
+    } catch (err) {
+        console.error('Error moving message:', err);
+        res.status(500).json({ error: 'Could not move message' });
+    }
+});
+
+// Helper function to move message
+function moveMessage(imapConfig, uid, fromFolder, toFolder) {
+    return new Promise((resolve, reject) => {
+        const imap = new Imap(imapConfig);
+
+        imap.once('ready', () => {
+            // First, try to find the correct folder name
+            imap.getBoxes((err, boxes) => {
+                if (err) {
+                    imap.end();
+                    return reject(err);
+                }
+
+                // Check if target folder exists
+                const allFolders = Object.keys(boxes);
+                let actualToFolder = toFolder;
+
+                // Try common folder name variations
+                const folderMappings = {
+                    'Archive': ['Archive', '[Gmail]/All Mail', 'All Mail', 'INBOX.Archive'],
+                    'Trash': ['Trash', '[Gmail]/Trash', 'Deleted Items', 'INBOX.Trash'],
+                    'Spam': ['Spam', '[Gmail]/Spam', 'Junk', 'INBOX.Spam'],
+                };
+
+                if (folderMappings[toFolder]) {
+                    for (const variation of folderMappings[toFolder]) {
+                        if (allFolders.includes(variation) || boxes[variation]) {
+                            actualToFolder = variation;
+                            break;
+                        }
+                    }
+                }
+
+                imap.openBox(fromFolder, false, (err) => {
+                    if (err) {
+                        imap.end();
+                        return reject(err);
+                    }
+
+                    imap.move(uid, actualToFolder, (err) => {
+                        imap.end();
+                        if (err) reject(err);
+                        else resolve();
+                    });
+                });
+            });
+        });
+
+        imap.once('error', reject);
+        imap.connect();
+    });
+}
+
+// ============ DRAFTS MANAGEMENT ============
+
+// Save draft
+router.post('/drafts', auth, async (req, res) => {
+    try {
+        const { id, accountId, to, cc, bcc, subject, htmlContent, textContent, inReplyTo, threadId } = req.body;
+        const userId = req.user.userId;
+
+        if (!accountId) {
+            return res.status(400).json({ error: 'Account is required' });
+        }
+
+        const draft = {
+            id: id || uuidv4(),
+            userId,
+            accountId,
+            to: to || '',
+            cc: cc || '',
+            bcc: bcc || '',
+            subject: subject || '',
+            htmlContent: htmlContent || '',
+            textContent: textContent || '',
+            inReplyTo: inReplyTo || null,
+            threadId: threadId || null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        };
+
+        await dynamoDB.put({
+            TableName: DRAFTS_TABLE,
+            Item: draft,
+        }).promise();
+
+        res.json({ success: true, draft });
+    } catch (err) {
+        console.error('Error saving draft:', err);
+        res.status(500).json({ error: 'Could not save draft' });
+    }
+});
+
+// Get all drafts
+router.get('/drafts', auth, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+
+        const data = await dynamoDB.scan({
+            TableName: DRAFTS_TABLE,
+            FilterExpression: 'userId = :userId',
+            ExpressionAttributeValues: { ':userId': userId },
+        }).promise();
+
+        const drafts = (data.Items || []).sort((a, b) =>
+            new Date(b.updatedAt) - new Date(a.updatedAt)
+        );
+
+        res.json(drafts);
+    } catch (err) {
+        if (err.code === 'ResourceNotFoundException') {
+            return res.json([]);
+        }
+        console.error('Error fetching drafts:', err);
+        res.status(500).json({ error: 'Could not fetch drafts' });
+    }
+});
+
+// Get single draft
+router.get('/drafts/:id', auth, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const data = await dynamoDB.get({
+            TableName: DRAFTS_TABLE,
+            Key: { id },
+        }).promise();
+
+        if (!data.Item) {
+            return res.status(404).json({ error: 'Draft not found' });
+        }
+
+        res.json(data.Item);
+    } catch (err) {
+        console.error('Error fetching draft:', err);
+        res.status(500).json({ error: 'Could not fetch draft' });
+    }
+});
+
+// Delete draft
+router.delete('/drafts/:id', auth, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        await dynamoDB.delete({
+            TableName: DRAFTS_TABLE,
+            Key: { id },
+        }).promise();
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Error deleting draft:', err);
+        res.status(500).json({ error: 'Could not delete draft' });
+    }
+});
+
+// ============ ATTACHMENT HANDLING ============
+
+// Get attachment content
+router.get('/attachment/:accountId/:uid/:attachmentIndex', auth, async (req, res) => {
+    try {
+        const { accountId, uid, attachmentIndex } = req.params;
+
+        const account = await dynamoDB.get({
+            TableName: SMTP_ACCOUNTS_TABLE,
+            Key: { id: accountId }
+        }).promise();
+
+        if (!account.Item || !account.Item.imapConfigured) {
+            return res.status(400).json({ error: 'IMAP not configured' });
+        }
+
+        const imapConfig = {
+            user: account.Item.imapUser || account.Item.username,
+            password: account.Item.imapPassword || account.Item.password,
+            host: account.Item.imapHost,
+            port: account.Item.imapPort || 993,
+            tls: account.Item.imapTls !== false,
+            tlsOptions: { rejectUnauthorized: false },
+        };
+
+        const attachment = await fetchAttachment(imapConfig, Number(uid), Number(attachmentIndex));
+
+        if (!attachment) {
+            return res.status(404).json({ error: 'Attachment not found' });
+        }
+
+        res.setHeader('Content-Type', attachment.contentType || 'application/octet-stream');
+        res.setHeader('Content-Disposition', `attachment; filename="${attachment.filename}"`);
+        res.send(attachment.content);
+    } catch (err) {
+        console.error('Error fetching attachment:', err);
+        res.status(500).json({ error: 'Could not fetch attachment' });
+    }
+});
+
+// Helper function to fetch attachment
+function fetchAttachment(imapConfig, uid, attachmentIndex) {
+    return new Promise((resolve, reject) => {
+        const imap = new Imap(imapConfig);
+        let attachment = null;
+
+        imap.once('ready', () => {
+            imap.openBox('INBOX', true, (err) => {
+                if (err) {
+                    imap.end();
+                    return reject(err);
+                }
+
+                const fetch = imap.fetch(uid, { bodies: '', struct: true });
+
+                fetch.on('message', (msg) => {
+                    let buffer = '';
+
+                    msg.on('body', (stream) => {
+                        stream.on('data', (chunk) => {
+                            buffer += chunk.toString('utf8');
+                        });
+                    });
+
+                    msg.once('end', async () => {
+                        try {
+                            const parsed = await simpleParser(buffer);
+                            if (parsed.attachments && parsed.attachments[attachmentIndex]) {
+                                const att = parsed.attachments[attachmentIndex];
+                                attachment = {
+                                    filename: att.filename,
+                                    contentType: att.contentType,
+                                    content: att.content,
+                                };
+                            }
+                        } catch (e) {
+                            console.error('Error parsing for attachment:', e);
+                        }
+                    });
+                });
+
+                fetch.once('error', (err) => {
+                    imap.end();
+                    reject(err);
+                });
+
+                fetch.once('end', () => {
+                    imap.end();
+                    setTimeout(() => resolve(attachment), 100);
+                });
+            });
+        });
+
+        imap.once('error', reject);
+        imap.connect();
+    });
+}
+
+// ============ THREAD/CONVERSATION VIEW ============
+
+// Get conversation thread
+router.get('/thread/:accountId', auth, async (req, res) => {
+    try {
+        const { accountId } = req.params;
+        const { messageId, references } = req.query;
+
+        // Get all messages for this account
+        const data = await dynamoDB.scan({
+            TableName: INBOX_MESSAGES_TABLE,
+            FilterExpression: 'accountId = :accountId',
+            ExpressionAttributeValues: { ':accountId': accountId },
+        }).promise();
+
+        const allMessages = data.Items || [];
+
+        // Find all messages in the same thread
+        const threadMessages = allMessages.filter(msg => {
+            if (msg.messageId === messageId) return true;
+            if (msg.inReplyTo === messageId) return true;
+            if (references) {
+                const refList = references.split(',').map(r => r.trim());
+                if (refList.includes(msg.messageId)) return true;
+                if (msg.references && msg.references.some(r => refList.includes(r))) return true;
+            }
+            return false;
+        });
+
+        // Sort by date
+        threadMessages.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        res.json(threadMessages);
+    } catch (err) {
+        console.error('Error fetching thread:', err);
+        res.status(500).json({ error: 'Could not fetch thread' });
+    }
+});
+
+// ============ SIGNATURES ============
+
+// Get/Update signature for account
+router.get('/signature/:accountId', auth, async (req, res) => {
+    try {
+        const { accountId } = req.params;
+
+        const account = await dynamoDB.get({
+            TableName: SMTP_ACCOUNTS_TABLE,
+            Key: { id: accountId }
+        }).promise();
+
+        if (!account.Item) {
+            return res.status(404).json({ error: 'Account not found' });
+        }
+
+        res.json({ signature: account.Item.signature || '' });
+    } catch (err) {
+        console.error('Error fetching signature:', err);
+        res.status(500).json({ error: 'Could not fetch signature' });
+    }
+});
+
+router.put('/signature/:accountId', auth, async (req, res) => {
+    try {
+        const { accountId } = req.params;
+        const { signature } = req.body;
+
+        await dynamoDB.update({
+            TableName: SMTP_ACCOUNTS_TABLE,
+            Key: { id: accountId },
+            UpdateExpression: 'SET signature = :signature, updatedAt = :updatedAt',
+            ExpressionAttributeValues: {
+                ':signature': signature || '',
+                ':updatedAt': new Date().toISOString(),
+            },
+        }).promise();
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Error updating signature:', err);
+        res.status(500).json({ error: 'Could not update signature' });
+    }
+});
+
 export default router;

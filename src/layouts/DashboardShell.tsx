@@ -135,18 +135,19 @@ const SIDEBAR_CONTENT: Record<string, {
             {
                 title: 'Folders',
                 items: [
-                    { icon: Inbox, label: 'All Mail', id: 'all' },
+                    { icon: Inbox, label: 'All Mail', id: 'all-mail' },
                     { icon: Mail, label: 'Unread', id: 'unread' },
                     { icon: Star, label: 'Starred', id: 'starred' },
                     { icon: Send, label: 'Sent', id: 'sent' },
+                    { icon: FileText, label: 'Drafts', id: 'drafts' },
                     { icon: Archive, label: 'Archive', id: 'archive' },
                 ],
             },
             {
-                title: 'Labels',
+                title: 'More',
                 items: [
-                    { icon: Folder, label: 'Important', id: 'important' },
-                    { icon: Folder, label: 'Follow Up', id: 'follow-up' },
+                    { icon: Folder, label: 'Spam', id: 'spam' },
+                    { icon: Folder, label: 'Trash', id: 'trash' },
                 ],
             },
         ],

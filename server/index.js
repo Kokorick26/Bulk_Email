@@ -9,6 +9,7 @@ import aiRoutes from './routes/ai.js';
 import inboxRoutes from './routes/inbox.js';
 import discoveryRoutes from './routes/discovery.js';
 import trackingRoutes from './routes/tracking.js';
+import analyticsRoutes from './routes/analytics.js';
 import { resetDailyUsage } from './services/emailRouter.js';
 import { startCampaignScheduler, checkAllCampaignsForReplies } from './services/campaignExecutor.js';
 
@@ -63,6 +64,7 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/inbox', inboxRoutes);
 app.use('/api/discovery', discoveryRoutes);
 app.use('/api/tracking', trackingRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

@@ -463,6 +463,187 @@ async function checkForReplies(smtpAccount, leadEmail, sinceDate) {
     }
 }
 
+// Check for bounces via IMAP
+async function checkForBounces(smtpAccount) {
+    // Only check past 24 hours to avoid re-processing old bounces forever
+    const sinceDate = new Date();
+    sinceDate.setDate(sinceDate.getDate() - 1);
+
+    try {
+        const imap = await getImapConnection(smtpAccount);
+
+        return new Promise((resolve, reject) => {
+            imap.openBox('INBOX', false, (err, box) => {
+                if (err) {
+                    imap.end();
+                    return resolve([]);
+                }
+
+                // Broad search for potential bounce messages
+                const searchCriteria = [
+                    ['SINCE', sinceDate],
+                    ['OR',
+                        ['FROM', 'mailer-daemon'],
+                        ['OR',
+                            ['FROM', 'postmaster'],
+                            ['OR',
+                                ['SUBJECT', 'Delivery Status Notification'],
+                                ['OR',
+                                    ['SUBJECT', 'Undeliverable'],
+                                    ['SUBJECT', 'Returned mail']
+                                ]
+                            ]
+                        ]
+                    ]
+                ];
+
+                imap.search(searchCriteria, (err, results) => {
+                    if (err) {
+                        console.error('[BounceCheck] Search error:', err);
+                        imap.end();
+                        return resolve([]);
+                    }
+
+                    if (!results || results.length === 0) {
+                        imap.end();
+                        return resolve([]);
+                    }
+
+                    // Limit to last 20 bounces to avoid timeout
+                    const recentResults = results.slice(-20);
+
+                    const fetch = imap.fetch(recentResults, {
+                        bodies: ['HEADER', 'TEXT'],
+                        struct: true
+                    });
+
+                    const bounces = [];
+
+                    fetch.on('message', (msg) => {
+                        let emailContent = '';
+
+                        msg.on('body', (stream, info) => {
+                            if (info.which === 'TEXT') {
+                                stream.on('data', (chunk) => {
+                                    emailContent += chunk.toString('utf8');
+                                });
+                            }
+                        });
+
+                        msg.once('end', () => {
+                            // Basic extraction logic
+                            const failedPatterns = [
+                                /Final-Recipient: rfc822; ([^\s\r\n]+)/i,
+                                /Original-Recipient: rfc822;([^\s\r\n]+)/i,
+                                /<([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)>/,
+                                /to\s+([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)\s+failed/i
+                            ];
+
+                            let bouncedEmail = null;
+                            for (const pattern of failedPatterns) {
+                                const match = emailContent.match(pattern);
+                                if (match && match[1]) {
+                                    bouncedEmail = match[1].replace(/[<>]/g, '').trim();
+                                    break;
+                                }
+                            }
+
+                            if (bouncedEmail) {
+                                bounces.push(bouncedEmail);
+                            }
+                        });
+                    });
+
+                    fetch.once('error', (err) => {
+                        console.error('[BounceCheck] Fetch error:', err);
+                        imap.end();
+                        resolve([]);
+                    });
+
+                    fetch.once('end', () => {
+                        imap.end();
+                        console.log(`[BounceCheck] Found ${bounces.length} potential bounces on ${smtpAccount.fromEmail}`);
+                        resolve([...new Set(bounces)]);
+                    });
+                });
+            });
+        });
+    } catch (error) {
+        console.error('[BounceCheck] Connection error:', error.message);
+        return [];
+    }
+}
+
+// Process bounces for a specific account
+async function processBouncesForAccount(smtpAccount) {
+    if (!smtpAccount?.imapHost) return;
+
+    try {
+        const bouncedEmails = await checkForBounces(smtpAccount);
+
+        if (bouncedEmails.length === 0) return;
+
+        console.log(`[BounceProcessor] Processing ${bouncedEmails.length} bounces for account ${smtpAccount.fromEmail}`);
+
+        // Find leads with these emails in ACTIVE campaigns
+        // Since we don't know the campaign ID, we have to scan or query efficiently.
+        // For efficiency, we'll scan active campaigns first, then check their leads.
+
+        const activeCampaigns = await dynamoDB.scan({
+            TableName: CAMPAIGNS_TABLE,
+            FilterExpression: '#status = :active',
+            ExpressionAttributeNames: { '#status': 'status' },
+            ExpressionAttributeValues: { ':active': 'active' }
+        }).promise();
+
+        for (const campaign of (activeCampaigns.Items || [])) {
+            const leads = campaign.leads || [];
+
+            for (const email of bouncedEmails) {
+                const leadIndex = leads.findIndex(l => l.email.toLowerCase() === email.toLowerCase());
+
+                if (leadIndex !== -1 && leads[leadIndex].status !== 'bounced') {
+                    // Found a match! Update status.
+                    await updateLeadStatusInCampaign(campaign.id, email, 'bounced');
+
+                    // Also update LeadProgress if exists
+                    const progressId = `${campaign.id}-${leads[leadIndex].id || email}`;
+                    try {
+                        await dynamoDB.update({
+                            TableName: LEAD_PROGRESS_TABLE,
+                            Key: { id: progressId },
+                            UpdateExpression: 'SET #status = :bounced, updatedAt = :now',
+                            ExpressionAttributeNames: { '#status': 'status' },
+                            ExpressionAttributeValues: {
+                                ':bounced': 'bounced',
+                                ':now': new Date().toISOString()
+                            }
+                        }).promise();
+                    } catch (e) {
+                        // ignore if progress record doesn't exist
+                    }
+
+                    // Increment bounce count
+                    await dynamoDB.update({
+                        TableName: CAMPAIGNS_TABLE,
+                        Key: { id: campaign.id },
+                        UpdateExpression: 'SET bounceCount = if_not_exists(bounceCount, :zero) + :one',
+                        ExpressionAttributeValues: {
+                            ':zero': 0,
+                            ':one': 1
+                        }
+                    }).promise();
+
+                    console.log(`[BounceProcessor] Marked lead ${email} as bounced in campaign ${campaign.name}`);
+                }
+            }
+        }
+
+    } catch (error) {
+        console.error('[BounceProcessor] Error processing bounces:', error);
+    }
+}
+
 // Initialize lead progress for a campaign
 async function initializeLeadProgress(campaignId, leads, smtpAccounts = []) {
     //  FIX: Deduplicate leads by email to prevent duplicate sends
@@ -1319,7 +1500,7 @@ export function stopCampaignScheduler() {
 // Check all active campaigns for replies
 export async function checkAllCampaignsForReplies() {
     try {
-        console.log('[ReplyChecker] Checking all campaigns for replies...');
+        console.log('[ReplyChecker] Checking all campaigns for replies and bounces...');
 
         // Get all active campaigns
         const campaignsData = await dynamoDB.scan({
@@ -1335,9 +1516,11 @@ export async function checkAllCampaignsForReplies() {
         const campaigns = campaignsData.Items || [];
         console.log(`[ReplyChecker] Found ${campaigns.length} active campaigns`);
 
+        const processedBounceAccounts = new Set();
+
         for (const campaign of campaigns) {
             // Get first SMTP account for this campaign
-            const smtpAccountId = campaign.smtpAccountIds?.[0];
+            const smtpAccountId = campaign.smtpAccountIds?.[0] || campaign.options?.smtpAccountId;
             if (!smtpAccountId) continue;
 
             const smtpData = await dynamoDB.get({
@@ -1346,12 +1529,19 @@ export async function checkAllCampaignsForReplies() {
             }).promise();
 
             if (!smtpData.Item) continue;
+            const account = smtpData.Item;
 
             // Check for replies (stopOnReply = true to stop sequences)
-            await checkCampaignReplies(campaign, smtpData.Item, true);
+            await checkCampaignReplies(campaign, account, true);
+
+            // Check for bounces (only once per account per run)
+            if (!processedBounceAccounts.has(account.id)) {
+                await processBouncesForAccount(account);
+                processedBounceAccounts.add(account.id);
+            }
         }
 
-        console.log('[ReplyChecker] Reply check complete');
+        console.log('[ReplyChecker] Reply and bounce check complete');
     } catch (error) {
         console.error('[ReplyChecker] Error:', error);
     }

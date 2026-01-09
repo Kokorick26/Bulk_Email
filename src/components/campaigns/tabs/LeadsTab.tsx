@@ -1893,10 +1893,15 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                                     </pre>
                                 ) : (
                                     <div className={cn(
-                                        'flex items-center justify-center py-16',
+                                        'flex flex-col items-center justify-center py-16 text-center',
                                         theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                                     )}>
-                                        <p className="text-sm">No email content available</p>
+                                        <Mail className="w-10 h-10 mb-3 opacity-50" />
+                                        <p className="text-sm font-medium mb-1">Email content not stored</p>
+                                        <p className="text-xs max-w-sm">
+                                            This email was sent before content logging was enabled.
+                                            New emails will show their full content here.
+                                        </p>
                                     </div>
                                 )}
                             </div>

@@ -16,6 +16,7 @@ import { useTheme } from '../../lib/ThemeContext';
 import { useDashboardContext } from '../../layouts/DashboardShell';
 import InboxView from './InboxView';
 import SentView from './SentView';
+import DraftsView from './DraftsView';
 import { CampaignsList, CampaignWizard, CampaignDetail } from '../campaigns';
 import type { Campaign as OrganizedCampaign } from '../campaigns';
 import { LeadDiscovery } from '../discovery';
@@ -203,6 +204,19 @@ export default function UnifiedDashboard() {
 
         // Inbox
         if (activeSection === 'inbox') {
+            // Show Drafts view if drafts folder is selected
+            if (activeSubItem === 'drafts') {
+                return (
+                    <DraftsView
+                        smtpAccounts={smtpAccounts.map(a => ({
+                            id: a.id,
+                            name: a.name,
+                            fromEmail: a.fromEmail,
+                        }))}
+                        onBack={() => setActiveSubItem('all-mail')}
+                    />
+                );
+            }
             return <InboxView smtpAccounts={smtpAccounts} campaigns={organizedCampaigns} onRefreshAccounts={fetchData} />;
         }
 
