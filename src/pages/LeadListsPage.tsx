@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Plus, Users, Search, Trash2, Edit3, Download, Upload,
     MoreHorizontal, FolderPlus, ChevronRight, CheckCircle2,
-    X, Clock, Globe, Loader2, Mail, Send, Megaphone
+    X, Clock, Globe, Loader2, Mail, Send, Megaphone,
+    ShieldCheck, AlertTriangle, XCircle
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useTheme } from '../lib/ThemeContext';
@@ -37,6 +38,7 @@ const columns = [
     { id: 'company', label: 'Company', width: 'w-40' },
     { id: 'country', label: 'Country', width: 'w-32' },
     { id: 'timezone', label: 'Timezone', width: 'w-40' },
+    { id: 'bounceStatus', label: 'Status', width: 'w-24' },
 ];
 
 const countryOptions = [
@@ -87,6 +89,52 @@ export function LeadListsPage({ onNavigateToCampaign }: LeadListsPageProps) {
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
     const [showExportModal, setShowExportModal] = useState(false);
     const [exporting, setExporting] = useState(false);
+
+    // Bounce checking state
+    const [checkingBounces, setCheckingBounces] = useState(false);
+    const [bounceResults, setBounceResults] = useState<Record<string, { status: string; reason: string }>>({});
+
+    // Check email bounces
+    const checkEmailBounces = useCallback(async () => {
+        if (!selectedList || selectedList.leads.length === 0) return;
+
+        setCheckingBounces(true);
+        try {
+            const token = localStorage.getItem('bulkEmailToken');
+            const emails = selectedList.leads.map(l => l.email).filter(Boolean);
+
+            const response = await fetch('/api/bulk-email/validate-emails', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ emails })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const resultsMap: Record<string, { status: string; reason: string }> = {};
+                for (const result of data.results || []) {
+                    resultsMap[result.email] = { status: result.status, reason: result.reason };
+                }
+                setBounceResults(resultsMap);
+
+                // Update leads with bounce status
+                const updatedLeads = selectedList.leads.map(lead => ({
+                    ...lead,
+                    bounceStatus: resultsMap[lead.email]?.status || 'unknown'
+                }));
+                const updatedList = { ...selectedList, leads: updatedLeads };
+                setSelectedList(updatedList);
+                saveList(updatedList);
+            }
+        } catch (err) {
+            console.error('Error checking bounces:', err);
+        } finally {
+            setCheckingBounces(false);
+        }
+    }, [selectedList]);
 
     // Fetch lead lists
     const fetchLeadLists = useCallback(async () => {
@@ -504,6 +552,43 @@ export function LeadListsPage({ onNavigateToCampaign }: LeadListsPageProps) {
         const isEditing = editingCell?.rowId === lead.id && editingCell?.field === field;
         const value = (lead as any)[field] || '';
 
+        // Special handling for bounceStatus column - read-only with icons
+        if (field === 'bounceStatus') {
+            const status = (lead as any).bounceStatus || bounceResults[lead.email]?.status;
+            if (!status) {
+                return (
+                    <span className={cn('text-[10px]', theme === 'dark' ? 'text-gray-600' : 'text-gray-400')}>
+                        —
+                    </span>
+                );
+            }
+            if (status === 'valid') {
+                return (
+                    <div className="flex items-center gap-1" title="Valid email">
+                        <ShieldCheck className="w-3.5 h-3.5 text-green-500" />
+                        <span className="text-[10px] text-green-500">Valid</span>
+                    </div>
+                );
+            }
+            if (status === 'invalid') {
+                return (
+                    <div className="flex items-center gap-1" title={bounceResults[lead.email]?.reason || 'Invalid'}>
+                        <XCircle className="w-3.5 h-3.5 text-red-500" />
+                        <span className="text-[10px] text-red-500">Invalid</span>
+                    </div>
+                );
+            }
+            if (status === 'risky') {
+                return (
+                    <div className="flex items-center gap-1" title={bounceResults[lead.email]?.reason || 'Risky'}>
+                        <AlertTriangle className="w-3.5 h-3.5 text-yellow-500" />
+                        <span className="text-[10px] text-yellow-500">Risky</span>
+                    </div>
+                );
+            }
+            return <span className="text-[10px] text-gray-500">{status}</span>;
+        }
+
         if (isEditing) {
             if (field === 'country') {
                 return (
@@ -792,6 +877,24 @@ export function LeadListsPage({ onNavigateToCampaign }: LeadListsPageProps) {
                                 >
                                     <Download className="w-3 h-3" />
                                     Export
+                                </button>
+                                <button
+                                    onClick={checkEmailBounces}
+                                    disabled={checkingBounces || selectedList.leads.length === 0}
+                                    className={cn(
+                                        'flex items-center gap-1 h-7 px-2.5 rounded text-[10px] font-medium border transition-colors',
+                                        theme === 'dark'
+                                            ? 'border-blue-500/50 text-blue-400 hover:bg-blue-500/20'
+                                            : 'border-blue-300 text-blue-600 hover:bg-blue-50',
+                                        'disabled:opacity-50'
+                                    )}
+                                >
+                                    {checkingBounces ? (
+                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                    ) : (
+                                        <ShieldCheck className="w-3 h-3" />
+                                    )}
+                                    {checkingBounces ? 'Checking...' : 'Check Bounces'}
                                 </button>
                                 <button
                                     onClick={() => {

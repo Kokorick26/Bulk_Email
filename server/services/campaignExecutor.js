@@ -82,24 +82,30 @@ function replaceVariables(text, data, senderProfile = {}) {
     };
 
     // Merge recipient data with sender profile mapping
-    const safeData = {
-        name: cleanValue(data.name),
-        company: cleanValue(data.company),
-        firstName: cleanValue(data.firstName),
-        lastName: cleanValue(data.lastName),
-        email: cleanValue(data.email),
+    const safeData = {};
 
-        // Sender Profile Mappings (Handle {{senderName}} style)
-        senderName: cleanValue(senderProfile.senderFullName || senderProfile.fromName),
-        senderFullName: cleanValue(senderProfile.senderFullName || senderProfile.fromName),
-        senderPosition: cleanValue(senderProfile.senderPosition),
-        senderCompany: cleanValue(senderProfile.senderCompany),
-        senderPhone: cleanValue(senderProfile.senderPhone),
-        senderWebsite: cleanValue(senderProfile.senderWebsite),
-        senderLinkedIn: cleanValue(senderProfile.senderLinkedIn),
-        senderAddress: cleanValue(senderProfile.senderAddress),
-        senderSignature: cleanValue(senderProfile.senderSignature),
-    };
+    // 1. Map ALL lead data fields dynamically (sanitized) to support custom variables
+    Object.keys(data).forEach(key => {
+        safeData[key] = cleanValue(data[key]);
+    });
+
+    // 2. Explicitly ensure core fields are present and safe (overwriting if needed for consistency)
+    safeData.name = cleanValue(data.name);
+    safeData.company = cleanValue(data.company);
+    safeData.firstName = cleanValue(data.firstName);
+    safeData.lastName = cleanValue(data.lastName);
+    safeData.email = cleanValue(data.email);
+
+    // 3. Sender Profile Mappings (Handle {{senderName}} style)
+    safeData.senderName = cleanValue(senderProfile.senderFullName || senderProfile.fromName);
+    safeData.senderFullName = cleanValue(senderProfile.senderFullName || senderProfile.fromName);
+    safeData.senderPosition = cleanValue(senderProfile.senderPosition);
+    safeData.senderCompany = cleanValue(senderProfile.senderCompany);
+    safeData.senderPhone = cleanValue(senderProfile.senderPhone);
+    safeData.senderWebsite = cleanValue(senderProfile.senderWebsite);
+    safeData.senderLinkedIn = cleanValue(senderProfile.senderLinkedIn);
+    safeData.senderAddress = cleanValue(senderProfile.senderAddress);
+    safeData.senderSignature = cleanValue(senderProfile.senderSignature);
 
     // Handle {{First Name}}, {{Last Name}}, {{Company Name}} etc with spaces
     const spacedMappings = {
@@ -753,41 +759,53 @@ async function initializeLeadProgress(campaignId, leads, smtpAccounts = []) {
 // Get all leads that need emails sent for a campaign
 async function getLeadsNeedingEmails(campaignId, sequence, options) {
     try {
+        // FIX: Include 'sent' status (new) in addition to 'pending' and 'in_progress' (backwards compatibility)
         const data = await dynamoDB.scan({
             TableName: LEAD_PROGRESS_TABLE,
-            FilterExpression: 'campaignId = :campaignId AND #status IN (:pending, :inProgress)',
+            FilterExpression: 'campaignId = :campaignId AND #status IN (:pending, :inProgress, :sent)',
             ExpressionAttributeNames: { '#status': 'status' },
             ExpressionAttributeValues: {
                 ':campaignId': campaignId,
                 ':pending': 'pending',
-                ':inProgress': 'in_progress'
+                ':inProgress': 'in_progress',
+                ':sent': 'sent'
             }
         }).promise();
 
         const now = new Date();
         const leadsToProcess = [];
+        const totalLeads = (data.Items || []).length;
+
+        console.log(`[SequenceCheck] Found ${totalLeads} leads with pending/in_progress/sent status for campaign ${campaignId}`);
+        console.log(`[SequenceCheck] Sequence has ${sequence.steps.length} step(s)`);
 
         for (const progress of data.Items || []) {
+            const leadEmail = progress.leadEmail || progress.leadData?.email || 'unknown';
+
             // Skip if replied and stopOnReply is enabled
             if (options.stopOnReply && progress.hasReplied) {
+                console.log(`[SequenceCheck] Skipping ${leadEmail}: hasReplied=true, stopOnReply enabled`);
                 continue;
             }
 
             // Skip if clicked and stopOnClick is enabled
             if (options.stopOnClick && progress.hasClicked) {
+                console.log(`[SequenceCheck] Skipping ${leadEmail}: hasClicked=true, stopOnClick enabled`);
                 continue;
             }
 
-            const currentStep = progress.currentStep;
+            const currentStep = progress.currentStep || 0;
             const totalSteps = sequence.steps.length;
 
             // Check if all steps completed
             if (currentStep >= totalSteps) {
+                console.log(`[SequenceCheck] Skipping ${leadEmail}: all ${totalSteps} steps completed`);
                 continue;
             }
 
             // For first step (currentStep = 0), send immediately
             if (currentStep === 0) {
+                console.log(`[SequenceCheck] ✓ ${leadEmail}: Ready for step 1 (first email)`);
                 leadsToProcess.push({
                     progress,
                     stepIndex: 0,
@@ -797,27 +815,41 @@ async function getLeadsNeedingEmails(campaignId, sequence, options) {
             }
 
             // For subsequent steps, check if delay has passed
-            const previousStep = sequence.steps[currentStep - 1];
+            if (!progress.lastStepSentAt) {
+                console.log(`[SequenceCheck] Skipping ${leadEmail}: currentStep=${currentStep} but lastStepSentAt is null`);
+                continue;
+            }
+
             const lastSentAt = new Date(progress.lastStepSentAt);
-            const delayMs = ((sequence.steps[currentStep].delayDays || 0) * 24 * 60 +
-                (sequence.steps[currentStep].delayHours || 0)) * 60 * 1000;
+            const currentStepConfig = sequence.steps[currentStep];
+            const delayDays = currentStepConfig.delayDays || 0;
+            const delayHours = currentStepConfig.delayHours || 0;
+            const delayMs = ((delayDays * 24 * 60) + (delayHours * 60)) * 60 * 1000;
             const nextSendTime = new Date(lastSentAt.getTime() + delayMs);
 
+            const timeRemaining = nextSendTime.getTime() - now.getTime();
+            const hoursRemaining = Math.round(timeRemaining / (1000 * 60 * 60) * 10) / 10;
+
             if (now >= nextSendTime) {
+                console.log(`[SequenceCheck] ✓ ${leadEmail}: Ready for step ${currentStep + 1} (delay of ${delayDays}d ${delayHours}h has passed)`);
                 leadsToProcess.push({
                     progress,
                     stepIndex: currentStep,
-                    step: sequence.steps[currentStep]
+                    step: currentStepConfig
                 });
+            } else {
+                console.log(`[SequenceCheck] Waiting ${leadEmail}: step ${currentStep + 1} in ${hoursRemaining}h (delay: ${delayDays}d ${delayHours}h)`);
             }
         }
 
+        console.log(`[SequenceCheck] Total leads ready to process: ${leadsToProcess.length}`);
         return leadsToProcess;
     } catch (err) {
         console.error('[CampaignExecutor] Error getting leads:', err);
         return [];
     }
 }
+
 
 // Send a single email for a campaign step
 async function sendStepEmail(campaign, lead, step, stepIndex, smtpAccountId) {
@@ -915,15 +947,21 @@ async function sendStepEmail(campaign, lead, step, stepIndex, smtpAccountId) {
         }).promise();
 
         // Update lead progress
+        // FIX: Use 'sent' status so analytics correctly counts sent emails
+        // Only use 'completed' when ALL steps are done
+        const newStep = stepIndex + 1;
+        const allStepsComplete = newStep >= campaign.sequence.steps.length;
+
         await dynamoDB.update({
             TableName: LEAD_PROGRESS_TABLE,
             Key: { id: lead.progress.id },
             UpdateExpression: 'SET currentStep = :step, lastStepSentAt = :sentAt, #status = :status, stepHistory = list_append(stepHistory, :history), updatedAt = :updatedAt',
             ExpressionAttributeNames: { '#status': 'status' },
             ExpressionAttributeValues: {
-                ':step': stepIndex + 1,
+                ':step': newStep,
                 ':sentAt': new Date().toISOString(),
-                ':status': stepIndex + 1 >= campaign.sequence.steps.length ? 'completed' : 'in_progress',
+                // FIX: Use 'sent' status for analytics - 'in_progress' was not being counted
+                ':status': allStepsComplete ? 'completed' : 'sent',
                 ':history': [{
                     stepIndex,
                     sentAt: new Date().toISOString(),
@@ -978,20 +1016,39 @@ async function checkCampaignReplies(campaign, smtpAccount, stopOnReply = true) {
     // Always check for replies to track them, stopOnReply controls whether to stop the sequence
 
     try {
+        // FIX: Also check 'sent' status leads - they may have been marked sent but haven't replied yet
         const data = await dynamoDB.scan({
             TableName: LEAD_PROGRESS_TABLE,
-            FilterExpression: 'campaignId = :campaignId AND hasReplied = :hasReplied AND #status IN (:inProgress, :pending)',
+            FilterExpression: 'campaignId = :campaignId AND hasReplied = :hasReplied AND #status IN (:inProgress, :pending, :sent)',
             ExpressionAttributeNames: { '#status': 'status' },
             ExpressionAttributeValues: {
                 ':campaignId': campaign.id,
                 ':hasReplied': false,
                 ':inProgress': 'in_progress',
-                ':pending': 'pending'
+                ':pending': 'pending',
+                ':sent': 'sent'
             }
         }).promise();
 
-        for (const progress of data.Items || []) {
-            if (!progress.lastStepSentAt) continue;
+        const leadsToCheck = data.Items || [];
+        console.log(`[ReplyChecker] Checking ${leadsToCheck.length} leads for replies in campaign ${campaign.id}`);
+
+        let repliesFound = 0;
+
+        for (const progress of leadsToCheck) {
+            // Skip if no email has been sent yet
+            if (!progress.lastStepSentAt) {
+                continue;
+            }
+
+            // Check if this lead used this specific SMTP account (if we know)
+            // But also check all accounts if the lead doesn't have a specific sendingAccountId
+            if (progress.sendingAccountId && progress.sendingAccountId !== smtpAccount.id) {
+                // This lead used a different account, skip (we'll check with that account later)
+                continue;
+            }
+
+            console.log(`[ReplyChecker] Checking inbox for reply from ${progress.leadEmail} (sent: ${progress.lastStepSentAt})`);
 
             const replyResult = await checkForReplies(
                 smtpAccount,
@@ -1000,8 +1057,10 @@ async function checkCampaignReplies(campaign, smtpAccount, stopOnReply = true) {
             );
 
             if (replyResult.hasReplied) {
-                console.log(`[CampaignExecutor] Detected reply from ${progress.leadEmail}: "${replyResult.subject}"`);
+                repliesFound++;
+                console.log(`[ReplyChecker] ✓ REPLY FOUND from ${progress.leadEmail}: "${replyResult.subject}"`);
 
+                // Update LeadProgress
                 await dynamoDB.update({
                     TableName: LEAD_PROGRESS_TABLE,
                     Key: { id: progress.id },
@@ -1019,6 +1078,9 @@ async function checkCampaignReplies(campaign, smtpAccount, stopOnReply = true) {
                     }
                 }).promise();
 
+                // Update the lead status in campaign's leads array (for UI display)
+                await updateLeadStatusInCampaign(campaign.id, progress.leadEmail, 'replied');
+
                 // Update campaign reply count
                 await dynamoDB.update({
                     TableName: CAMPAIGNS_TABLE,
@@ -1031,10 +1093,15 @@ async function checkCampaignReplies(campaign, smtpAccount, stopOnReply = true) {
                 }).promise();
             }
         }
+
+        if (repliesFound > 0) {
+            console.log(`[ReplyChecker] Found ${repliesFound} new replies for campaign ${campaign.id}`);
+        }
     } catch (error) {
         console.error('[CampaignExecutor] Error checking replies:', error);
     }
 }
+
 
 // Main campaign execution function
 export async function executeCampaign(campaignId) {
@@ -1514,30 +1581,108 @@ export async function checkAllCampaignsForReplies() {
         }).promise();
 
         const campaigns = campaignsData.Items || [];
-        console.log(`[ReplyChecker] Found ${campaigns.length} active campaigns`);
+        console.log(`[ReplyChecker] Found ${campaigns.length} active/paused campaigns to check`);
 
         const processedBounceAccounts = new Set();
+        const processedReplyAccounts = new Set(); // Track accounts we've checked for each campaign
 
         for (const campaign of campaigns) {
-            // Get first SMTP account for this campaign
-            const smtpAccountId = campaign.smtpAccountIds?.[0] || campaign.options?.smtpAccountId;
-            if (!smtpAccountId) continue;
+            console.log(`[ReplyChecker] Processing campaign: ${campaign.name} (${campaign.id})`);
 
-            const smtpData = await dynamoDB.get({
-                TableName: SMTP_ACCOUNTS_TABLE,
-                Key: { id: smtpAccountId }
-            }).promise();
+            // FIX: Get SMTP accounts from multiple sources
+            // Priority: 1. LeadProgress records, 2. campaign.options.selectedAccountIds, 3. campaign.options.smtpAccountId, 4. All available accounts
 
-            if (!smtpData.Item) continue;
-            const account = smtpData.Item;
+            // First, try to get account IDs from LeadProgress records for this campaign
+            let accountIdsToCheck = new Set();
 
-            // Check for replies (stopOnReply = true to stop sequences)
-            await checkCampaignReplies(campaign, account, true);
+            try {
+                const progressData = await dynamoDB.scan({
+                    TableName: LEAD_PROGRESS_TABLE,
+                    FilterExpression: 'campaignId = :campaignId AND attribute_exists(sendingAccountId)',
+                    ExpressionAttributeValues: {
+                        ':campaignId': campaign.id
+                    }
+                }).promise();
 
-            // Check for bounces (only once per account per run)
-            if (!processedBounceAccounts.has(account.id)) {
-                await processBouncesForAccount(account);
-                processedBounceAccounts.add(account.id);
+                const progressItems = progressData.Items || [];
+                for (const progress of progressItems) {
+                    if (progress.sendingAccountId) {
+                        accountIdsToCheck.add(progress.sendingAccountId);
+                    }
+                }
+
+                console.log(`[ReplyChecker] Found ${accountIdsToCheck.size} unique accounts from LeadProgress for campaign ${campaign.id}`);
+            } catch (err) {
+                console.log(`[ReplyChecker] Could not query LeadProgress: ${err.message}`);
+            }
+
+            // If no accounts found in LeadProgress, try campaign options
+            if (accountIdsToCheck.size === 0) {
+                if (campaign.options?.selectedAccountIds?.length > 0) {
+                    campaign.options.selectedAccountIds.forEach(id => accountIdsToCheck.add(id));
+                    console.log(`[ReplyChecker] Using ${accountIdsToCheck.size} accounts from campaign.options.selectedAccountIds`);
+                } else if (campaign.options?.smtpAccountId) {
+                    accountIdsToCheck.add(campaign.options.smtpAccountId);
+                    console.log(`[ReplyChecker] Using single account from campaign.options.smtpAccountId`);
+                }
+            }
+
+            // If still no accounts, get all SMTP accounts as fallback
+            if (accountIdsToCheck.size === 0) {
+                console.log(`[ReplyChecker] No specific accounts found, fetching all SMTP accounts`);
+                try {
+                    const allAccountsData = await dynamoDB.scan({
+                        TableName: SMTP_ACCOUNTS_TABLE
+                    }).promise();
+
+                    for (const acc of (allAccountsData.Items || [])) {
+                        accountIdsToCheck.add(acc.id);
+                    }
+                    console.log(`[ReplyChecker] Using ${accountIdsToCheck.size} total SMTP accounts`);
+                } catch (err) {
+                    console.error(`[ReplyChecker] Could not fetch SMTP accounts: ${err.message}`);
+                }
+            }
+
+            if (accountIdsToCheck.size === 0) {
+                console.log(`[ReplyChecker] No SMTP accounts available for campaign ${campaign.id}, skipping`);
+                continue;
+            }
+
+            // Check replies and bounces for each account
+            for (const smtpAccountId of accountIdsToCheck) {
+                const cacheKey = `${campaign.id}-${smtpAccountId}`;
+
+                // Skip if we've already checked this campaign-account combo
+                if (processedReplyAccounts.has(cacheKey)) continue;
+                processedReplyAccounts.add(cacheKey);
+
+                try {
+                    const smtpData = await dynamoDB.get({
+                        TableName: SMTP_ACCOUNTS_TABLE,
+                        Key: { id: smtpAccountId }
+                    }).promise();
+
+                    if (!smtpData.Item) {
+                        console.log(`[ReplyChecker] SMTP account ${smtpAccountId} not found, skipping`);
+                        continue;
+                    }
+
+                    const account = smtpData.Item;
+                    console.log(`[ReplyChecker] Checking replies for campaign ${campaign.id} via account ${account.fromEmail}`);
+
+                    // Check for replies (stopOnReply from campaign options)
+                    const stopOnReply = campaign.options?.stopOnReply !== false; // Default true
+                    await checkCampaignReplies(campaign, account, stopOnReply);
+
+                    // Check for bounces (only once per account per run, not per campaign)
+                    if (!processedBounceAccounts.has(account.id)) {
+                        await processBouncesForAccount(account);
+                        processedBounceAccounts.add(account.id);
+                    }
+                } catch (accountErr) {
+                    console.error(`[ReplyChecker] Error checking account ${smtpAccountId}: ${accountErr.message}`);
+                }
             }
         }
 

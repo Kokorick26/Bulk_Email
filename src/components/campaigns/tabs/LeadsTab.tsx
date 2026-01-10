@@ -1263,12 +1263,7 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                             variant="outline"
                             size="sm"
                             onClick={() => setShowLeadBuilder(true)}
-                            className={cn(
-                                'h-8 text-xs gap-1.5',
-                                theme === 'dark'
-                                    ? 'border-neutral-700 text-gray-300 hover:bg-neutral-800'
-                                    : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                            )}
+                            className="h-8 text-xs gap-1.5 border-orange-500/50 text-orange-500 hover:bg-orange-500/10"
                         >
                             <Edit3 className="w-3.5 h-3.5" />
                             Edit Leads
@@ -1277,12 +1272,7 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                         <div className="relative group">
                             <Button
                                 size="sm"
-                                className={cn(
-                                    'h-8 text-xs gap-1.5',
-                                    theme === 'dark'
-                                        ? 'bg-blue-600 hover:bg-blue-500 text-white'
-                                        : 'bg-blue-600 hover:bg-blue-700 text-white'
-                                )}
+                                className="h-8 text-xs gap-1.5 bg-orange-500 hover:bg-orange-600 text-white"
                             >
                                 <Plus className="w-3.5 h-3.5" />
                                 Add Leads
@@ -1333,22 +1323,23 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                 {/* Table Container */}
                 <div className="flex-1 overflow-hidden">
                     <ScrollArea className="h-full">
-                        <Table>
+                        {/* FIX: Added table-fixed to prevent layout shift when content loads */}
+                        <Table className="table-fixed w-full">
                             <TableHeader className="sticky top-0 z-10">
                                 <TableRow className={cn(
                                     'border-b',
                                     theme === 'dark' ? 'bg-[#0d0d0d] border-neutral-800' : 'bg-gray-50 border-gray-200'
                                 )}>
-                                    <TableHead className={cn('w-12', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>#</TableHead>
-                                    <TableHead className={cn('min-w-[200px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Email</TableHead>
-                                    <TableHead className={cn('min-w-[120px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Name</TableHead>
-                                    <TableHead className={cn('min-w-[120px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Company</TableHead>
-                                    <TableHead className={cn('min-w-[130px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Sent / Scheduled</TableHead>
-                                    <TableHead className={cn('min-w-[160px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Sending Account</TableHead>
-                                    <TableHead className={cn('min-w-[100px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Timezone</TableHead>
-                                    <TableHead className={cn('min-w-[100px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Status</TableHead>
-                                    <TableHead className={cn('min-w-[80px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Reply</TableHead>
-                                    <TableHead className={cn('min-w-[80px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Actions</TableHead>
+                                    <TableHead className={cn('w-[50px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>#</TableHead>
+                                    <TableHead className={cn('w-[200px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Email</TableHead>
+                                    <TableHead className={cn('w-[120px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Name</TableHead>
+                                    <TableHead className={cn('w-[100px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Company</TableHead>
+                                    <TableHead className={cn('w-[110px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Sent / Scheduled</TableHead>
+                                    <TableHead className={cn('w-[180px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Sending Account</TableHead>
+                                    <TableHead className={cn('w-[100px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Timezone</TableHead>
+                                    <TableHead className={cn('w-[80px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Status</TableHead>
+                                    <TableHead className={cn('w-[60px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Reply</TableHead>
+                                    <TableHead className={cn('w-[80px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -1371,16 +1362,19 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                                                 {index + 1}
                                             </TableCell>
                                             <TableCell className={cn(
+                                                'truncate',
                                                 theme === 'dark' ? 'text-white' : 'text-gray-900'
                                             )}>
                                                 {lead.email}
                                             </TableCell>
                                             <TableCell className={cn(
+                                                'truncate',
                                                 theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
                                             )}>
                                                 {[lead.firstName, lead.lastName].filter(Boolean).join(' ') || '-'}
                                             </TableCell>
                                             <TableCell className={cn(
+                                                'truncate',
                                                 theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                                             )}>
                                                 {lead.company || '-'}
@@ -1443,13 +1437,13 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                                                     </span>
                                                 )}
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell className="overflow-hidden">
                                                 {isPending && smtpAccounts.length > 0 ? (
                                                     <select
                                                         value={lead.sendingAccountId || smtpAccounts[pendingIndex % smtpAccounts.length]?.id || ''}
                                                         onChange={(e) => handleLeadAccountChange(lead.id, e.target.value)}
                                                         className={cn(
-                                                            'w-full px-2 py-1 rounded text-xs border appearance-none cursor-pointer',
+                                                            'w-full max-w-[160px] px-2 py-1 rounded text-xs border appearance-none cursor-pointer truncate',
                                                             theme === 'dark'
                                                                 ? 'bg-[#252525] border-gray-700 text-white'
                                                                 : 'bg-white border-gray-200 text-gray-900'
@@ -1463,13 +1457,13 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                                                     </select>
                                                 ) : lead.sendingAccountId ? (
                                                     // ✅ Show assigned account with icon
-                                                    <div className="flex items-center gap-2">
+                                                    <div className="flex items-center gap-2 max-w-[160px]">
                                                         <Mail className={cn(
-                                                            'w-3 h-3',
+                                                            'w-3 h-3 flex-shrink-0',
                                                             theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
                                                         )} />
                                                         <span className={cn(
-                                                            'text-xs font-medium',
+                                                            'text-xs font-medium truncate',
                                                             theme === 'dark' ? 'text-white' : 'text-gray-900'
                                                         )}>
                                                             {smtpAccounts.find(a => a.id === lead.sendingAccountId)?.fromEmail || 'Unknown'}
@@ -1533,7 +1527,7 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                                                         <div className="flex flex-col gap-0.5">
                                                             <span className={cn(
                                                                 'px-1.5 py-0.5 rounded text-[10px] font-semibold inline-block w-fit uppercase tracking-wide',
-                                                                lead.status === 'sent' && 'bg-blue-500/20 text-blue-400',
+                                                                lead.status === 'sent' && 'bg-orange-500 text-white',
                                                                 lead.status === 'opened' && 'bg-emerald-500/20 text-emerald-400',
                                                                 lead.status === 'clicked' && 'bg-purple-500/20 text-purple-400',
                                                                 lead.status === 'replied' && 'bg-amber-500/20 text-amber-400',
@@ -1585,12 +1579,7 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                                                             setSelectedEmailLog(latestLog);
                                                             setShowEmailPreview(true);
                                                         }}
-                                                        className={cn(
-                                                            'flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-all',
-                                                            theme === 'dark'
-                                                                ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30'
-                                                                : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
-                                                        )}
+                                                        className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium bg-orange-500/20 text-orange-400 hover:bg-orange-500/30"
                                                     >
                                                         <Eye className="w-3 h-3" />
                                                         Preview
@@ -1733,32 +1722,17 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                                 theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-white'
                             )}
                         >
-                            {/* Modal Header */}
-                            <div className={cn(
-                                'flex items-center justify-between px-6 py-4 border-b flex-shrink-0',
-                                theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
-                            )}>
+                            {/* Modal Header - Orange themed */}
+                            <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-orange-500 to-orange-600 flex-shrink-0">
                                 <div className="flex items-center gap-3">
-                                    <div className={cn(
-                                        'p-2 rounded-lg',
-                                        theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-100'
-                                    )}>
-                                        <Mail className={cn(
-                                            'w-5 h-5',
-                                            theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
-                                        )} />
+                                    <div className="p-2 rounded-lg bg-white/20">
+                                        <Mail className="w-5 h-5 text-white" />
                                     </div>
                                     <div>
-                                        <h3 className={cn(
-                                            'text-lg font-semibold',
-                                            theme === 'dark' ? 'text-white' : 'text-gray-900'
-                                        )}>
+                                        <h3 className="text-lg font-semibold text-white">
                                             Email Preview
                                         </h3>
-                                        <p className={cn(
-                                            'text-xs',
-                                            theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                                        )}>
+                                        <p className="text-xs text-white/70">
                                             Sent to {selectedEmailLog.email}
                                         </p>
                                     </div>
@@ -1768,10 +1742,7 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                                         setShowEmailPreview(false);
                                         setSelectedEmailLog(null);
                                     }}
-                                    className={cn(
-                                        'p-2 rounded-lg transition-colors',
-                                        theme === 'dark' ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'
-                                    )}
+                                    className="p-2 rounded-lg transition-colors hover:bg-white/20 text-white"
                                 >
                                     <X className="w-5 h-5" />
                                 </button>
@@ -1841,10 +1812,10 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                                         theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                                     )}>Status:</span>
                                     <span className={cn(
-                                        'px-2 py-0.5 rounded-full text-xs font-medium',
-                                        selectedEmailLog.status === 'sent' && 'bg-emerald-500/20 text-emerald-400',
+                                        'px-2 py-0.5 rounded text-xs font-medium',
+                                        selectedEmailLog.status === 'sent' && 'bg-orange-500 text-white',
                                         selectedEmailLog.status === 'failed' && 'bg-red-500/20 text-red-400',
-                                        selectedEmailLog.status === 'opened' && 'bg-blue-500/20 text-blue-400',
+                                        selectedEmailLog.status === 'opened' && 'bg-emerald-500/20 text-emerald-400',
                                         selectedEmailLog.status === 'clicked' && 'bg-purple-500/20 text-purple-400',
                                         selectedEmailLog.status === 'replied' && 'bg-amber-500/20 text-amber-400'
                                     )}>
@@ -1891,6 +1862,24 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                                     )}>
                                         {selectedEmailLog.textContent}
                                     </pre>
+                                ) : campaignSequence?.steps && selectedEmailLog.stepIndex !== undefined ? (
+                                    // Fallback: Show sequence step template
+                                    <div
+                                        className={cn(
+                                            'p-6',
+                                            theme === 'dark' ? 'bg-[#202020]' : 'bg-white'
+                                        )}
+                                    >
+                                        <div className={cn(
+                                            'text-xs mb-4 px-3 py-2 rounded',
+                                            theme === 'dark' ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-600'
+                                        )}>
+                                            Showing template from Step {selectedEmailLog.stepIndex + 1}. Actual sent email may have personalized variables.
+                                        </div>
+                                        <div dangerouslySetInnerHTML={{
+                                            __html: campaignSequence.steps[selectedEmailLog.stepIndex]?.body || 'No content available'
+                                        }} />
+                                    </div>
                                 ) : (
                                     <div className={cn(
                                         'flex flex-col items-center justify-center py-16 text-center',

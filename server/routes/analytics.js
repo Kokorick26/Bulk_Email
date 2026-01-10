@@ -104,12 +104,14 @@ router.get('/campaign/:campaignId', auth, async (req, res) => {
         const statusCounts = {
             pending: 0,
             sent: 0,
+            in_progress: 0,  // FIX: Also track in_progress for backwards compatibility
             opened: 0,
             clicked: 0,
             replied: 0,
             bounced: 0,
             failed: 0,
-            unsubscribed: 0
+            unsubscribed: 0,
+            completed: 0  // FIX: Track completed status
         };
 
         leads.forEach(lead => {
@@ -159,7 +161,8 @@ router.get('/campaign/:campaignId', auth, async (req, res) => {
 
         // 6. Build analytics response
         const totalLeads = leads.length || campaign.totalRecipients || 0;
-        const sentCount = statusCounts.sent + statusCounts.opened + statusCounts.clicked + statusCounts.replied;
+        // FIX: Also count 'in_progress' and 'completed' status as sent for backwards compatibility
+        const sentCount = statusCounts.sent + statusCounts.in_progress + statusCounts.completed + statusCounts.opened + statusCounts.clicked + statusCounts.replied;
         const openCount = uniqueOpens.size || campaign.openCount || 0;
         const clickCount = uniqueClicks.size || campaign.clickCount || 0;
         const replyCount = statusCounts.replied || campaign.replyCount || 0;
@@ -387,7 +390,8 @@ router.post('/recalculate/:campaignId', auth, async (req, res) => {
 
         leads.forEach(lead => {
             const status = lead.status;
-            if (['sent', 'opened', 'clicked', 'replied'].includes(status)) sentCount++;
+            // FIX: Also count 'in_progress' and 'completed' as sent for backwards compatibility
+            if (['sent', 'in_progress', 'completed', 'opened', 'clicked', 'replied'].includes(status)) sentCount++;
             if (status === 'failed') failedCount++;
             if (status === 'replied') replyCount++;
             if (status === 'bounced') bounceCount++;

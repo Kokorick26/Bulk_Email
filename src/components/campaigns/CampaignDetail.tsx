@@ -16,6 +16,7 @@ import {
 } from '../ui/DropdownMenu';
 import { LeadsTab, SequencesTab, ScheduleTab, OptionsTab, AnalyticsTab, AccountsTab, HistoryTab } from './tabs';
 import type { Campaign, CampaignTab, Lead, Sequence, CampaignSchedule, CampaignOptions } from './types';
+import { cache } from '../../lib/cache';
 
 interface AIContext {
     recipientCount: number;
@@ -83,7 +84,38 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
 
     useEffect(() => {
         const fetchCampaignData = async () => {
-            setLoading(true);
+            // Try cache first
+            let hasCachedData = false;
+            try {
+                const cachedData = await cache.get<any>('campaigns', campaignId);
+                if (cachedData) {
+                    const data = cachedData;
+                    setCampaign({
+                        id: data.id || campaignId,
+                        name: data.name || 'My Campaign',
+                        status: data.status || 'draft',
+                        createdAt: data.createdAt || new Date().toISOString(),
+                        totalRecipients: data.totalRecipients || 0,
+                        sentCount: data.sentCount || 0,
+                        failedCount: data.failedCount || 0,
+                        openCount: data.openCount || 0,
+                        clickCount: data.clickCount || 0,
+                        replyCount: data.replyCount || 0,
+                        progress: data.progress || 0,
+                    });
+                    if (data.leads) setLeads(data.leads);
+                    if (data.sequence) setSequence(data.sequence);
+                    if (data.schedule) setSchedule(data.schedule);
+                    if (data.options) setOptions(data.options);
+                    setLoading(false);
+                    hasCachedData = true;
+                }
+            } catch (err) {
+                console.error('Cache read error:', err);
+            }
+
+            if (!hasCachedData) setLoading(true);
+
             try {
                 const token = localStorage.getItem('bulkEmailToken');
 
@@ -94,6 +126,10 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
 
                 if (response.ok) {
                     const data = await response.json();
+
+                    // Update Cache
+                    await cache.set('campaigns', campaignId, data);
+
                     setCampaign({
                         id: data.id || campaignId,
                         name: data.name || 'My Campaign',
@@ -113,8 +149,8 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
                     if (data.sequence) setSequence(data.sequence);
                     if (data.schedule) setSchedule(data.schedule);
                     if (data.options) setOptions(data.options);
-                } else {
-                    // Use mock data for demo
+                } else if (!hasCachedData) {
+                    // Use mock data for demo only if no cache
                     setCampaign({
                         id: campaignId,
                         name: 'My Campaign',
@@ -128,17 +164,19 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
                 }
             } catch (error) {
                 console.error('Error fetching campaign:', error);
-                // Use mock data
-                setCampaign({
-                    id: campaignId,
-                    name: 'My Campaign',
-                    status: 'draft',
-                    createdAt: new Date().toISOString(),
-                    totalRecipients: 0,
-                    sentCount: 0,
-                    failedCount: 0,
-                    progress: 0,
-                });
+                if (!hasCachedData) {
+                    // Use mock data
+                    setCampaign({
+                        id: campaignId,
+                        name: 'My Campaign',
+                        status: 'draft',
+                        createdAt: new Date().toISOString(),
+                        totalRecipients: 0,
+                        sentCount: 0,
+                        failedCount: 0,
+                        progress: 0,
+                    });
+                }
             } finally {
                 setLoading(false);
             }
@@ -429,7 +467,7 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
                     </div>
                 ) : activeTab === 'history' ? (
                     <div className="flex-1 overflow-hidden">
-                        <HistoryTab campaignId={campaignId} />
+                        <HistoryTab campaignId={campaignId} sequence={sequence} />
                     </div>
                 ) : activeTab === 'sequences' ? (
                     <div className="flex-1 overflow-hidden">

@@ -1,5 +1,6 @@
 import { useState, createContext, useContext, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { io, Socket } from 'socket.io-client';
 import {
     Mail, LogOut, Menu, X, User, Settings, Search, Bell, Crown,
     LayoutDashboard, Megaphone, Target, Users, Server, Inbox,
@@ -9,7 +10,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import UnifiedDashboard from '../components/mail/UnifiedDashboard';
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -20,6 +21,7 @@ import {
 import { Avatar, AvatarFallback } from '../components/ui/Avatar';
 import { useTheme } from '../lib/ThemeContext';
 import { ScrollArea } from '../components/ui/ScrollArea';
+import NotificationPanel from '../components/notifications/NotificationPanel';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONTEXT
@@ -40,6 +42,7 @@ interface DashboardContextType {
     setInboxFilterCampaignId: (id: string | null) => void;
     inboxViewMode: 'selection' | 'inbox';
     setInboxViewMode: (mode: 'selection' | 'inbox') => void;
+    socket: Socket | null;
 }
 
 const DashboardContext = createContext<DashboardContextType | null>(null);
@@ -564,6 +567,25 @@ function DetailSidebar({
 // Header
 function Header({ isDark, onLogout }: { isDark: boolean; onLogout: () => void }) {
     const [searchFocused, setSearchFocused] = useState(false);
+    const [notificationOpen, setNotificationOpen] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    // Fetch unread notification count
+    useEffect(() => {
+        const fetchUnreadCount = async () => {
+            try {
+                const token = localStorage.getItem('bulkEmailToken');
+                const res = await fetch('/api/notifications', { headers: { Authorization: `Bearer ${token}` } });
+                if (res.ok) {
+                    const data = await res.json();
+                    setUnreadCount(data.unreadCount || 0);
+                }
+            } catch (e) { /* ignore */ }
+        };
+        fetchUnreadCount();
+        const interval = setInterval(fetchUnreadCount, 60000);
+        return () => clearInterval(interval);
+    }, []);
 
     return (
         <header className={cn(
@@ -609,13 +631,26 @@ function Header({ isDark, onLogout }: { isDark: boolean; onLogout: () => void })
             {/* Right */}
             <div className="flex items-center gap-2">
 
-                <button className={cn(
-                    "relative p-2 rounded-lg transition-colors",
-                    isDark ? 'text-neutral-400 hover:text-white hover:bg-neutral-800' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
-                )}>
-                    <Bell className="w-[18px] h-[18px]" />
-                    <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-orange-500" />
-                </button>
+                <div className="relative">
+                    <button
+                        onClick={() => setNotificationOpen(!notificationOpen)}
+                        className={cn(
+                            "relative p-2 rounded-lg transition-colors",
+                            isDark ? 'text-neutral-400 hover:text-white hover:bg-neutral-800' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+                        )}
+                    >
+                        <Bell className="w-[18px] h-[18px]" />
+                        {unreadCount > 0 && (
+                            <span className="absolute top-1 right-1 min-w-[14px] h-3.5 px-1 rounded-full bg-orange-500 text-[9px] font-bold text-white flex items-center justify-center">
+                                {unreadCount > 9 ? '9+' : unreadCount}
+                            </span>
+                        )}
+                    </button>
+                    <NotificationPanel
+                        isOpen={notificationOpen}
+                        onClose={() => setNotificationOpen(false)}
+                    />
+                </div>
 
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -695,6 +730,63 @@ export default function DashboardShell() {
     const [inboxFilterAccountIds, setInboxFilterAccountIds] = useState<string[]>([]);
     const [inboxFilterCampaignId, setInboxFilterCampaignId] = useState<string | null>(null);
     const [inboxViewMode, setInboxViewMode] = useState<'selection' | 'inbox'>('selection');
+    const [socket, setSocket] = useState<Socket | null>(null);
+
+    // Initialize Socket
+    useEffect(() => {
+        const token = localStorage.getItem('bulkEmailToken');
+        // Decode token to get userId (simple way, or just emit event after connect)
+        // Ideally we pass token in auth handshake
+
+        const newSocket = io(window.location.origin, {
+            withCredentials: true,
+            // You can pass query params or auth here if needed for handshake
+            // auth: { token } 
+        });
+
+        newSocket.on('connect', () => {
+            console.log('Socket connected:', newSocket.id);
+            // Join user room
+            // We need userId. For now let's assume we can get it or we emit a join event
+            // Decode token payload manually if needed, or fetch profile
+            // Let's just emit a "join" event with the token payload if server verifies it
+            // Or easier: fetch profile to get ID then emit join
+
+            // For now, let's fetch profile to get ID
+            const token = localStorage.getItem('bulkEmailToken');
+            if (token) {
+                // Decode payload (base64)
+                try {
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    if (payload.userId) {
+                        newSocket.emit('join_user', payload.userId);
+                    }
+                } catch (e) { console.error('Token decode error', e); }
+            }
+        });
+
+        newSocket.on('NEW_EMAILS', (data: any) => {
+            console.log('New emails received:', data);
+            toast.info(`New email in ${data.folder}`, {
+                description: `Received ${data.messages.length} new message(s)`
+            });
+
+            // Update counters locally
+            setInboxCounts(prev => ({
+                ...prev,
+                all: prev.all + data.messages.length,
+                unread: prev.unread + data.messages.length, // Assuming they are unread
+                // Update specific folder counts
+                [data.folder.toLowerCase()]: (prev as any)[data.folder.toLowerCase()] ? (prev as any)[data.folder.toLowerCase()] + data.messages.length : data.messages.length
+            }));
+        });
+
+        setSocket(newSocket);
+
+        return () => {
+            newSocket.disconnect();
+        };
+    }, []);
 
     useEffect(() => {
         // If we have active filters, ensure we are in inbox mode
@@ -746,7 +838,8 @@ export default function DashboardShell() {
             inboxFilterCampaignId,
             setInboxFilterCampaignId,
             inboxViewMode,
-            setInboxViewMode
+            setInboxViewMode,
+            socket
         }}>
             <div className={cn("h-screen flex flex-col overflow-hidden", isDark ? 'bg-[#0a0a0a]' : 'bg-gray-50')}>
                 <Toaster

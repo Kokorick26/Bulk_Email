@@ -6,20 +6,76 @@ import { fileURLToPath } from 'url';
 import bulkEmailRoutes from './routes/bulk-email.js';
 import authRoutes from './routes/auth.js';
 import aiRoutes from './routes/ai.js';
-import inboxRoutes from './routes/inbox.js';
+import inboxRoutes, { checkForNewEmails } from './routes/inbox.js';
 import discoveryRoutes from './routes/discovery.js';
 import trackingRoutes from './routes/tracking.js';
 import analyticsRoutes from './routes/analytics.js';
+import notificationRoutes from './routes/notification.js';
 import { resetDailyUsage } from './services/emailRouter.js';
 import { startCampaignScheduler, checkAllCampaignsForReplies } from './services/campaignExecutor.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+import http from 'http';
+import { initSocket } from './services/socketService.js';
+
+// ... (previous imports)
+
 const app = express();
+const server = http.createServer(app); // Create HTTP server
 const PORT = process.env.PORT || 5000;
 
-// FIX: Validate required environment variables
+// Initialize Socket.IO
+initSocket(server);
+
+// ... (middleware)
+
+// Start server
+// Start server
+server.listen(PORT, '0.0.0.0', () => { // Use server.listen instead of app.listen
+    console.log(`🚀 Bulk Email Server running on port ${PORT}`);
+
+    //  Start campaign scheduler (checks every 5 minutes)
+    startCampaignScheduler(5);
+
+    //  Start reply checker (checks every 5 minutes)
+    setInterval(() => {
+        checkAllCampaignsForReplies();
+    }, 5 * 60 * 1000); // Every 5 minutes
+
+    // Run once immediately
+    setTimeout(() => checkAllCampaignsForReplies(), 30000); // After 30 seconds
+
+    //  Schedule daily cleanup at 2 AM
+    const now = new Date();
+    const tomorrow2AM = new Date(now);
+    tomorrow2AM.setDate(tomorrow2AM.getDate() + 1);
+    tomorrow2AM.setHours(2, 0, 0, 0);
+
+    const msUntil2AM = tomorrow2AM.getTime() - now.getTime();
+
+    setTimeout(() => {
+        resetDailyUsage();
+        // Then run every 24 hours
+        setInterval(resetDailyUsage, 24 * 60 * 60 * 1000);
+    }, msUntil2AM);
+
+    console.log(' Campaign scheduler started');
+    console.log(' Reply checker started (every 5 minutes)');
+    console.log(` Daily cleanup scheduled for ${tomorrow2AM.toLocaleTimeString()}`);
+
+    // ✅ Start background inbox poller (checks every 2 minutes)
+    setInterval(() => {
+        checkForNewEmails();
+    }, 2 * 60 * 1000); // Every 2 minutes
+
+    // Run inbox check after 45 seconds (after reply checker)
+    setTimeout(() => checkForNewEmails(), 45000);
+
+    console.log(' Inbox poller started (every 2 minutes)');
+});
+
 const requiredEnvVars = ['AWS_REGION', 'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'];
 for (const envVar of requiredEnvVars) {
     if (!process.env[envVar]) {
@@ -65,6 +121,7 @@ app.use('/api/inbox', inboxRoutes);
 app.use('/api/discovery', discoveryRoutes);
 app.use('/api/tracking', trackingRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -81,39 +138,7 @@ if (process.env.NODE_ENV === 'production') {
     });
 }
 
-// Start server
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Bulk Email Server running on port ${PORT}`);
 
-    //  Start campaign scheduler (checks every 5 minutes)
-    startCampaignScheduler(5);
-
-    //  Start reply checker (checks every 5 minutes)
-    setInterval(() => {
-        checkAllCampaignsForReplies();
-    }, 5 * 60 * 1000); // Every 5 minutes
-
-    // Run once immediately
-    setTimeout(() => checkAllCampaignsForReplies(), 30000); // After 30 seconds
-
-    //  Schedule daily cleanup at 2 AM
-    const now = new Date();
-    const tomorrow2AM = new Date(now);
-    tomorrow2AM.setDate(tomorrow2AM.getDate() + 1);
-    tomorrow2AM.setHours(2, 0, 0, 0);
-
-    const msUntil2AM = tomorrow2AM.getTime() - now.getTime();
-
-    setTimeout(() => {
-        resetDailyUsage();
-        // Then run every 24 hours
-        setInterval(resetDailyUsage, 24 * 60 * 60 * 1000);
-    }, msUntil2AM);
-
-    console.log(' Campaign scheduler started');
-    console.log(' Reply checker started (every 5 minutes)');
-    console.log(` Daily cleanup scheduled for ${tomorrow2AM.toLocaleTimeString()}`);
-});
 
 // FIX: Global error handlers to prevent crashes
 process.on('unhandledRejection', (reason, promise) => {

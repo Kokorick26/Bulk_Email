@@ -87,7 +87,8 @@ export default function InboxView({ smtpAccounts, campaigns = [], onRefreshAccou
         inboxFilterCampaignId,
         setInboxFilterCampaignId,
         inboxViewMode: viewMode,
-        setInboxViewMode: setViewMode
+        setInboxViewMode: setViewMode,
+        socket
     } = useDashboardContext();
     const isDark = theme === 'dark';
 
@@ -179,13 +180,14 @@ export default function InboxView({ smtpAccounts, campaigns = [], onRefreshAccou
     const fetchMessages = useCallback(async (fresh = false) => {
         if (!selectedAccount) return;
 
+        // Always try cache first (unless explicitly fresh)
         if (!fresh) {
             try {
                 const cachedMessages = await cache.getCachedMessages(selectedAccount.id, activeFolder);
                 if (cachedMessages && cachedMessages.length > 0) {
                     setMessages(cachedMessages);
                     setLoading(false);
-                    return;
+                    return; // Use cache, don't fetch
                 }
             } catch (e) {
                 console.error('Cache read error:', e);
@@ -200,6 +202,7 @@ export default function InboxView({ smtpAccounts, campaigns = [], onRefreshAccou
             const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
             if (fresh) {
+                // Fresh fetch from IMAP
                 const res = await fetch(`${API_BASE}/fetch/${selectedAccount.id}`, {
                     method: 'POST',
                     headers,
@@ -217,6 +220,7 @@ export default function InboxView({ smtpAccounts, campaigns = [], onRefreshAccou
                 await cache.cacheMessages(selectedAccount.id, activeFolder, fetchedMessages);
                 toast.success(`Fetched ${data.count} emails`);
             } else {
+                // Get from DynamoDB cache
                 const res = await fetch(`${API_BASE}/messages/${selectedAccount.id}?folder=${activeFolder}`, { headers });
                 if (res.ok) {
                     const data = await res.json();
@@ -234,19 +238,75 @@ export default function InboxView({ smtpAccounts, campaigns = [], onRefreshAccou
     }, [selectedAccount, activeFolder]);
 
     const [prevFolder, setPrevFolder] = useState<string>('INBOX');
+    const [prevAccount, setPrevAccount] = useState<string | null>(null);
 
+    // Use cache-first strategy when switching folders
     useEffect(() => {
-        if (selectedAccount?.imapConfigured) {
-            const folderChanged = prevFolder !== activeFolder;
-            if (folderChanged) {
-                setPrevFolder(activeFolder);
-                setMessages([]);
-                fetchMessages(true);
-            } else {
-                fetchMessages(false);
-            }
+        if (!selectedAccount?.imapConfigured) return;
+
+        const folderChanged = prevFolder !== activeFolder;
+        const accountChanged = prevAccount !== selectedAccount.id;
+
+        if (folderChanged || accountChanged) {
+            setPrevFolder(activeFolder);
+            setPrevAccount(selectedAccount.id);
+
+            // Try to show cached data immediately
+            (async () => {
+                const cachedMessages = await cache.getCachedMessages(selectedAccount.id, activeFolder);
+                if (cachedMessages && cachedMessages.length > 0) {
+                    // Show cached data immediately
+                    setMessages(cachedMessages);
+                    setLoading(false);
+
+                    // Background refresh only if cache is old (> 2 min)
+                    const cacheAge = Date.now() - (cachedMessages as any)._cacheTime || 0;
+                    if (cacheAge > 2 * 60 * 1000) {
+                        // Silently refresh in background
+                        fetchMessages(false);
+                    }
+                } else {
+                    // No cache, fetch from server
+                    setMessages([]);
+                    fetchMessages(false);
+                }
+            })();
         }
     }, [selectedAccount, activeFolder]);
+
+    // Real-time updates
+    useEffect(() => {
+        if (!socket || !selectedAccount) return;
+
+        const handleNewEmails = async (data: any) => {
+            // Check if update is for current account
+            if (data.accountId === selectedAccount.id) {
+                // Update cache for this folder (even if not currently viewing)
+                await cache.appendMessages(data.accountId, data.folder, data.messages);
+
+                // Update UI if viewing this folder
+                if (data.folder === activeFolder) {
+                    setMessages(prev => {
+                        // Filter out any duplicates (just in case)
+                        const existingIds = new Set(prev.map(m => m.id));
+                        const newUnique = data.messages.filter((m: Message) => !existingIds.has(m.id));
+
+                        if (newUnique.length === 0) return prev;
+
+                        const updated = [...newUnique, ...prev];
+                        // Sort by date desc
+                        return updated.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                    });
+                }
+            }
+        };
+
+        socket.on('NEW_EMAILS', handleNewEmails);
+
+        return () => {
+            socket.off('NEW_EMAILS', handleNewEmails);
+        };
+    }, [socket, selectedAccount, activeFolder]);
 
     const handleMarkAsRead = async (message: Message) => {
         if (!message.uid || message.isRead) return;
@@ -795,20 +855,13 @@ export default function InboxView({ smtpAccounts, campaigns = [], onRefreshAccou
             </ScrollArea>
 
             {/* Floating Compose Button */}
-            <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+            <button
                 onClick={handleCompose}
-                className={cn(
-                    'absolute bottom-6 right-6 flex items-center gap-2 px-5 py-3 rounded-2xl shadow-lg transition-all font-medium',
-                    isDark
-                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                        : 'bg-blue-600 hover:bg-blue-700 text-white'
-                )}
+                className="absolute bottom-6 right-6 flex items-center gap-2 px-5 py-3 rounded-none shadow-lg font-medium bg-orange-500 text-white"
             >
                 <Pencil className="w-5 h-5" />
                 <span className="hidden sm:inline">Compose</span>
-            </motion.button>
+            </button>
 
             <ImapConfigDialog
                 open={showImapConfig}

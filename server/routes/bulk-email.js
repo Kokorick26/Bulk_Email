@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import dynamoDB from '../db.js';
 import auth from '../middleware/auth.js';
 import nodemailer from 'nodemailer';
-import { executeCampaign, startCampaignScheduler } from '../services/campaignExecutor.js';
+import { executeCampaign, startCampaignScheduler, checkAllCampaignsForReplies } from '../services/campaignExecutor.js';
 
 const router = express.Router();
 const CAMPAIGNS_TABLE = 'EmailCampaigns';
@@ -2219,4 +2219,226 @@ router.get('/debug/logs/:campaignId', auth, async (req, res) => {
     }
 });
 
+// ============ MANUAL REPLY CHECKING ============
+
+// Manually trigger reply checking for all campaigns
+router.post('/check-replies', auth, async (req, res) => {
+    try {
+        console.log('[ManualReplyCheck] Manually triggered reply check by user');
+
+        // Run the check in the background
+        checkAllCampaignsForReplies();
+
+        res.json({
+            message: 'Reply check started! Check server logs for progress.',
+            note: 'This process runs in the background and may take a few minutes depending on the number of campaigns.'
+        });
+    } catch (err) {
+        console.error('Manual reply check error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Manually trigger reply checking for a specific campaign
+router.post('/campaigns/:campaignId/check-replies', auth, async (req, res) => {
+    const { campaignId } = req.params;
+
+    try {
+        console.log(`[ManualReplyCheck] Checking replies for campaign ${campaignId}`);
+
+        // Get campaign
+        const campaignData = await dynamoDB.get({
+            TableName: CAMPAIGNS_TABLE,
+            Key: { id: campaignId }
+        }).promise();
+
+        if (!campaignData.Item) {
+            return res.status(404).json({ error: 'Campaign not found' });
+        }
+
+        const campaign = campaignData.Item;
+
+        // Get all unique SMTP accounts used by this campaign's leads
+        const progressData = await dynamoDB.scan({
+            TableName: LEAD_PROGRESS_TABLE,
+            FilterExpression: 'campaignId = :campaignId',
+            ExpressionAttributeValues: { ':campaignId': campaignId }
+        }).promise();
+
+        const accountIds = [...new Set((progressData.Items || [])
+            .map(p => p.sendingAccountId)
+            .filter(Boolean))];
+
+        if (accountIds.length === 0) {
+            // Fallback: get all SMTP accounts
+            const allAccounts = await dynamoDB.scan({ TableName: SMTP_ACCOUNTS_TABLE }).promise();
+            accountIds.push(...(allAccounts.Items || []).map(a => a.id));
+        }
+
+        console.log(`[ManualReplyCheck] Found ${accountIds.length} accounts to check for campaign ${campaignId}`);
+
+        let repliesFound = 0;
+
+        for (const accountId of accountIds) {
+            const accountData = await dynamoDB.get({
+                TableName: SMTP_ACCOUNTS_TABLE,
+                Key: { id: accountId }
+            }).promise();
+
+            if (!accountData.Item) continue;
+
+            const account = accountData.Item;
+            console.log(`[ManualReplyCheck] Checking account ${account.fromEmail}`);
+
+            // Check leads for this account
+            const leadsToCheck = (progressData.Items || []).filter(p =>
+                (!p.sendingAccountId || p.sendingAccountId === accountId) &&
+                !p.hasReplied &&
+                p.lastStepSentAt
+            );
+
+            const Imap = (await import('imap')).default;
+
+            for (const progress of leadsToCheck) {
+                try {
+                    // Create IMAP connection
+                    const imap = new Imap({
+                        user: account.imapUser || account.username,
+                        password: account.imapPassword || account.password,
+                        host: account.imapHost || account.host.replace('smtp', 'imap'),
+                        port: account.imapPort || 993,
+                        tls: account.imapTls !== false,
+                        tlsOptions: { rejectUnauthorized: false }
+                    });
+
+                    const hasReply = await new Promise((resolve) => {
+                        imap.once('ready', () => {
+                            imap.openBox('INBOX', true, (err) => {
+                                if (err) {
+                                    imap.end();
+                                    return resolve(false);
+                                }
+
+                                const searchCriteria = [
+                                    ['FROM', progress.leadEmail],
+                                    ['SINCE', new Date(progress.lastStepSentAt)]
+                                ];
+
+                                imap.search(searchCriteria, (err, results) => {
+                                    imap.end();
+                                    resolve(!err && results && results.length > 0);
+                                });
+                            });
+                        });
+
+                        imap.once('error', () => resolve(false));
+                        imap.connect();
+                    });
+
+                    if (hasReply) {
+                        repliesFound++;
+                        console.log(`[ManualReplyCheck] ✓ Found reply from ${progress.leadEmail}`);
+
+                        // Update the lead
+                        await dynamoDB.update({
+                            TableName: LEAD_PROGRESS_TABLE,
+                            Key: { id: progress.id },
+                            UpdateExpression: 'SET hasReplied = :true, #status = :replied, updatedAt = :now',
+                            ExpressionAttributeNames: { '#status': 'status' },
+                            ExpressionAttributeValues: {
+                                ':true': true,
+                                ':replied': 'replied',
+                                ':now': new Date().toISOString()
+                            }
+                        }).promise();
+
+                        // Update campaign reply count
+                        await dynamoDB.update({
+                            TableName: CAMPAIGNS_TABLE,
+                            Key: { id: campaignId },
+                            UpdateExpression: 'SET replyCount = if_not_exists(replyCount, :zero) + :one',
+                            ExpressionAttributeValues: { ':zero': 0, ':one': 1 }
+                        }).promise();
+                    }
+                } catch (leadErr) {
+                    console.log(`[ManualReplyCheck] Error checking ${progress.leadEmail}: ${leadErr.message}`);
+                }
+            }
+        }
+
+        res.json({
+            message: `Reply check complete for campaign ${campaignId}`,
+            repliesFound,
+            leadsChecked: (progressData.Items || []).length
+        });
+    } catch (err) {
+        console.error('Manual campaign reply check error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ============ EMAIL VALIDATION / BOUNCE CHECK ============
+
+// Validate emails (check format and MX records)
+router.post('/validate-emails', auth, async (req, res) => {
+    try {
+        const { emails } = req.body;
+
+        if (!emails || !Array.isArray(emails)) {
+            return res.status(400).json({ error: 'emails array is required' });
+        }
+
+        const dns = await import('dns').then(m => m.promises);
+        const results = [];
+
+        for (const email of emails) {
+            const result = { email, isValid: false, status: 'invalid', reason: '' };
+
+            // Basic email format check
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                result.reason = 'Invalid email format';
+                results.push(result);
+                continue;
+            }
+
+            // Extract domain
+            const domain = email.split('@')[1];
+
+            try {
+                // Check MX records (can the domain receive email?)
+                const mxRecords = await dns.resolveMx(domain);
+
+                if (mxRecords && mxRecords.length > 0) {
+                    result.isValid = true;
+                    result.status = 'valid';
+                    result.reason = 'MX records found';
+                } else {
+                    result.status = 'risky';
+                    result.reason = 'No MX records found';
+                }
+            } catch (dnsErr) {
+                if (dnsErr.code === 'ENOTFOUND' || dnsErr.code === 'ENODATA') {
+                    result.status = 'invalid';
+                    result.reason = 'Domain does not exist';
+                } else if (dnsErr.code === 'ETIMEOUT') {
+                    result.status = 'risky';
+                    result.reason = 'DNS lookup timeout';
+                } else {
+                    result.status = 'risky';
+                    result.reason = 'Could not verify domain';
+                }
+            }
+
+            results.push(result);
+        }
+
+        res.json({ results });
+    } catch (err) {
+        console.error('Email validation error:', err);
+        res.status(500).json({ error: 'Email validation failed' });
+    }
+});
+
 export default router;
+

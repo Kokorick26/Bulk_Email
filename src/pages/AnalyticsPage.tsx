@@ -75,11 +75,11 @@ export default function AnalyticsPage() {
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                 <StatCard
-                    label="Total Emails Sent"
-                    value={stats.totalSent}
-                    icon={Mail}
+                    label="People Visited"
+                    value={stats.totalOpens}
+                    icon={Globe}
                     isDark={isDark}
-                    change="+12%"
+                    change={stats.totalOpens > 0 ? `${((stats.totalOpens / (stats.totalSent || 1)) * 100).toFixed(0)}% of recipients` : undefined}
                 />
                 <StatCard
                     label="Total Opens"

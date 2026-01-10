@@ -36,6 +36,7 @@
         "cors": "^2.8.5",
         "d3-scale": "^4.0.2",
         "d3-scale-chromatic": "^3.1.0",
+        "date-fns": "^4.1.0",
         "dotenv": "^16.4.7",
         "express": "^4.21.2",
         "framer-motion": "^12.23.26",
@@ -54,6 +55,8 @@
         "recharts": "^3.6.0",
         "remark-breaks": "^4.0.0",
         "remark-gfm": "^4.0.1",
+        "socket.io": "^4.8.3",
+        "socket.io-client": "^4.8.3",
         "sonner": "^1.7.1",
         "tailwind-merge": "^3.4.0",
         "uuid": "^11.0.3"

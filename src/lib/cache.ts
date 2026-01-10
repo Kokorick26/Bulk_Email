@@ -135,12 +135,31 @@ class IndexedDBCache {
     // Convenience methods for specific stores
     async cacheMessages(accountId: string, folder: string, messages: any[]): Promise<void> {
         const key = `${accountId}:${folder}`;
-        await this.set('messages', key, messages, 10 * 60 * 1000); // 10 min TTL
+        // Add cache timestamp to messages for age tracking
+        const messagesWithTime = messages.map(m => ({ ...m, _cacheTime: Date.now() }));
+        await this.set('messages', key, messagesWithTime, 15 * 60 * 1000); // 15 min TTL
     }
 
     async getCachedMessages(accountId: string, folder: string): Promise<any[] | null> {
         const key = `${accountId}:${folder}`;
         return this.get('messages', key);
+    }
+
+    // Add new messages to existing cache (for real-time updates)
+    async appendMessages(accountId: string, folder: string, newMessages: any[]): Promise<void> {
+        const key = `${accountId}:${folder}`;
+        const existing = await this.get<any[]>('messages', key) || [];
+
+        // Filter out duplicates and add new ones
+        const existingIds = new Set(existing.map(m => m.id));
+        const unique = newMessages.filter(m => !existingIds.has(m.id));
+
+        if (unique.length > 0) {
+            const merged = [...unique.map(m => ({ ...m, _cacheTime: Date.now() })), ...existing];
+            // Sort by date descending
+            merged.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            await this.set('messages', key, merged, 15 * 60 * 1000);
+        }
     }
 
     async cacheAccounts(accounts: any[]): Promise<void> {

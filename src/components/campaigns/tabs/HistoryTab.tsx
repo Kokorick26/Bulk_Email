@@ -31,9 +31,10 @@ interface EmailLog {
 interface HistoryTabProps {
     campaignId: string;
     className?: string;
+    sequence?: any;
 }
 
-export function HistoryTab({ campaignId, className }: HistoryTabProps) {
+export function HistoryTab({ campaignId, className, sequence }: HistoryTabProps) {
     const { theme } = useTheme();
     const [loading, setLoading] = useState(true);
     const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
@@ -41,6 +42,9 @@ export function HistoryTab({ campaignId, className }: HistoryTabProps) {
     const [statusFilter, setStatusFilter] = useState<'all' | 'sent' | 'failed' | 'opened' | 'clicked' | 'replied'>('all');
     const [showEmailPreview, setShowEmailPreview] = useState(false);
     const [selectedEmailLog, setSelectedEmailLog] = useState<EmailLog | null>(null);
+
+    // Helpers for preview logic
+    const getLogsForLead = (email: string) => emailLogs.filter(log => log.email === email).sort((a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime());
 
     // Fetch email logs
     const fetchEmailLogs = useCallback(async () => {
@@ -97,7 +101,7 @@ export function HistoryTab({ campaignId, className }: HistoryTabProps) {
     // Get status icon
     const getStatusIcon = (status: string) => {
         switch (status) {
-            case 'sent': return <CheckCircle className="w-4 h-4 text-emerald-500" />;
+            case 'sent': return <CheckCircle className="w-4 h-4 text-orange-500" />;
             case 'failed': return <AlertCircle className="w-4 h-4 text-red-500" />;
             case 'opened': return <Eye className="w-4 h-4 text-blue-500" />;
             case 'clicked': return <MousePointer className="w-4 h-4 text-purple-500" />;
@@ -327,7 +331,7 @@ export function HistoryTab({ campaignId, className }: HistoryTabProps) {
                                                 {getStatusIcon(log.status)}
                                                 <span className={cn(
                                                     'text-xs font-medium capitalize',
-                                                    log.status === 'sent' && 'text-emerald-500',
+                                                    log.status === 'sent' && 'text-orange-500',
                                                     log.status === 'failed' && 'text-red-500',
                                                     log.status === 'opened' && 'text-blue-500',
                                                     log.status === 'clicked' && 'text-purple-500',
@@ -343,12 +347,7 @@ export function HistoryTab({ campaignId, className }: HistoryTabProps) {
                                                     setSelectedEmailLog(log);
                                                     setShowEmailPreview(true);
                                                 }}
-                                                className={cn(
-                                                    'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all',
-                                                    theme === 'dark'
-                                                        ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30'
-                                                        : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
-                                                )}
+                                                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-orange-500/10 text-orange-500 hover:bg-orange-500/20 transition-all"
                                             >
                                                 <Eye className="w-3.5 h-3.5" />
                                                 View
@@ -382,32 +381,17 @@ export function HistoryTab({ campaignId, className }: HistoryTabProps) {
                                 theme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-white'
                             )}
                         >
-                            {/* Modal Header */}
-                            <div className={cn(
-                                'flex items-center justify-between px-6 py-4 border-b flex-shrink-0',
-                                theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
-                            )}>
+                            {/* Modal Header - Orange themed */}
+                            <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-orange-500 to-orange-600 flex-shrink-0">
                                 <div className="flex items-center gap-3">
-                                    <div className={cn(
-                                        'p-2 rounded-lg',
-                                        theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-100'
-                                    )}>
-                                        <Mail className={cn(
-                                            'w-5 h-5',
-                                            theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
-                                        )} />
+                                    <div className="p-2 rounded-lg bg-white/20">
+                                        <Mail className="w-5 h-5 text-white" />
                                     </div>
                                     <div>
-                                        <h3 className={cn(
-                                            'text-lg font-semibold',
-                                            theme === 'dark' ? 'text-white' : 'text-gray-900'
-                                        )}>
+                                        <h3 className="text-lg font-semibold text-white">
                                             Email Preview
                                         </h3>
-                                        <p className={cn(
-                                            'text-xs',
-                                            theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                                        )}>
+                                        <p className="text-xs text-white/70">
                                             Sent to {selectedEmailLog.email}
                                         </p>
                                     </div>
@@ -417,10 +401,7 @@ export function HistoryTab({ campaignId, className }: HistoryTabProps) {
                                         setShowEmailPreview(false);
                                         setSelectedEmailLog(null);
                                     }}
-                                    className={cn(
-                                        'p-2 rounded-lg transition-colors',
-                                        theme === 'dark' ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'
-                                    )}
+                                    className="p-2 rounded-lg transition-colors hover:bg-white/20 text-white"
                                 >
                                     <X className="w-5 h-5" />
                                 </button>
@@ -540,32 +521,47 @@ export function HistoryTab({ campaignId, className }: HistoryTabProps) {
                             </div>
 
                             {/* Email Content */}
-                            <div className="flex-1 overflow-y-auto">
+                            <div className="flex-1 overflow-y-auto min-h-[200px]">
                                 {selectedEmailLog.htmlContent ? (
                                     <div
                                         className={cn(
-                                            'p-6',
-                                            theme === 'dark' ? 'bg-[#202020]' : 'bg-white'
+                                            'p-6 prose prose-sm max-w-none',
+                                            theme === 'dark' ? 'bg-[#0f0f0f] prose-invert' : 'bg-white'
                                         )}
                                         dangerouslySetInnerHTML={{ __html: selectedEmailLog.htmlContent }}
                                     />
                                 ) : selectedEmailLog.textContent ? (
                                     <pre className={cn(
                                         'p-6 whitespace-pre-wrap font-sans text-sm leading-relaxed',
-                                        theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                                        theme === 'dark' ? 'text-neutral-300 bg-[#0f0f0f]' : 'text-gray-700 bg-white'
                                     )}>
                                         {selectedEmailLog.textContent}
                                     </pre>
+                                ) : sequence?.steps?.[selectedEmailLog.stepIndex ?? 0]?.body ? (
+                                    // Fallback: Show sequence step template
+                                    <div className={cn(
+                                        'p-6',
+                                        theme === 'dark' ? 'bg-[#0f0f0f]' : 'bg-white'
+                                    )}>
+                                        <div className="text-xs mb-4 px-3 py-2 rounded bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                                            📝 Showing template from Step {(selectedEmailLog.stepIndex ?? 0) + 1}. Variables were replaced with recipient data when sent.
+                                        </div>
+                                        <div
+                                            className={cn('prose prose-sm max-w-none', theme === 'dark' && 'prose-invert')}
+                                            dangerouslySetInnerHTML={{
+                                                __html: sequence.steps[selectedEmailLog.stepIndex ?? 0]?.body || ''
+                                            }}
+                                        />
+                                    </div>
                                 ) : (
                                     <div className={cn(
                                         'flex flex-col items-center justify-center py-16 text-center',
-                                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                        theme === 'dark' ? 'text-neutral-500 bg-[#0f0f0f]' : 'text-gray-400 bg-white'
                                     )}>
-                                        <Mail className="w-10 h-10 mb-3 opacity-50" />
-                                        <p className="text-sm font-medium mb-1">Email content not stored</p>
-                                        <p className="text-xs max-w-sm">
+                                        <Mail className="w-12 h-12 mb-4 opacity-30" />
+                                        <p className="text-sm font-medium mb-1">Email content not available</p>
+                                        <p className="text-xs max-w-sm opacity-70">
                                             This email was sent before content logging was enabled.
-                                            New emails will show their full content here.
                                         </p>
                                     </div>
                                 )}

@@ -170,8 +170,9 @@ export function AnalyticsTab({ campaign, leads, className }: AnalyticsTabProps) 
     const hasLeads = leads !== undefined && leads.length > 0;
 
     // Use API data if available, otherwise fallback to local calculation
+    // FIX: Also count 'in_progress' and 'completed' as sent for backwards compatibility
     const sentCount = hasApiData ? analytics.summary.sentCount :
-        (hasLeads ? leads!.filter(l => ['sent', 'opened', 'clicked', 'replied'].includes(l.status)).length : campaign.sentCount || 0);
+        (hasLeads ? leads!.filter(l => ['sent', 'in_progress', 'completed', 'opened', 'clicked', 'replied'].includes(l.status)).length : campaign.sentCount || 0);
 
     const openCount = hasApiData ? analytics.summary.openCount :
         (hasLeads ? leads!.filter(l => ['opened', 'clicked', 'replied'].includes(l.status)).length : campaign.openCount || 0);

@@ -29,15 +29,31 @@ const defaultStep: SequenceStep = {
 
 // Merge fields helper
 const getAvailableMergeFields = (leads: Lead[]) => {
-    if (!leads || leads.length === 0) {
-        return ['firstName', 'lastName', 'email', 'company'];
+    // All variables supported by the backend
+    const allFields = new Set([
+        // Lead fields
+        'firstName', 'lastName', 'name', 'email', 'company', 'jobTitle',
+        'phone', 'website', 'address', 'city', 'country', 'notes',
+        // Sender fields (from SMTP account profile)
+        'senderName', 'senderCompany', 'senderPosition', 'senderPhone',
+        'senderWebsite', 'senderLinkedIn', 'senderAddress', 'senderSignature'
+    ]);
+
+    if (leads && leads.length > 0) {
+        // Scan up to 50 leads to find all unique custom fields
+        const sampleSize = Math.min(leads.length, 50);
+        for (let i = 0; i < sampleSize; i++) {
+            const lead = leads[i];
+            if (lead.customFields) {
+                Object.keys(lead.customFields).forEach(key => {
+                    // key is a string
+                    allFields.add(key);
+                });
+            }
+        }
     }
-    const sample = leads[0];
-    const fields = ['firstName', 'lastName', 'email', 'company'];
-    Object.keys(sample.customFields || {}).forEach(key => {
-        if (!fields.includes(key)) fields.push(key);
-    });
-    return fields;
+
+    return Array.from(allFields);
 };
 
 export function SequencesTab({ campaignId, sequence, onSequenceUpdate, leads = [], className }: SequencesTabProps) {
@@ -439,7 +455,7 @@ export function SequencesTab({ campaignId, sequence, onSequenceUpdate, leads = [
                                                     insertVariable(field);
                                                 }}
                                                 className={cn(
-                                                    'px-3 py-1.5 text-[10px] font-mono cursor-pointer transition-colors',
+                                                    'px-3 py-1.5 text-[10px] font-mono cursor-pointer transition-colors normal-case',
                                                     theme === 'dark' ? 'text-gray-400 hover:bg-neutral-800 hover:text-orange-500' : 'text-gray-600 hover:bg-gray-50'
                                                 )}
                                             >

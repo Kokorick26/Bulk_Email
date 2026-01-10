@@ -4,6 +4,7 @@ import dynamoDB from '../db.js';
 import auth from '../middleware/auth.js';
 import Imap from 'imap';
 import { simpleParser } from 'mailparser';
+import { emitToUser } from '../services/socketService.js';
 
 const router = express.Router();
 const SMTP_ACCOUNTS_TABLE = 'SmtpAccounts';
@@ -274,6 +275,15 @@ router.post('/fetch/:accountId', auth, async (req, res) => {
             );
             await Promise.all(cachePromises);
             console.log(`Cached ${messages.length} messages successfully`);
+
+            // Emit real-time event to user
+            if (req.user && req.user.userId) {
+                emitToUser(req.user.userId, 'NEW_EMAILS', {
+                    accountId,
+                    folder: successFolder,
+                    messages: messages
+                });
+            }
         }
 
         res.json({ messages, count: messages.length, folder: successFolder });
@@ -1583,4 +1593,223 @@ router.put('/signature/:accountId', auth, async (req, res) => {
     }
 });
 
+// ============ BACKGROUND INBOX POLLING ============
+
+// Track last known UID for each account+folder to detect new emails
+const lastKnownUids = new Map(); // Map<accountId-folder, lastUid>
+
+// Folders to poll for real-time updates
+const POLL_FOLDERS = ['INBOX', 'Sent', 'Trash', 'Spam'];
+
+/**
+ * Check for new emails across all configured IMAP accounts
+ * Emits WebSocket events for real-time updates
+ */
+export async function checkForNewEmails() {
+    console.log('[InboxPoller] Checking for new emails...');
+
+    try {
+        // Get all SMTP accounts with IMAP configured
+        const accountsData = await dynamoDB.scan({
+            TableName: SMTP_ACCOUNTS_TABLE,
+            FilterExpression: 'imapConfigured = :configured',
+            ExpressionAttributeValues: { ':configured': true },
+        }).promise();
+
+        const accounts = accountsData.Items || [];
+        console.log(`[InboxPoller] Found ${accounts.length} IMAP-configured accounts`);
+
+        for (const account of accounts) {
+            const imapConfig = {
+                user: account.imapUser || account.username,
+                password: account.imapPassword || account.password,
+                host: account.imapHost,
+                port: account.imapPort || 993,
+                tls: account.imapTls !== false,
+                tlsOptions: { rejectUnauthorized: false },
+                connTimeout: 15000,
+                authTimeout: 15000,
+            };
+
+            // Check multiple folders for new emails
+            for (const folder of POLL_FOLDERS) {
+                try {
+                    const newMessages = await checkNewMessagesForAccount(imapConfig, account.id, account.userId, folder);
+
+                    if (newMessages.length > 0) {
+                        console.log(`[InboxPoller] Found ${newMessages.length} new email(s) in ${folder} for ${account.fromEmail}`);
+
+                        // Cache new messages
+                        for (const msg of newMessages) {
+                            await dynamoDB.put({
+                                TableName: INBOX_MESSAGES_TABLE,
+                                Item: {
+                                    ...msg,
+                                    cachedAt: new Date().toISOString()
+                                }
+                            }).promise().catch(err => {
+                                console.error(`[InboxPoller] Failed to cache message:`, err.message);
+                            });
+                        }
+
+                        // Emit WebSocket event to user
+                        if (account.userId) {
+                            emitToUser(account.userId, 'NEW_EMAILS', {
+                                accountId: account.id,
+                                folder: folder,
+                                messages: newMessages
+                            });
+                        }
+                    }
+                } catch (folderErr) {
+                    // Folder might not exist for this provider, that's okay
+                }
+            }
+        }
+    } catch (err) {
+        console.error('[InboxPoller] Error:', err.message);
+    }
+}
+
+/**
+ * Check for new messages for a specific account and folder
+ * Only fetches messages newer than the last known UID
+ */
+function checkNewMessagesForAccount(imapConfig, accountId, userId, folder = 'INBOX') {
+    return new Promise((resolve) => {
+        const imap = new Imap(imapConfig);
+        const messages = [];
+        let timeout;
+        const uidKey = `${accountId}-${folder}`; // Unique key for account+folder
+
+        imap.once('ready', () => {
+            imap.openBox(folder, true, (err, box) => {
+                if (err) {
+                    imap.end();
+                    return resolve([]);
+                }
+
+                const totalMessages = box.messages.total;
+                if (totalMessages === 0) {
+                    imap.end();
+                    return resolve([]);
+                }
+
+                // Get last known UID for this account+folder
+                const lastUid = lastKnownUids.get(uidKey) || 0;
+
+                // Fetch only messages with UID greater than last known
+                const searchCriteria = lastUid > 0
+                    ? [['UID', `${lastUid + 1}:*`]]
+                    : [['UID', `${Math.max(1, totalMessages - 5)}:*`]]; // First run: last 5 messages
+
+                imap.search(searchCriteria, (err, uids) => {
+                    if (err || !uids || uids.length === 0) {
+                        imap.end();
+                        return resolve([]);
+                    }
+
+                    // Filter out the last known UID if it was included
+                    const newUids = uids.filter(uid => uid > lastUid);
+                    if (newUids.length === 0) {
+                        imap.end();
+                        return resolve([]);
+                    }
+
+                    const fetch = imap.fetch(newUids, {
+                        bodies: '',
+                        struct: true,
+                    });
+
+                    fetch.on('message', (msg, seqno) => {
+                        let buffer = '';
+                        let uid = null;
+                        let flags = [];
+
+                        msg.on('body', (stream) => {
+                            stream.on('data', (chunk) => {
+                                buffer += chunk.toString('utf8');
+                            });
+                        });
+
+                        msg.on('attributes', (attrs) => {
+                            uid = attrs.uid;
+                            flags = attrs.flags || [];
+
+                            // Update last known UID for this account+folder
+                            const currentLast = lastKnownUids.get(uidKey) || 0;
+                            if (uid > currentLast) {
+                                lastKnownUids.set(uidKey, uid);
+                            }
+                        });
+
+                        msg.once('end', async () => {
+                            try {
+                                const parsed = await simpleParser(buffer);
+                                messages.push({
+                                    id: `${accountId}-${uid}`,
+                                    uid,
+                                    seqno,
+                                    accountId,
+                                    userId,
+                                    folder: 'INBOX',
+                                    from: parsed.from?.text || '',
+                                    fromName: parsed.from?.value?.[0]?.name || '',
+                                    fromEmail: parsed.from?.value?.[0]?.address || '',
+                                    to: parsed.to?.text || '',
+                                    subject: parsed.subject || '(No Subject)',
+                                    date: parsed.date?.toISOString() || new Date().toISOString(),
+                                    text: parsed.text || '',
+                                    html: parsed.html || '',
+                                    flags,
+                                    isRead: flags.includes('\\Seen'),
+                                    isStarred: flags.includes('\\Flagged'),
+                                    hasAttachments: parsed.attachments?.length > 0,
+                                    attachmentCount: parsed.attachments?.length || 0,
+                                    snippet: (parsed.text || '').substring(0, 200).replace(/\n/g, ' '),
+                                    messageId: parsed.messageId || '',
+                                });
+                            } catch (parseErr) {
+                                console.error('[InboxPoller] Error parsing email:', parseErr.message);
+                            }
+                        });
+                    });
+
+                    fetch.once('error', () => {
+                        imap.end();
+                    });
+
+                    fetch.once('end', () => {
+                        imap.end();
+                        // Sort by date descending (newest first)
+                        messages.sort((a, b) => new Date(b.date) - new Date(a.date));
+                        resolve(messages);
+                    });
+                });
+            });
+        });
+
+        imap.once('error', () => {
+            resolve([]);
+        });
+
+        // Timeout after 20 seconds
+        timeout = setTimeout(() => {
+            try { imap.end(); } catch (e) { }
+            resolve([]);
+        }, 20000);
+
+        imap.once('end', () => {
+            clearTimeout(timeout);
+        });
+
+        try {
+            imap.connect();
+        } catch (e) {
+            resolve([]);
+        }
+    });
+}
+
 export default router;
+
