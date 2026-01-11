@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
     Plus, Trash2, Copy, Eye, Clock, Sparkles,
     MoreVertical, ArrowLeft, ArrowRight, MessageSquare,
-    Check, X, ChevronDown, ChevronRight, Hash, Send
+    Check, X, ChevronDown, ChevronRight, Hash, Send, Code, Type
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { useTheme } from '../../../lib/ThemeContext';
@@ -410,112 +410,225 @@ export function SequencesTab({ campaignId, sequence, onSequenceUpdate, leads = [
                         </div>
                     </div>
 
-                    {/* Rich Text Editor Area */}
-                    <div className="flex-1 relative">
-                        <textarea
-                            ref={bodyRef}
-                            value={activeStep.body}
-                            onChange={(e) => handleUpdateStep(activeStepId, { body: e.target.value })}
-                            placeholder="Hi {{firstName}}, write something amazing..."
-                            className={cn(
-                                'w-full h-full p-4 bg-transparent border-0 resize-none focus:outline-none text-sm leading-relaxed',
-                                theme === 'dark' ? 'text-gray-200 placeholder:text-gray-600' : 'text-gray-800 placeholder:text-gray-300'
-                            )}
-                        />
-
-                        {/* Floating Toolbar */}
-                        <div className={cn(
-                            'absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1 px-1.5 py-1.5 rounded border shadow-lg',
-                            theme === 'dark'
-                                ? 'bg-neutral-900/95 backdrop-blur-sm border-neutral-700'
-                                : 'bg-white/95 backdrop-blur-sm border-gray-200'
-                        )}>
+                    {/* Editor Mode Toggle */}
+                    <div className={cn(
+                        'px-4 py-2 border-b flex items-center justify-between',
+                        theme === 'dark' ? 'border-neutral-800 bg-neutral-900/50' : 'border-gray-100 bg-gray-50'
+                    )}>
+                        <div className="flex items-center gap-2">
                             <button
-                                onClick={() => setShowVariables(!showVariables)}
+                                onClick={() => handleUpdateStep(activeStepId, { isHtml: false })}
                                 className={cn(
-                                    'relative flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-semibold uppercase tracking-wide transition-all',
-                                    theme === 'dark'
-                                        ? 'hover:bg-neutral-800 text-gray-400 hover:text-white'
-                                        : 'hover:bg-gray-100 text-gray-500'
+                                    'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
+                                    !activeStep.isHtml
+                                        ? 'bg-orange-500 text-white'
+                                        : theme === 'dark' ? 'bg-neutral-800 text-neutral-400 hover:text-white' : 'bg-gray-100 text-gray-500 hover:text-gray-900'
                                 )}
                             >
-                                <Hash className="w-3.5 h-3.5" />
-                                <span>Variables</span>
-
-                                {showVariables && (
-                                    <div className={cn(
-                                        'absolute bottom-full left-0 mb-2 w-40 rounded border shadow-xl overflow-hidden py-1',
-                                        theme === 'dark' ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-100'
-                                    )}>
-                                        {mergeFields.map(field => (
-                                            <div
-                                                key={field}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    insertVariable(field);
-                                                }}
-                                                className={cn(
-                                                    'px-3 py-1.5 text-[10px] font-mono cursor-pointer transition-colors normal-case',
-                                                    theme === 'dark' ? 'text-gray-400 hover:bg-neutral-800 hover:text-orange-500' : 'text-gray-600 hover:bg-gray-50'
-                                                )}
-                                            >
-                                                {`{{${field}}}`}
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
+                                <Type className="w-3.5 h-3.5" />
+                                Plain Text
                             </button>
-
-                            <div className={cn('w-px h-5', theme === 'dark' ? 'bg-neutral-700' : 'bg-gray-200')} />
-
                             <button
-                                onClick={() => setShowAiModal(!showAiModal)}
+                                onClick={() => handleUpdateStep(activeStepId, { isHtml: true })}
                                 className={cn(
-                                    'flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-semibold uppercase tracking-wide transition-all',
-                                    theme === 'dark'
-                                        ? 'bg-purple-500/20 text-purple-400 hover:bg-purple-500/30'
-                                        : 'bg-purple-50 text-purple-600 hover:bg-purple-100'
+                                    'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
+                                    activeStep.isHtml
+                                        ? 'bg-orange-500 text-white'
+                                        : theme === 'dark' ? 'bg-neutral-800 text-neutral-400 hover:text-white' : 'bg-gray-100 text-gray-500 hover:text-gray-900'
                                 )}
                             >
-                                <Sparkles className="w-3.5 h-3.5" />
-                                <span>AI Assist</span>
+                                <Code className="w-3.5 h-3.5" />
+                                HTML
                             </button>
                         </div>
+                        <span className={cn('text-xs', theme === 'dark' ? 'text-neutral-500' : 'text-gray-400')}>
+                            {activeStep.isHtml ? 'Write HTML code for rich formatting' : 'Simple text email'}
+                        </span>
+                    </div>
 
-                        {/* AI Modal Popover */}
-                        {showAiModal && (
-                            <div className={cn(
-                                'absolute bottom-24 left-1/2 -translate-x-1/2 w-[500px] p-1 rounded-2xl border shadow-2xl z-50 animate-in zoom-in-95',
-                                theme === 'dark' ? 'bg-[#1a1e25] border-[#3a424f]' : 'bg-white border-gray-200'
-                            )}>
-                                <div className="flex gap-2 p-2">
-                                    <input
-                                        type="text"
-                                        value={aiPrompt}
-                                        onChange={(e) => setAiPrompt(e.target.value)}
-                                        placeholder="e.g. 'Make this email sound more professional and concise'..."
+                    {/* Editor Area */}
+                    <div className="flex-1 flex min-h-0">
+                        {/* Code/Text Editor */}
+                        <div className={cn('flex-1 relative flex flex-col', activeStep.isHtml && 'border-r', theme === 'dark' ? 'border-neutral-800' : 'border-gray-200')}>
+                            {activeStep.isHtml ? (
+                                <>
+                                    <div className={cn('px-4 py-2 text-xs font-medium border-b flex-shrink-0', theme === 'dark' ? 'text-neutral-400 border-neutral-800 bg-neutral-900' : 'text-gray-500 border-gray-100 bg-gray-50')}>
+                                        HTML Code
+                                    </div>
+                                    <textarea
+                                        ref={bodyRef}
+                                        placeholder={`<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #f8f9fa; padding: 20px; text-align: center; }
+        .content { padding: 20px; }
+        .button { display: inline-block; padding: 12px 24px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Hello {{firstName}}!</h1>
+        </div>
+        <div class="content">
+            <p>Write your HTML email content here...</p>
+            <a href="#" class="button">Call to Action</a>
+        </div>
+        <p>Best regards,<br>[Your Name]</p>
+    </div>
+</body>
+</html>`}
+                                        value={activeStep.htmlBody || ''}
+                                        onChange={(e) => handleUpdateStep(activeStepId, { htmlBody: e.target.value })}
                                         className={cn(
-                                            'flex-1 px-4 py-3 rounded-xl text-sm focus:outline-none transition-all',
-                                            theme === 'dark'
-                                                ? 'bg-[#12151a] text-white placeholder:text-[#3a424f]'
-                                                : 'bg-gray-50 text-gray-900 border border-transparent focus:border-purple-200'
+                                            'flex-1 w-full p-4 bg-transparent resize-none focus:outline-none text-xs font-mono leading-relaxed',
+                                            theme === 'dark' ? 'text-emerald-400 placeholder:text-neutral-600' : 'text-gray-800 placeholder:text-gray-400'
                                         )}
-                                        onKeyDown={(e) => e.key === 'Enter' && handleAiGenerate()}
-                                        autoFocus
+                                        spellCheck={false}
                                     />
-                                    <button
-                                        onClick={handleAiGenerate}
-                                        disabled={aiLoading}
-                                        className={cn(
-                                            'px-6 py-2 rounded-xl font-semibold text-sm transition-all flex items-center gap-2',
-                                            theme === 'dark'
-                                                ? 'bg-[#d97757] text-white hover:bg-[#c46144]'
-                                                : 'bg-purple-600 text-white hover:bg-purple-700'
-                                        )}
-                                    >
-                                        {aiLoading ? <Clock className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                                        {aiLoading ? 'Thinking' : 'Generate'}
-                                    </button>
+                                </>
+                            ) : (
+                                <textarea
+                                    ref={bodyRef}
+                                    value={activeStep.body}
+                                    onChange={(e) => handleUpdateStep(activeStepId, { body: e.target.value })}
+                                    placeholder="Hi {{firstName}}, write something amazing..."
+                                    className={cn(
+                                        'flex-1 w-full p-4 bg-transparent border-0 resize-none focus:outline-none text-sm leading-relaxed',
+                                        theme === 'dark' ? 'text-gray-200 placeholder:text-gray-600' : 'text-gray-800 placeholder:text-gray-300'
+                                    )}
+                                />
+                            )}
+
+                            {/* Floating Toolbar */}
+                            <div className={cn(
+                                'absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1 px-1.5 py-1.5 rounded border shadow-lg',
+                                theme === 'dark'
+                                    ? 'bg-neutral-900/95 backdrop-blur-sm border-neutral-700'
+                                    : 'bg-white/95 backdrop-blur-sm border-gray-200'
+                            )}>
+                                <button
+                                    onClick={() => setShowVariables(!showVariables)}
+                                    className={cn(
+                                        'relative flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-semibold uppercase tracking-wide transition-all',
+                                        theme === 'dark'
+                                            ? 'hover:bg-neutral-800 text-gray-400 hover:text-white'
+                                            : 'hover:bg-gray-100 text-gray-500'
+                                    )}
+                                >
+                                    <Hash className="w-3.5 h-3.5" />
+                                    <span>Variables</span>
+
+                                    {showVariables && (
+                                        <div className={cn(
+                                            'absolute bottom-full left-0 mb-2 w-40 rounded border shadow-xl overflow-hidden py-1',
+                                            theme === 'dark' ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-100'
+                                        )}>
+                                            {mergeFields.map(field => (
+                                                <div
+                                                    key={field}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        insertVariable(field);
+                                                    }}
+                                                    className={cn(
+                                                        'px-3 py-1.5 text-[10px] font-mono cursor-pointer transition-colors normal-case',
+                                                        theme === 'dark' ? 'text-gray-400 hover:bg-neutral-800 hover:text-orange-500' : 'text-gray-600 hover:bg-gray-50'
+                                                    )}
+                                                >
+                                                    {`{{${field}}}`}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </button>
+
+                                <div className={cn('w-px h-5', theme === 'dark' ? 'bg-neutral-700' : 'bg-gray-200')} />
+
+                                <button
+                                    onClick={() => setShowAiModal(!showAiModal)}
+                                    className={cn(
+                                        'flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-semibold uppercase tracking-wide transition-all',
+                                        theme === 'dark'
+                                            ? 'bg-purple-500/20 text-purple-400 hover:bg-purple-500/30'
+                                            : 'bg-purple-50 text-purple-600 hover:bg-purple-100'
+                                    )}
+                                >
+                                    <Sparkles className="w-3.5 h-3.5" />
+                                    <span>AI Assist</span>
+                                </button>
+                            </div>
+
+                            {/* AI Modal Popover */}
+                            {showAiModal && (
+                                <div className={cn(
+                                    'absolute bottom-24 left-1/2 -translate-x-1/2 w-[500px] p-1 rounded-2xl border shadow-2xl z-50 animate-in zoom-in-95',
+                                    theme === 'dark' ? 'bg-[#1a1e25] border-[#3a424f]' : 'bg-white border-gray-200'
+                                )}>
+                                    <div className="flex gap-2 p-2">
+                                        <input
+                                            type="text"
+                                            value={aiPrompt}
+                                            onChange={(e) => setAiPrompt(e.target.value)}
+                                            placeholder="e.g. 'Make this email sound more professional and concise'..."
+                                            className={cn(
+                                                'flex-1 px-4 py-3 rounded-xl text-sm focus:outline-none transition-all',
+                                                theme === 'dark'
+                                                    ? 'bg-[#12151a] text-white placeholder:text-[#3a424f]'
+                                                    : 'bg-gray-50 text-gray-900 border border-transparent focus:border-purple-200'
+                                            )}
+                                            onKeyDown={(e) => e.key === 'Enter' && handleAiGenerate()}
+                                            autoFocus
+                                        />
+                                        <button
+                                            onClick={handleAiGenerate}
+                                            disabled={aiLoading}
+                                            className={cn(
+                                                'px-6 py-2 rounded-xl font-semibold text-sm transition-all flex items-center gap-2',
+                                                theme === 'dark'
+                                                    ? 'bg-[#d97757] text-white hover:bg-[#c46144]'
+                                                    : 'bg-purple-600 text-white hover:bg-purple-700'
+                                            )}
+                                        >
+                                            {aiLoading ? <Clock className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                                            {aiLoading ? 'Thinking' : 'Generate'}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Live HTML Preview */}
+                        {activeStep.isHtml && (
+                            <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                                <div className={cn('px-4 py-2 text-xs font-medium border-b flex items-center justify-between flex-shrink-0', theme === 'dark' ? 'text-neutral-400 border-neutral-800 bg-neutral-900' : 'text-gray-500 border-gray-100 bg-gray-50')}>
+                                    <span>Live Preview</span>
+                                    <span className={cn('text-xs px-2 py-0.5 rounded', theme === 'dark' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600')}>
+                                        {leads && leads.length > 0 ? `Previewing for: ${leads[0]?.firstName || leads[0]?.email}` : 'Add leads to preview'}
+                                    </span>
+                                </div>
+                                <div className="flex-1 overflow-auto p-4 bg-white">
+                                    <iframe
+                                        srcDoc={(() => {
+                                            let html = activeStep.htmlBody || '';
+                                            // Replace variables with first lead's data for preview
+                                            const lead = leads && leads[0];
+                                            if (lead) {
+                                                html = html.replace(/\{\{firstName\}\}/gi, lead.firstName || '');
+                                                html = html.replace(/\{\{lastName\}\}/gi, lead.lastName || '');
+                                                html = html.replace(/\{\{email\}\}/gi, lead.email || '');
+                                                html = html.replace(/\{\{company\}\}/gi, lead.company || '');
+                                            }
+                                            return html;
+                                        })()}
+                                        className="w-full h-full border-0"
+                                        title="Email Preview"
+                                        sandbox="allow-same-origin"
+                                        style={{ minHeight: '300px' }}
+                                    />
                                 </div>
                             </div>
                         )}

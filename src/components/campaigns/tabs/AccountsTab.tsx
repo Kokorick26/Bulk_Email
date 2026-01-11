@@ -85,7 +85,7 @@ export function AccountsTab({ campaignId, leads, sequence, onLeadsUpdate, classN
         };
     };
 
-    // Combined Queue Data
+    // Combined Queue Data with BATCH-based scheduling
     const queueData = useMemo(() => {
         const pending = leads.filter(l => l.status === 'pending');
 
@@ -94,6 +94,12 @@ export function AccountsTab({ campaignId, leads, sequence, onLeadsUpdate, classN
             acc[curr.id] = curr;
             return acc;
         }, {} as Record<string, SmtpAccount>);
+
+        // Count unique assigned accounts for batch calculation
+        const uniqueAccountIds = new Set(
+            pending.map(l => l.sendingAccountId).filter(Boolean)
+        );
+        const accountCount = Math.max(1, uniqueAccountIds.size || accounts.length);
 
         // Sort leads by scheduled time or arrival
         const sortedLeads = [...pending].sort((a, b) => {
@@ -106,12 +112,18 @@ export function AccountsTab({ campaignId, leads, sequence, onLeadsUpdate, classN
             // If lead doesn't have an assigned account, use round-robin logic for display
             const assignedId = lead.sendingAccountId || (accounts.length > 0 ? accounts[idx % accounts.length].id : null);
             const emailContent = getEmailContent(lead);
+
+            // Calculate batch number (0-indexed) and estimated time based on batch
+            const batchNumber = Math.floor(idx / accountCount);
+            const delayMinutes = batchNumber * 10; // 10 min delay between batches (from config)
+
             return {
                 ...lead,
                 assignedAccount: assignedId ? accountMap[assignedId] : null,
                 previewSubject: emailContent.subject,
                 previewBody: emailContent.body,
-                estimatedTime: `T+${idx * 15}m`
+                batchNumber: batchNumber + 1,
+                estimatedTime: batchNumber === 0 ? 'Batch 1 (Now)' : `Batch ${batchNumber + 1} (+${delayMinutes}m)`
             };
         });
     }, [leads, accounts, sequence]);

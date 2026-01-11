@@ -64,6 +64,9 @@ export interface Lead {
     // Sending account assignment
     sendingAccountId?: string;      // Which SMTP account will send this email
     scheduledTime?: string;         // ISO string of when email is scheduled to be sent
+    // Reply tracking
+    hasReplied?: boolean;           // Whether the lead has replied
+    replyReceivedAt?: string;       // When the reply was received
 }
 
 export interface ColumnMapping {
@@ -84,6 +87,8 @@ export interface SequenceStep {
     order: number;
     subject: string;
     body: string;
+    htmlBody?: string;  // HTML version of the email body
+    isHtml?: boolean;   // Whether to send as HTML
     delayDays: number;
     delayHours: number;
     variants: EmailVariant[];

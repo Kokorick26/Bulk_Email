@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Upload, FileSpreadsheet, X, Check, AlertCircle,
     Users, Loader2, Trash2, Eye, ChevronDown, Ban,
-    Mail, User, Building, Hash, Clock, Plus, Edit3, FolderOpen, ExternalLink, ArrowLeft
+    Mail, User, Building, Hash, Clock, Plus, Edit3, FolderOpen, ExternalLink, ArrowLeft,
+    RefreshCw, Send
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { useTheme } from '../../../lib/ThemeContext';
@@ -123,6 +124,13 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
     const [savingCustomEmail, setSavingCustomEmail] = useState(false);
     const [campaignSequence, setCampaignSequence] = useState<{ steps?: Array<{ subject?: string; body?: string; variants?: Array<{ subject?: string; body?: string }> }> } | null>(null);
 
+    // Check Replies & Send Sequence state
+    const [checkingReplies, setCheckingReplies] = useState(false);
+    const [replyCheckResult, setReplyCheckResult] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+    // Step filter state (0 = all, 1 = step 1, 2 = step 2, etc.)
+    const [stepFilter, setStepFilter] = useState<number>(0);
+
     // Fetch SMTP accounts on mount
     const fetchSmtpAccounts = useCallback(async () => {
         try {
@@ -232,6 +240,102 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
         });
 
         return personalized;
+    };
+
+    // Check for replies and send next sequence step
+    const handleCheckReplies = async () => {
+        setCheckingReplies(true);
+        setReplyCheckResult(null);
+
+        try {
+            const token = localStorage.getItem('bulkEmailToken');
+
+            // First, check for replies
+            const checkResponse = await fetch(`/api/bulk-email/campaigns/${campaignId}/check-replies`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                }
+            });
+
+            if (!checkResponse.ok) {
+                throw new Error('Failed to check replies');
+            }
+
+            const checkResult = await checkResponse.json();
+            console.log('[CheckReplies] Result:', checkResult);
+
+            // Now execute the campaign to send pending sequence emails (force=true allows execution even if campaign is stopped)
+            const executeResponse = await fetch(`/api/bulk-email/campaigns/${campaignId}/execute?force=true`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                }
+            });
+
+            if (executeResponse.ok) {
+                const executeResult = await executeResponse.json();
+                console.log('[CheckReplies] Execute result:', executeResult);
+
+                const repliesFound = checkResult.repliesFound || 0;
+                const emailsSent = executeResult.sent || 0;
+
+                if (repliesFound > 0 && emailsSent > 0) {
+                    setReplyCheckResult({
+                        message: `Found ${repliesFound} reply(s). Sent ${emailsSent} follow-up email(s) to leads who didn't reply.`,
+                        type: 'success'
+                    });
+                } else if (repliesFound > 0) {
+                    setReplyCheckResult({
+                        message: `Found ${repliesFound} reply(s). No follow-up emails to send yet.`,
+                        type: 'info'
+                    });
+                } else if (emailsSent > 0) {
+                    setReplyCheckResult({
+                        message: `No new replies. Sent ${emailsSent} follow-up email(s).`,
+                        type: 'success'
+                    });
+                } else {
+                    setReplyCheckResult({
+                        message: 'No new replies found. No follow-up emails to send (delay may not have passed).',
+                        type: 'info'
+                    });
+                }
+            } else {
+                const errorData = await executeResponse.json();
+                setReplyCheckResult({
+                    message: `Checked replies, but failed to send emails: ${errorData.error || 'Unknown error'}`,
+                    type: 'error'
+                });
+            }
+
+            // Refresh the leads list
+            const refreshResponse = await fetch(`/api/bulk-email/campaigns/${campaignId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (refreshResponse.ok) {
+                const data = await refreshResponse.json();
+                if (data.leads && Array.isArray(data.leads)) {
+                    onLeadsUpdate(data.leads);
+                }
+            }
+
+        } catch (error) {
+            console.error('[CheckReplies] Error:', error);
+            setReplyCheckResult({
+                message: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                type: 'error'
+            });
+        } finally {
+            setCheckingReplies(false);
+
+            // Clear the message after 10 seconds
+            setTimeout(() => {
+                setReplyCheckResult(null);
+            }, 10000);
+        }
     };
 
     // Open scheduled email preview
@@ -918,9 +1022,19 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
         onLeadsUpdate(updatedLeads);
     };
 
-    // Helper to get scheduled time for a lead based on its position
-    const getScheduledTime = (pendingIndex: number, delayMinutes: number = 10): Date => {
-        return new Date(Date.now() + (pendingIndex * delayMinutes * 60 * 1000));
+    // Helper to get scheduled time for a lead based on BATCH sending
+    // With N accounts, all N leads in a batch are sent at the same time
+    // Then after delay, the next N leads are sent, etc.
+    const getScheduledTime = (leadIndex: number, delayMinutes: number = 10, accountCount: number = 3): Date => {
+        // Calculate which batch this lead is in (0-indexed)
+        const batchNumber = Math.floor(leadIndex / Math.max(1, accountCount));
+        // All leads in the same batch are sent at the same time
+        return new Date(Date.now() + (batchNumber * delayMinutes * 60 * 1000));
+    };
+
+    // Get batch number for display
+    const getBatchNumber = (leadIndex: number, accountCount: number = 3): number => {
+        return Math.floor(leadIndex / Math.max(1, accountCount)) + 1;
     };
 
     // Helper to format time in user's locale
@@ -1255,10 +1369,69 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                         )}>
                             {leads.length} Results
                         </div>
+
+                        {/* Step Filter Buttons */}
+                        <div className="flex items-center gap-1 ml-2">
+                            <button
+                                onClick={() => setStepFilter(0)}
+                                className={cn(
+                                    'px-2.5 py-1 text-xs rounded-md transition-colors',
+                                    stepFilter === 0
+                                        ? 'bg-orange-500 text-white'
+                                        : theme === 'dark'
+                                            ? 'bg-neutral-800 text-gray-400 hover:bg-neutral-700'
+                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                )}
+                            >
+                                All
+                            </button>
+                            {(campaignSequence?.steps || []).map((_, idx) => (
+                                <button
+                                    key={idx}
+                                    onClick={() => setStepFilter(idx + 1)}
+                                    className={cn(
+                                        'px-2.5 py-1 text-xs rounded-md transition-colors',
+                                        stepFilter === idx + 1
+                                            ? 'bg-orange-500 text-white'
+                                            : theme === 'dark'
+                                                ? 'bg-neutral-800 text-gray-400 hover:bg-neutral-700'
+                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                    )}
+                                >
+                                    Step {idx + 1}
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
                     {/* Right: Actions */}
                     <div className="flex items-center gap-2">
+                        {/* Check Replies & Send Sequence Button */}
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleCheckReplies}
+                            disabled={checkingReplies}
+                            className={cn(
+                                'h-8 text-xs gap-1.5',
+                                theme === 'dark'
+                                    ? 'border-blue-500/50 text-blue-400 hover:bg-blue-500/10'
+                                    : 'border-blue-500/50 text-blue-600 hover:bg-blue-50'
+                            )}
+                        >
+                            {checkingReplies ? (
+                                <>
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    Checking...
+                                </>
+                            ) : (
+                                <>
+                                    <RefreshCw className="w-3.5 h-3.5" />
+                                    Check Replies
+                                </>
+                            )}
+                        </Button>
+
                         <Button
                             variant="outline"
                             size="sm"
@@ -1269,47 +1442,6 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                             Edit Leads
                         </Button>
 
-                        <div className="relative group">
-                            <Button
-                                size="sm"
-                                className="h-8 text-xs gap-1.5 bg-orange-500 hover:bg-orange-600 text-white"
-                            >
-                                <Plus className="w-3.5 h-3.5" />
-                                Add Leads
-                                <ChevronDown className="w-3 h-3 ml-1" />
-                            </Button>
-                            <div className={cn(
-                                'absolute right-0 top-full mt-1 py-1 w-44 rounded-lg shadow-xl border opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20',
-                                theme === 'dark'
-                                    ? 'bg-neutral-900 border-neutral-800'
-                                    : 'bg-white border-gray-200'
-                            )}>
-                                <button
-                                    onClick={() => setShowLeadBuilder(true)}
-                                    className={cn(
-                                        'w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors',
-                                        theme === 'dark'
-                                            ? 'hover:bg-neutral-800 text-gray-300'
-                                            : 'hover:bg-gray-50 text-gray-700'
-                                    )}
-                                >
-                                    <Plus className="w-3.5 h-3.5" />
-                                    Create leads
-                                </button>
-                                <button
-                                    onClick={() => document.getElementById('csv-upload-3')?.click()}
-                                    className={cn(
-                                        'w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors',
-                                        theme === 'dark'
-                                            ? 'hover:bg-neutral-800 text-gray-300'
-                                            : 'hover:bg-gray-50 text-gray-700'
-                                    )}
-                                >
-                                    <Upload className="w-3.5 h-3.5" />
-                                    Upload CSV
-                                </button>
-                            </div>
-                        </div>
                         <input
                             id="csv-upload-3"
                             type="file"
@@ -1319,6 +1451,29 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                         />
                     </div>
                 </div>
+
+                {/* Reply Check Result Message */}
+                {replyCheckResult && (
+                    <div className={cn(
+                        'mx-4 mt-2 px-4 py-2 rounded-lg flex items-center gap-2 text-sm animate-in fade-in slide-in-from-top-2',
+                        replyCheckResult.type === 'success'
+                            ? theme === 'dark' ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' : 'bg-emerald-50 border border-emerald-200 text-emerald-700'
+                            : replyCheckResult.type === 'error'
+                                ? theme === 'dark' ? 'bg-red-500/10 border border-red-500/30 text-red-400' : 'bg-red-50 border border-red-200 text-red-700'
+                                : theme === 'dark' ? 'bg-blue-500/10 border border-blue-500/30 text-blue-400' : 'bg-blue-50 border border-blue-200 text-blue-700'
+                    )}>
+                        {replyCheckResult.type === 'success' && <Check className="w-4 h-4" />}
+                        {replyCheckResult.type === 'error' && <AlertCircle className="w-4 h-4" />}
+                        {replyCheckResult.type === 'info' && <Mail className="w-4 h-4" />}
+                        <span>{replyCheckResult.message}</span>
+                        <button
+                            onClick={() => setReplyCheckResult(null)}
+                            className="ml-auto p-1 hover:bg-black/10 rounded"
+                        >
+                            <X className="w-3 h-3" />
+                        </button>
+                    </div>
+                )}
 
                 {/* Table Container */}
                 <div className="flex-1 overflow-hidden">
@@ -1332,276 +1487,350 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                                 )}>
                                     <TableHead className={cn('w-[50px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>#</TableHead>
                                     <TableHead className={cn('w-[200px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Email</TableHead>
-                                    <TableHead className={cn('w-[120px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Name</TableHead>
-                                    <TableHead className={cn('w-[100px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Company</TableHead>
-                                    <TableHead className={cn('w-[110px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Sent / Scheduled</TableHead>
-                                    <TableHead className={cn('w-[180px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Sending Account</TableHead>
-                                    <TableHead className={cn('w-[100px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Timezone</TableHead>
-                                    <TableHead className={cn('w-[80px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Status</TableHead>
+                                    <TableHead className={cn('w-[100px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Name</TableHead>
+                                    <TableHead className={cn('w-[80px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Company</TableHead>
+                                    <TableHead className={cn('w-[50px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Step</TableHead>
+                                    <TableHead className={cn('w-[100px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Sent / Scheduled</TableHead>
+                                    <TableHead className={cn('w-[150px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Sending Account</TableHead>
+                                    <TableHead className={cn('w-[90px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Timezone</TableHead>
+                                    <TableHead className={cn('w-[70px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Status</TableHead>
                                     <TableHead className={cn('w-[60px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Reply</TableHead>
                                     <TableHead className={cn('w-[80px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {leads.map((lead, index) => {
-                                    // Calculate scheduled time based on pending position
+                                {(() => {
+                                    // Calculate unique sending accounts from pending leads
                                     const pendingLeads = leads.filter(l => l.status === 'pending');
-                                    const pendingIndex = pendingLeads.findIndex(l => l.id === lead.id);
-                                    const isPending = lead.status === 'pending';
-                                    const leadLogs = getLogsForLead(lead.email);
-                                    const latestLog = leadLogs[0]; // Most recent email sent
+                                    const uniqueAccounts = new Set(
+                                        pendingLeads
+                                            .map(l => l.sendingAccountId)
+                                            .filter(Boolean)
+                                    );
+                                    // If no accounts assigned yet, assume 1 account (sequential)
+                                    const accountCount = Math.max(1, uniqueAccounts.size);
 
-                                    return (
-                                        <TableRow key={lead.id} className={cn(
-                                            theme === 'dark' ? 'border-gray-800' : 'border-gray-100'
-                                        )}>
-                                            <TableCell className={cn(
-                                                'text-xs font-mono',
-                                                theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                    // Filter leads based on stepFilter
+                                    const filteredLeads = stepFilter === 0
+                                        ? leads
+                                        : leads.filter(lead => {
+                                            const leadLogs = getLogsForLead(lead.email);
+                                            // Check if any log has this step index
+                                            const hasReceivedStep = leadLogs.some(log => (log.stepIndex || 0) + 1 === stepFilter);
+                                            // Also include leads with status matching the step (e.g., Step 1 = pending leads if stepFilter = 1 and no emails sent yet)
+                                            if (stepFilter === 1 && leadLogs.length === 0 && lead.status === 'pending') {
+                                                return true; // Show pending leads awaiting Step 1
+                                            }
+                                            return hasReceivedStep;
+                                        });
+
+                                    return filteredLeads.map((lead, index) => {
+                                        const pendingIndex = pendingLeads.findIndex(l => l.id === lead.id);
+                                        const isPending = lead.status === 'pending';
+                                        const leadLogs = getLogsForLead(lead.email);
+                                        const latestLog = leadLogs[0]; // Most recent email sent
+
+                                        return (
+                                            <TableRow key={lead.id} className={cn(
+                                                theme === 'dark' ? 'border-gray-800' : 'border-gray-100'
                                             )}>
-                                                {index + 1}
-                                            </TableCell>
-                                            <TableCell className={cn(
-                                                'truncate',
-                                                theme === 'dark' ? 'text-white' : 'text-gray-900'
-                                            )}>
-                                                {lead.email}
-                                            </TableCell>
-                                            <TableCell className={cn(
-                                                'truncate',
-                                                theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                                            )}>
-                                                {[lead.firstName, lead.lastName].filter(Boolean).join(' ') || '-'}
-                                            </TableCell>
-                                            <TableCell className={cn(
-                                                'truncate',
-                                                theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                                            )}>
-                                                {lead.company || '-'}
-                                            </TableCell>
-                                            <TableCell>
-                                                {isPending ? (
-                                                    <div className="flex flex-col">
-                                                        <span className={cn(
-                                                            'text-xs font-medium',
-                                                            pendingIndex === 0
-                                                                ? 'text-emerald-500'
-                                                                : theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
-                                                        )}>
-                                                            {pendingIndex === 0 ? '🚀 Now' : formatTime(getScheduledTime(pendingIndex))}
-                                                        </span>
-                                                        {pendingIndex > 0 && (
+                                                <TableCell className={cn(
+                                                    'text-xs font-mono',
+                                                    theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                                )}>
+                                                    {index + 1}
+                                                </TableCell>
+                                                <TableCell className={cn(
+                                                    'truncate',
+                                                    theme === 'dark' ? 'text-white' : 'text-gray-900'
+                                                )}>
+                                                    {lead.email}
+                                                </TableCell>
+                                                <TableCell className={cn(
+                                                    'truncate',
+                                                    theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                                                )}>
+                                                    {[lead.firstName, lead.lastName].filter(Boolean).join(' ') || '-'}
+                                                </TableCell>
+                                                <TableCell className={cn(
+                                                    'truncate',
+                                                    theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                                                )}>
+                                                    {lead.company || '-'}
+                                                </TableCell>
+                                                {/* Step Column */}
+                                                <TableCell>
+                                                    {(() => {
+                                                        // Get the current step from email logs
+                                                        const maxStep = leadLogs.reduce((max, log) => {
+                                                            const stepNum = (log.stepIndex || 0) + 1;
+                                                            return stepNum > max ? stepNum : max;
+                                                        }, 0);
+
+                                                        if (maxStep === 0 && isPending) {
+                                                            return (
+                                                                <span className={cn(
+                                                                    'text-xs',
+                                                                    theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                                                )}>
+                                                                    -
+                                                                </span>
+                                                            );
+                                                        }
+
+                                                        const totalSteps = campaignSequence?.steps?.length || 1;
+                                                        const isComplete = maxStep >= totalSteps;
+
+                                                        return (
+                                                            <div className="flex items-center gap-1">
+                                                                <span className={cn(
+                                                                    'px-1.5 py-0.5 rounded text-[10px] font-semibold',
+                                                                    isComplete
+                                                                        ? 'bg-emerald-500/20 text-emerald-400'
+                                                                        : 'bg-blue-500/20 text-blue-400'
+                                                                )}>
+                                                                    {maxStep}/{totalSteps}
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    })()}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {isPending ? (() => {
+                                                        // Use accountCount from outer scope (calculated from unique accounts)
+                                                        const batchNum = getBatchNumber(pendingIndex, accountCount);
+                                                        const isFirstBatch = batchNum === 1;
+                                                        const delayMinutes = (batchNum - 1) * 10; // 10 min between batches (from config)
+
+                                                        return (
+                                                            <div className="flex flex-col">
+                                                                <span className={cn(
+                                                                    'text-xs font-medium',
+                                                                    isFirstBatch
+                                                                        ? 'text-emerald-500'
+                                                                        : theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
+                                                                )}>
+                                                                    {isFirstBatch ? '🚀 Now' : formatTime(getScheduledTime(pendingIndex, 10, accountCount))}
+                                                                </span>
+                                                                <span className={cn(
+                                                                    'text-xs',
+                                                                    theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                                                )}>
+                                                                    Batch {batchNum} • {accountCount} acct{accountCount > 1 ? 's' : ''}{delayMinutes > 0 ? ` (+${delayMinutes}m)` : ''}
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    })() : latestLog ? (
+                                                        <div className="flex flex-col">
+                                                            <span className={cn(
+                                                                'text-xs font-medium',
+                                                                latestLog.status === 'sent' ? 'text-emerald-500' :
+                                                                    latestLog.status === 'failed' ? 'text-red-400' :
+                                                                        theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                                                            )}>
+                                                                ✓ {formatSentTime(latestLog.sentAt)}
+                                                            </span>
+                                                            {leadLogs.length > 1 && (
+                                                                <span className={cn(
+                                                                    'text-xs',
+                                                                    theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                                                )}>
+                                                                    {leadLogs.length} emails sent
+                                                                </span>
+                                                            )}
                                                             <span className={cn(
                                                                 'text-xs',
-                                                                theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                                                theme === 'dark' ? 'text-gray-600' : 'text-gray-400'
                                                             )}>
-                                                                +{pendingIndex * 10}min
+                                                                {new Date(latestLog.sentAt).toLocaleTimeString('en-US', {
+                                                                    hour: '2-digit',
+                                                                    minute: '2-digit',
+                                                                    hour12: true
+                                                                })}
                                                             </span>
-                                                        )}
-                                                    </div>
-                                                ) : latestLog ? (
-                                                    <div className="flex flex-col">
+                                                        </div>
+                                                    ) : (
                                                         <span className={cn(
-                                                            'text-xs font-medium',
-                                                            latestLog.status === 'sent' ? 'text-emerald-500' :
-                                                                latestLog.status === 'failed' ? 'text-red-400' :
-                                                                    theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                                                            'text-xs',
+                                                            theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                                                         )}>
-                                                            ✓ {formatSentTime(latestLog.sentAt)}
+                                                            -
                                                         </span>
-                                                        {leadLogs.length > 1 && (
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="overflow-hidden">
+                                                    {isPending && smtpAccounts.length > 0 ? (
+                                                        <select
+                                                            value={lead.sendingAccountId || smtpAccounts[pendingIndex % smtpAccounts.length]?.id || ''}
+                                                            onChange={(e) => handleLeadAccountChange(lead.id, e.target.value)}
+                                                            className={cn(
+                                                                'w-full max-w-[160px] px-2 py-1 rounded text-xs border appearance-none cursor-pointer truncate',
+                                                                theme === 'dark'
+                                                                    ? 'bg-[#252525] border-gray-700 text-white'
+                                                                    : 'bg-white border-gray-200 text-gray-900'
+                                                            )}
+                                                        >
+                                                            {smtpAccounts.map(account => (
+                                                                <option key={account.id} value={account.id}>
+                                                                    {account.fromEmail}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    ) : lead.sendingAccountId ? (
+                                                        // ✅ Show assigned account with icon
+                                                        <div className="flex items-center gap-2 max-w-[160px]">
+                                                            <Mail className={cn(
+                                                                'w-3 h-3 flex-shrink-0',
+                                                                theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
+                                                            )} />
                                                             <span className={cn(
-                                                                'text-xs',
-                                                                theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                                                'text-xs font-medium truncate',
+                                                                theme === 'dark' ? 'text-white' : 'text-gray-900'
                                                             )}>
-                                                                {leadLogs.length} emails sent
+                                                                {smtpAccounts.find(a => a.id === lead.sendingAccountId)?.fromEmail || 'Unknown'}
                                                             </span>
-                                                        )}
+                                                        </div>
+                                                    ) : (
+                                                        // ✅ Not assigned indicator
+                                                        <span className={cn(
+                                                            'text-xs italic',
+                                                            theme === 'dark' ? 'text-gray-600' : 'text-gray-400'
+                                                        )}>
+                                                            Not assigned
+                                                        </span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {(() => {
+                                                        const tz = getLeadTimezone(lead);
+                                                        const localTime = getLeadLocalTime(lead);
+                                                        const tzName = tz.split('/').pop()?.replace('_', ' ') || tz;
+                                                        const withinHours = isWithinWorkingHours(lead);
+
+                                                        return (
+                                                            <div className="flex flex-col gap-0.5">
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <span className={cn(
+                                                                        'text-xs font-medium',
+                                                                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                                                                    )}>
+                                                                        {localTime}
+                                                                    </span>
+                                                                    <span className={cn(
+                                                                        'w-1.5 h-1.5 rounded-full',
+                                                                        withinHours ? 'bg-emerald-500' : 'bg-amber-500'
+                                                                    )} title={withinHours ? 'Within working hours' : 'Outside working hours'} />
+                                                                </div>
+                                                                <span className={cn(
+                                                                    'text-[10px]',
+                                                                    theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                                                )}>
+                                                                    {tzName}
+                                                                </span>
+                                                                {(lead.workingHoursStart && lead.workingHoursEnd) && (
+                                                                    <span className={cn(
+                                                                        'text-[10px]',
+                                                                        theme === 'dark' ? 'text-gray-600' : 'text-gray-400'
+                                                                    )}>
+                                                                        Hours: {lead.workingHoursStart}-{lead.workingHoursEnd}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })()}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {(() => {
+                                                        const withinHours = isWithinWorkingHours(lead);
+                                                        const isWaiting = lead.status === 'pending' && !withinHours;
+
+                                                        return (
+                                                            <div className="flex flex-col gap-0.5">
+                                                                <span className={cn(
+                                                                    'px-1.5 py-0.5 rounded text-[10px] font-semibold inline-block w-fit uppercase tracking-wide',
+                                                                    lead.status === 'sent' && 'bg-orange-500 text-white',
+                                                                    lead.status === 'opened' && 'bg-emerald-500/20 text-emerald-400',
+                                                                    lead.status === 'clicked' && 'bg-purple-500/20 text-purple-400',
+                                                                    lead.status === 'replied' && 'bg-amber-500/20 text-amber-400',
+                                                                    lead.status === 'bounced' && 'bg-red-500/20 text-red-400',
+                                                                    lead.status === 'pending' && !isWaiting && (theme === 'dark' ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-500'),
+                                                                    isWaiting && 'bg-amber-500/20 text-amber-400'
+                                                                )}>
+                                                                    {isWaiting ? 'Waiting' : lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}
+                                                                </span>
+                                                                {isWaiting && (
+                                                                    <span className={cn(
+                                                                        'text-[10px]',
+                                                                        theme === 'dark' ? 'text-amber-500/70' : 'text-amber-600'
+                                                                    )}>
+                                                                        Outside hours
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })()}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {lead.hasReplied || lead.status === 'replied' ? (
+                                                        <div className="flex items-center gap-1.5">
+                                                            <Check className={cn(
+                                                                'w-3.5 h-3.5',
+                                                                theme === 'dark' ? 'text-green-400' : 'text-green-600'
+                                                            )} />
+                                                            <span className={cn(
+                                                                'text-xs font-medium',
+                                                                theme === 'dark' ? 'text-green-400' : 'text-green-600'
+                                                            )}>
+                                                                Yes
+                                                            </span>
+                                                        </div>
+                                                    ) : lead.status === 'sent' ? (
+                                                        <span className={cn(
+                                                            'text-xs',
+                                                            theme === 'dark' ? 'text-amber-500' : 'text-amber-600'
+                                                        )}>
+                                                            No reply
+                                                        </span>
+                                                    ) : (
                                                         <span className={cn(
                                                             'text-xs',
                                                             theme === 'dark' ? 'text-gray-600' : 'text-gray-400'
                                                         )}>
-                                                            {new Date(latestLog.sentAt).toLocaleTimeString('en-US', {
-                                                                hour: '2-digit',
-                                                                minute: '2-digit',
-                                                                hour12: true
-                                                            })}
+                                                            -
                                                         </span>
-                                                    </div>
-                                                ) : (
-                                                    <span className={cn(
-                                                        'text-xs',
-                                                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                                                    )}>
-                                                        -
-                                                    </span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="overflow-hidden">
-                                                {isPending && smtpAccounts.length > 0 ? (
-                                                    <select
-                                                        value={lead.sendingAccountId || smtpAccounts[pendingIndex % smtpAccounts.length]?.id || ''}
-                                                        onChange={(e) => handleLeadAccountChange(lead.id, e.target.value)}
-                                                        className={cn(
-                                                            'w-full max-w-[160px] px-2 py-1 rounded text-xs border appearance-none cursor-pointer truncate',
-                                                            theme === 'dark'
-                                                                ? 'bg-[#252525] border-gray-700 text-white'
-                                                                : 'bg-white border-gray-200 text-gray-900'
-                                                        )}
-                                                    >
-                                                        {smtpAccounts.map(account => (
-                                                            <option key={account.id} value={account.id}>
-                                                                {account.fromEmail}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                ) : lead.sendingAccountId ? (
-                                                    // ✅ Show assigned account with icon
-                                                    <div className="flex items-center gap-2 max-w-[160px]">
-                                                        <Mail className={cn(
-                                                            'w-3 h-3 flex-shrink-0',
-                                                            theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
-                                                        )} />
+                                                    )}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {leadLogs.length > 0 ? (
+                                                        <button
+                                                            onClick={() => {
+                                                                console.log('[EmailPreview] Opening preview for log:', latestLog);
+                                                                console.log('[EmailPreview] htmlContent:', latestLog?.htmlContent);
+                                                                console.log('[EmailPreview] textContent:', latestLog?.textContent);
+                                                                console.log('[EmailPreview] stepIndex:', latestLog?.stepIndex);
+                                                                console.log('[EmailPreview] campaignSequence:', campaignSequence);
+                                                                setSelectedEmailLog(latestLog);
+                                                                setShowEmailPreview(true);
+                                                            }}
+                                                            className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium bg-orange-500/20 text-orange-400 hover:bg-orange-500/30"
+                                                        >
+                                                            <Eye className="w-3 h-3" />
+                                                            Preview
+                                                        </button>
+                                                    ) : (
                                                         <span className={cn(
-                                                            'text-xs font-medium truncate',
-                                                            theme === 'dark' ? 'text-white' : 'text-gray-900'
+                                                            'text-xs',
+                                                            theme === 'dark' ? 'text-gray-600' : 'text-gray-400'
                                                         )}>
-                                                            {smtpAccounts.find(a => a.id === lead.sendingAccountId)?.fromEmail || 'Unknown'}
+                                                            -
                                                         </span>
-                                                    </div>
-                                                ) : (
-                                                    // ✅ Not assigned indicator
-                                                    <span className={cn(
-                                                        'text-xs italic',
-                                                        theme === 'dark' ? 'text-gray-600' : 'text-gray-400'
-                                                    )}>
-                                                        Not assigned
-                                                    </span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                {(() => {
-                                                    const tz = getLeadTimezone(lead);
-                                                    const localTime = getLeadLocalTime(lead);
-                                                    const tzName = tz.split('/').pop()?.replace('_', ' ') || tz;
-                                                    const withinHours = isWithinWorkingHours(lead);
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
 
-                                                    return (
-                                                        <div className="flex flex-col gap-0.5">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <span className={cn(
-                                                                    'text-xs font-medium',
-                                                                    theme === 'dark' ? 'text-white' : 'text-gray-900'
-                                                                )}>
-                                                                    {localTime}
-                                                                </span>
-                                                                <span className={cn(
-                                                                    'w-1.5 h-1.5 rounded-full',
-                                                                    withinHours ? 'bg-emerald-500' : 'bg-amber-500'
-                                                                )} title={withinHours ? 'Within working hours' : 'Outside working hours'} />
-                                                            </div>
-                                                            <span className={cn(
-                                                                'text-[10px]',
-                                                                theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                                                            )}>
-                                                                {tzName}
-                                                            </span>
-                                                            {(lead.workingHoursStart && lead.workingHoursEnd) && (
-                                                                <span className={cn(
-                                                                    'text-[10px]',
-                                                                    theme === 'dark' ? 'text-gray-600' : 'text-gray-400'
-                                                                )}>
-                                                                    Hours: {lead.workingHoursStart}-{lead.workingHoursEnd}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })()}
-                                            </TableCell>
-                                            <TableCell>
-                                                {(() => {
-                                                    const withinHours = isWithinWorkingHours(lead);
-                                                    const isWaiting = lead.status === 'pending' && !withinHours;
-
-                                                    return (
-                                                        <div className="flex flex-col gap-0.5">
-                                                            <span className={cn(
-                                                                'px-1.5 py-0.5 rounded text-[10px] font-semibold inline-block w-fit uppercase tracking-wide',
-                                                                lead.status === 'sent' && 'bg-orange-500 text-white',
-                                                                lead.status === 'opened' && 'bg-emerald-500/20 text-emerald-400',
-                                                                lead.status === 'clicked' && 'bg-purple-500/20 text-purple-400',
-                                                                lead.status === 'replied' && 'bg-amber-500/20 text-amber-400',
-                                                                lead.status === 'bounced' && 'bg-red-500/20 text-red-400',
-                                                                lead.status === 'pending' && !isWaiting && (theme === 'dark' ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-500'),
-                                                                isWaiting && 'bg-amber-500/20 text-amber-400'
-                                                            )}>
-                                                                {isWaiting ? 'Waiting' : lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}
-                                                            </span>
-                                                            {isWaiting && (
-                                                                <span className={cn(
-                                                                    'text-[10px]',
-                                                                    theme === 'dark' ? 'text-amber-500/70' : 'text-amber-600'
-                                                                )}>
-                                                                    Outside hours
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })()}
-                                            </TableCell>
-                                            <TableCell>
-                                                {(lead as any).hasReplied ? (
-                                                    <div className="flex items-center gap-1.5">
-                                                        <Check className={cn(
-                                                            'w-3.5 h-3.5',
-                                                            theme === 'dark' ? 'text-green-400' : 'text-green-600'
-                                                        )} />
-                                                        <span className={cn(
-                                                            'text-xs font-medium',
-                                                            theme === 'dark' ? 'text-green-400' : 'text-green-600'
-                                                        )}>
-                                                            Replied
-                                                        </span>
-                                                    </div>
-                                                ) : (
-                                                    <span className={cn(
-                                                        'text-xs',
-                                                        theme === 'dark' ? 'text-gray-600' : 'text-gray-400'
-                                                    )}>
-                                                        -
-                                                    </span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                {leadLogs.length > 0 ? (
-                                                    <button
-                                                        onClick={() => {
-                                                            console.log('[EmailPreview] Opening preview for log:', latestLog);
-                                                            console.log('[EmailPreview] htmlContent:', latestLog?.htmlContent);
-                                                            console.log('[EmailPreview] textContent:', latestLog?.textContent);
-                                                            console.log('[EmailPreview] stepIndex:', latestLog?.stepIndex);
-                                                            console.log('[EmailPreview] campaignSequence:', campaignSequence);
-                                                            setSelectedEmailLog(latestLog);
-                                                            setShowEmailPreview(true);
-                                                        }}
-                                                        className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium bg-orange-500/20 text-orange-400 hover:bg-orange-500/30"
-                                                    >
-                                                        <Eye className="w-3 h-3" />
-                                                        Preview
-                                                    </button>
-                                                ) : (
-                                                    <span className={cn(
-                                                        'text-xs',
-                                                        theme === 'dark' ? 'text-gray-600' : 'text-gray-400'
-                                                    )}>
-                                                        -
-                                                    </span>
-                                                )}
-                                            </TableCell>
-                                        </TableRow>
-
-                                    );
-                                })}
+                                        );
+                                    });
+                                })()}
                             </TableBody>
                         </Table>
                     </ScrollArea>

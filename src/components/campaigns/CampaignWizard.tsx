@@ -3,7 +3,7 @@ import {
     ChevronLeft, ChevronRight, Check, Loader2, X,
     Sparkles, Users, Mail, Clock, Settings, FileText,
     Upload, Plus, Trash2, Calendar, Globe, Zap,
-    ArrowRight, Target, Send, Eye, Info
+    ArrowRight, Target, Send, Eye, Info, Code, Type
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../../lib/utils';
@@ -24,7 +24,7 @@ const STEPS = [
     { id: 4, title: 'Strategy', icon: Target },
     { id: 5, title: 'Emails', icon: Mail },
     { id: 6, title: 'Schedule', icon: Calendar },
-    { id: 7, title: 'Launch', icon: Send },
+    { id: 7, title: 'Review', icon: Send },
 ];
 
 export function CampaignWizard({ onBack, onComplete, className }: CampaignWizardProps) {
@@ -65,7 +65,8 @@ export function CampaignWizard({ onBack, onComplete, className }: CampaignWizard
             case 2: return selectedAccountIds.length > 0;
             case 3: return leads.length > 0;
             case 4: return true;
-            case 5: return sequences.some(s => s.subject && s.body);
+            // Step 5: Check for subject AND (body OR htmlBody depending on mode)
+            case 5: return sequences.some(s => s.subject && (s.body || (s.isHtml && s.htmlBody)));
             case 6: return schedule.days.length > 0;
             case 7: return true;
             default: return false;
@@ -213,7 +214,7 @@ export function CampaignWizard({ onBack, onComplete, className }: CampaignWizard
                             )}
                         >
                             <span className="relative z-10 flex items-center gap-2">
-                                Continue1
+                                Continue
                                 <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                             </span>
                             {canProceed() && (
@@ -235,7 +236,7 @@ export function CampaignWizard({ onBack, onComplete, className }: CampaignWizard
                                 ) : (
                                     <>
                                         <Send className="w-4 h-4" />
-                                        Launch
+                                        Save Campaign
                                     </>
                                 )}
                             </span>
@@ -250,14 +251,14 @@ export function CampaignWizard({ onBack, onComplete, className }: CampaignWizard
             {/* Main Content */}
             <main className="flex-1 overflow-y-auto">
                 <div className={cn(
-                    'mx-auto py-8 px-6',
-                    currentStep === 5 ? 'max-w-5xl h-full' : 'max-w-2xl'
+                    'mx-auto px-6',
+                    currentStep === 5 ? 'max-w-7xl h-full py-4' : 'max-w-2xl py-8'
                 )}>
                     {currentStep === 1 && <StepName isDark={isDark} value={campaignName} onChange={setCampaignName} />}
                     {currentStep === 2 && <StepAccounts isDark={isDark} selectedIds={selectedAccountIds} onUpdate={setSelectedAccountIds} />}
                     {currentStep === 3 && <StepLeads isDark={isDark} leads={leads} onUpdate={setLeads} />}
                     {currentStep === 4 && <StepStrategy isDark={isDark} value={sequenceType} onChange={setSequenceType} />}
-                    {currentStep === 5 && <StepEmails isDark={isDark} sequences={sequences} onUpdate={setSequences} sequenceType={sequenceType} leads={leads} individualSequences={individualSequences} onIndividualUpdate={setIndividualSequences} />}
+                    {currentStep === 5 && <StepEmails isDark={isDark} sequences={sequences} onUpdate={setSequences} sequenceType={sequenceType} leads={leads} individualSequences={individualSequences} onIndividualUpdate={setIndividualSequences} selectedAccountIds={selectedAccountIds} />}
                     {currentStep === 6 && <StepSchedule isDark={isDark} schedule={schedule} onUpdate={setSchedule} />}
                     {currentStep === 7 && <StepLaunch isDark={isDark} options={options} onUpdate={setOptions} campaignName={campaignName} leadsCount={leads.length} selectedAccountIds={selectedAccountIds} />}
                 </div>
@@ -757,14 +758,49 @@ function StepStrategy({ isDark, value, onChange }: { isDark: boolean; value: 'sa
 
 // Step 4: Email Composer
 // Step 4: Email Composer
-function StepEmails({ isDark, sequences, onUpdate, sequenceType, leads, individualSequences, onIndividualUpdate }: { isDark: boolean; sequences: SequenceStep[]; onUpdate: (s: SequenceStep[]) => void; sequenceType: 'same' | 'individual'; leads: Lead[]; individualSequences: Map<string, SequenceStep[]>; onIndividualUpdate: (m: Map<string, SequenceStep[]>) => void }) {
+function StepEmails({ isDark, sequences, onUpdate, sequenceType, leads, individualSequences, onIndividualUpdate, selectedAccountIds }: { isDark: boolean; sequences: SequenceStep[]; onUpdate: (s: SequenceStep[]) => void; sequenceType: 'same' | 'individual'; leads: Lead[]; individualSequences: Map<string, SequenceStep[]>; onIndividualUpdate: (m: Map<string, SequenceStep[]>) => void; selectedAccountIds: string[] }) {
     const [activeIdx, setActiveIdx] = useState(0);
     const [selectedLead, setSelectedLead] = useState(leads[0]?.id || '');
     const [showAI, setShowAI] = useState(false);
     const [showGuide, setShowGuide] = useState(false);
     const [aiPrompt, setAiPrompt] = useState('');
     const [aiLoading, setAiLoading] = useState(false);
+    const [showPreview, setShowPreview] = useState(false);
+    const [previewLeadIdx, setPreviewLeadIdx] = useState(0);
+    const [accounts, setAccounts] = useState<Array<{
+        id: string;
+        email?: string;
+        name?: string;
+        fromName?: string;
+        fromEmail?: string;
+        senderFullName?: string;
+        senderCompany?: string;
+        senderPosition?: string;
+        senderPhone?: string;
+        senderWebsite?: string;
+        senderLinkedIn?: string
+    }>>([]);
     const step = sequences[activeIdx];
+
+    // Fetch accounts for preview
+    useEffect(() => {
+        const fetchAccounts = async () => {
+            try {
+                const token = localStorage.getItem('bulkEmailToken');
+                const response = await fetch('/api/bulk-email/smtp-accounts', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    // API returns array directly, not { accounts: [...] }
+                    setAccounts(Array.isArray(data) ? data : []);
+                }
+            } catch (error) {
+                console.error('Failed to fetch accounts:', error);
+            }
+        };
+        fetchAccounts();
+    }, []);
 
     const updateStep = (idx: number, updates: Partial<SequenceStep>) => {
         const updated = [...sequences];
@@ -782,6 +818,49 @@ function StepEmails({ isDark, sequences, onUpdate, sequenceType, leads, individu
         const newSeqs = sequences.filter((_, i) => i !== idx);
         onUpdate(newSeqs);
         if (activeIdx >= newSeqs.length) setActiveIdx(newSeqs.length - 1);
+    };
+
+    // Replace variables with actual data
+    const replaceVariables = (text: string, lead: Lead, account: typeof accounts[0] | null) => {
+        if (!text) return text;
+
+        let result = text;
+
+        // Lead variables
+        result = result.replace(/\{\{firstName\}\}/gi, lead.firstName || '');
+        result = result.replace(/\{\{lastName\}\}/gi, lead.lastName || '');
+        result = result.replace(/\{\{email\}\}/gi, lead.email || '');
+        result = result.replace(/\{\{company\}\}/gi, lead.company || '');
+
+        // Account/Sender variables - map to actual database field names
+        if (account) {
+            // Use senderFullName, fallback to fromName, then name
+            const senderName = account.senderFullName || account.fromName || account.name || account.fromEmail?.split('@')[0] || '';
+            result = result.replace(/\[Your Name\]/gi, senderName);
+            result = result.replace(/\[Your Company\]/gi, account.senderCompany || '');
+            result = result.replace(/\[Your Position\]/gi, account.senderPosition || '');
+            result = result.replace(/\[Your Phone\]/gi, account.senderPhone || '');
+            result = result.replace(/\[Your Website\]/gi, account.senderWebsite || '');
+            result = result.replace(/\[LinkedIn\]/gi, account.senderLinkedIn || '');
+        }
+
+        return result;
+    };
+
+    const getPreviewData = () => {
+        const lead = leads[previewLeadIdx] || leads[0];
+        const account = accounts.find(a => selectedAccountIds.includes(a.id)) || accounts[0];
+
+        if (!lead) return { subject: step.subject, body: step.body, htmlBody: step.htmlBody, isHtml: step.isHtml };
+
+        return {
+            subject: replaceVariables(step.subject, lead, account),
+            body: replaceVariables(step.body, lead, account),
+            htmlBody: step.htmlBody ? replaceVariables(step.htmlBody, lead, account) : '',
+            isHtml: step.isHtml,
+            lead,
+            account
+        };
     };
 
     const handleAiGenerate = async () => {
@@ -809,6 +888,155 @@ function StepEmails({ isDark, sequences, onUpdate, sequenceType, leads, individu
             setAiPrompt('');
             setShowAI(false);
         }
+    };
+
+    // Preview Modal Component
+    const PreviewModal = () => {
+        const preview = getPreviewData();
+
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowPreview(false)}>
+                <div
+                    onClick={(e) => e.stopPropagation()}
+                    className={cn(
+                        'w-full max-w-2xl rounded-xl shadow-2xl max-h-[85vh] flex flex-col',
+                        isDark ? 'bg-[#0a0a0a] border border-neutral-800' : 'bg-white border border-gray-200'
+                    )}
+                >
+                    {/* Modal Header */}
+                    <div className={cn('px-6 py-4 flex items-center justify-between border-b', isDark ? 'border-neutral-800' : 'border-gray-200')}>
+                        <div>
+                            <h3 className={cn('text-lg font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
+                                Email Preview
+                            </h3>
+                            <p className={cn('text-sm mt-0.5', isDark ? 'text-neutral-400' : 'text-gray-500')}>
+                                See how your email will look with real data
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => setShowPreview(false)}
+                            className={cn(
+                                'p-2 rounded-lg transition-colors',
+                                isDark ? 'hover:bg-neutral-800 text-neutral-400' : 'hover:bg-gray-100 text-gray-500'
+                            )}
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    {/* Lead Selector */}
+                    <div className={cn('px-6 py-3 border-b flex items-center gap-4', isDark ? 'border-neutral-800 bg-neutral-900/50' : 'border-gray-100 bg-gray-50')}>
+                        <span className={cn('text-xs font-medium', isDark ? 'text-neutral-400' : 'text-gray-500')}>Preview for:</span>
+                        <select
+                            value={previewLeadIdx}
+                            onChange={(e) => setPreviewLeadIdx(Number(e.target.value))}
+                            className={cn(
+                                'flex-1 px-3 py-1.5 rounded-lg text-sm cursor-pointer',
+                                isDark ? 'bg-neutral-800 border border-neutral-700 text-white' : 'bg-white border border-gray-200 text-gray-900'
+                            )}
+                            style={{ outline: 'none' }}
+                        >
+                            {leads.map((lead, idx) => (
+                                <option key={lead.id} value={idx}>
+                                    {lead.firstName ? `${lead.firstName} ${lead.lastName || ''}`.trim() : lead.email}
+                                    {lead.company ? ` - ${lead.company}` : ''}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Email Preview */}
+                    <div className="flex-1 overflow-y-auto p-6">
+                        {/* From / To */}
+                        <div className={cn('mb-4 pb-4 border-b', isDark ? 'border-neutral-800' : 'border-gray-100')}>
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className={cn('text-xs font-medium w-12', isDark ? 'text-neutral-500' : 'text-gray-400')}>From:</span>
+                                <span className={cn('text-sm', isDark ? 'text-neutral-300' : 'text-gray-700')}>
+                                    {preview.account?.senderFullName || preview.account?.fromName || preview.account?.name || preview.account?.fromEmail || 'Your Email Account'}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className={cn('text-xs font-medium w-12', isDark ? 'text-neutral-500' : 'text-gray-400')}>To:</span>
+                                <span className={cn('text-sm', isDark ? 'text-neutral-300' : 'text-gray-700')}>
+                                    {preview.lead?.email || 'recipient@example.com'}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Subject */}
+                        <div className="mb-4">
+                            <p className={cn('text-xs font-medium mb-1', isDark ? 'text-neutral-500' : 'text-gray-400')}>Subject</p>
+                            <p className={cn('text-base font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
+                                {preview.subject || '(No subject)'}
+                            </p>
+                        </div>
+
+                        {/* Body */}
+                        {preview.isHtml && preview.htmlBody ? (
+                            <div className="rounded-lg overflow-hidden border border-gray-200">
+                                <div className={cn('px-3 py-1.5 text-xs font-medium flex items-center gap-2', isDark ? 'bg-neutral-800 text-neutral-400' : 'bg-gray-100 text-gray-500')}>
+                                    <Code className="w-3 h-3" />
+                                    HTML Email
+                                </div>
+                                <div className="bg-white p-0" style={{ minHeight: '300px' }}>
+                                    <iframe
+                                        srcDoc={preview.htmlBody}
+                                        className="w-full border-0"
+                                        style={{ height: '300px' }}
+                                        title="HTML Email Preview"
+                                        sandbox="allow-same-origin"
+                                    />
+                                </div>
+                            </div>
+                        ) : (
+                            <div className={cn(
+                                'p-4 rounded-lg whitespace-pre-wrap text-sm leading-relaxed',
+                                isDark ? 'bg-neutral-900 text-neutral-200' : 'bg-gray-50 text-gray-700'
+                            )}>
+                                {preview.body || '(No content)'}
+                            </div>
+                        )}
+
+                        {/* Variable Status */}
+                        <div className={cn('mt-4 p-3 rounded-lg text-xs', isDark ? 'bg-neutral-900/50 border border-neutral-800' : 'bg-gray-50 border border-gray-200')}>
+                            <p className={cn('font-medium mb-2', isDark ? 'text-neutral-400' : 'text-gray-500')}>Variables replaced:</p>
+                            <div className="flex flex-wrap gap-2">
+                                {[
+                                    { var: '{{firstName}}', val: preview.lead?.firstName },
+                                    { var: '{{lastName}}', val: preview.lead?.lastName },
+                                    { var: '{{company}}', val: preview.lead?.company },
+                                    { var: '[Your Name]', val: preview.account?.senderFullName || preview.account?.fromName || preview.account?.name },
+                                ].map(v => (
+                                    <span key={v.var} className={cn(
+                                        'px-2 py-1 rounded',
+                                        v.val
+                                            ? isDark ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600'
+                                            : isDark ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-600'
+                                    )}>
+                                        {v.var}: {v.val || '(empty)'}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Modal Footer */}
+                    <div className={cn('px-6 py-4 border-t flex justify-end gap-2', isDark ? 'border-neutral-800' : 'border-gray-200')}>
+                        <button
+                            onClick={() => setShowPreview(false)}
+                            className={cn(
+                                'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
+                                isDark
+                                    ? 'bg-neutral-800 text-white hover:bg-neutral-700'
+                                    : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
+                            )}
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
     };
 
     const VariablesGuide = () => (
@@ -909,10 +1137,9 @@ function StepEmails({ isDark, sequences, onUpdate, sequenceType, leads, individu
 
     return (
         <div className="h-full flex flex-col">
-            <div className="mb-4 flex items-center justify-between">
+            <div className="mb-2 flex items-center justify-between">
                 <div>
-                    <h2 className={cn('text-lg font-semibold', isDark ? 'text-white' : 'text-gray-900')}>Craft your sequence</h2>
-                    <p className={cn('text-sm', isDark ? 'text-neutral-400' : 'text-gray-500')}>Use variables to personalize your outreach</p>
+                    <h2 className={cn('text-base font-semibold', isDark ? 'text-white' : 'text-gray-900')}>Craft your sequence</h2>
                 </div>
                 <button
                     onClick={() => setShowGuide(!showGuide)}
@@ -926,114 +1153,239 @@ function StepEmails({ isDark, sequences, onUpdate, sequenceType, leads, individu
                 </button>
             </div>
 
-            <div className="flex-1 flex gap-4 min-h-0 relative">
+            <div className="flex-1 flex gap-3 min-h-0 relative">
                 {showGuide && <VariablesGuide />}
 
                 {/* Steps sidebar */}
-                <div className="w-52 flex flex-col gap-2">
-                    <div className="flex-1 space-y-2 overflow-y-auto">
+                <div className="w-44 flex flex-col gap-2 flex-shrink-0">
+                    <div className="flex-1 space-y-1.5 overflow-y-auto">
                         {sequences.map((s, idx) => (
                             <button key={s.id} onClick={() => setActiveIdx(idx)}
-                                className={cn('w-full p-3 rounded-lg text-left transition-colors group relative',
+                                className={cn('w-full p-2 rounded-lg text-left transition-colors group relative',
                                     activeIdx === idx
                                         ? isDark ? 'bg-orange-500/10 border border-orange-500/50' : 'bg-orange-50 border border-orange-400'
                                         : isDark ? 'bg-neutral-900 border border-neutral-800 hover:border-neutral-700' : 'bg-white border border-gray-200 hover:border-gray-300')}>
                                 <div className="flex items-center gap-2">
-                                    <span className={cn('w-6 h-6 rounded flex items-center justify-center text-xs font-medium flex-shrink-0',
+                                    <span className={cn('w-5 h-5 rounded flex items-center justify-center text-[10px] font-medium flex-shrink-0',
                                         activeIdx === idx ? 'bg-orange-500 text-white' : isDark ? 'bg-neutral-800 text-neutral-500' : 'bg-gray-100 text-gray-400')}>
                                         {idx + 1}
                                     </span>
-                                    <span className={cn('text-sm truncate flex-1', isDark ? 'text-white' : 'text-gray-900')}>
+                                    <span className={cn('text-xs truncate flex-1', isDark ? 'text-white' : 'text-gray-900')}>
                                         {s.subject || 'Untitled'}
                                     </span>
                                 </div>
                                 {idx > 0 && (
-                                    <span className={cn('text-xs ml-8 block mt-1', isDark ? 'text-neutral-500' : 'text-gray-400')}>
+                                    <span className={cn('text-[10px] ml-7 block', isDark ? 'text-neutral-500' : 'text-gray-400')}>
                                         {s.delayDays}d delay
                                     </span>
                                 )}
                                 {sequences.length > 1 && (
                                     <button onClick={(e) => { e.stopPropagation(); deleteStep(idx); }}
-                                        className="absolute top-2 right-2 p-1 opacity-0 group-hover:opacity-100 text-neutral-400 hover:text-red-400 transition-all">
-                                        <Trash2 className="w-3.5 h-3.5" />
+                                        className="absolute top-1.5 right-1.5 p-0.5 opacity-0 group-hover:opacity-100 text-neutral-400 hover:text-red-400 transition-all">
+                                        <Trash2 className="w-3 h-3" />
                                     </button>
                                 )}
                             </button>
                         ))}
                     </div>
                     <button onClick={addStep}
-                        className={cn('w-full p-3 rounded-lg border border-dashed flex items-center justify-center gap-2 text-xs font-medium transition-colors',
+                        className={cn('w-full p-2 rounded-lg border border-dashed flex items-center justify-center gap-1.5 text-xs font-medium transition-colors',
                             isDark ? 'border-neutral-700 text-neutral-500 hover:border-orange-500/50 hover:text-orange-400' : 'border-gray-300 text-gray-400 hover:border-orange-400 hover:text-orange-500')}>
-                        <Plus className="w-3.5 h-3.5" /> Add Step
+                        <Plus className="w-3 h-3" /> Add Step
                     </button>
                 </div>
 
                 {/* Editor */}
                 <div className={cn('flex-1 flex flex-col rounded-lg overflow-hidden', isDark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white border border-gray-200')}>
-                    {/* Subject and Delay */}
-                    <div className={cn('px-4 py-3 border-b flex items-center gap-4', isDark ? 'border-neutral-800' : 'border-gray-100')}>
+                    {/* Subject and Delay - Compact */}
+                    <div className={cn('px-3 py-2 border-b flex items-center gap-3', isDark ? 'border-neutral-800' : 'border-gray-100')}>
                         <input type="text" placeholder="Subject line..." value={step.subject} onChange={(e) => updateStep(activeIdx, { subject: e.target.value })}
-                            className={cn('flex-1 bg-transparent text-base font-medium focus:outline-none', isDark ? 'text-white placeholder:text-neutral-500' : 'text-gray-900 placeholder:text-gray-400')} />
+                            className={cn('flex-1 bg-transparent text-sm font-medium focus:outline-none', isDark ? 'text-white placeholder:text-neutral-500' : 'text-gray-900 placeholder:text-gray-400')} />
                         {activeIdx > 0 && (
-                            <div className={cn('flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs', isDark ? 'bg-neutral-800' : 'bg-gray-100')}>
-                                <Clock className="w-3.5 h-3.5 text-neutral-500" />
+                            <div className={cn('flex items-center gap-1.5 px-2 py-1 rounded text-xs', isDark ? 'bg-neutral-800' : 'bg-gray-100')}>
+                                <Clock className="w-3 h-3 text-neutral-500" />
                                 <span className={cn(isDark ? 'text-neutral-400' : 'text-gray-500')}>Wait</span>
                                 <input type="number" min="0" value={step.delayDays} onChange={(e) => updateStep(activeIdx, { delayDays: parseInt(e.target.value) || 0 })}
-                                    className={cn('w-10 text-center bg-transparent font-medium focus:outline-none', isDark ? 'text-white' : 'text-gray-900')} />
-                                <span className={cn(isDark ? 'text-neutral-400' : 'text-gray-500')}>days</span>
+                                    className={cn('w-8 text-center bg-transparent font-medium focus:outline-none', isDark ? 'text-white' : 'text-gray-900')} />
+                                <span className={cn(isDark ? 'text-neutral-400' : 'text-gray-500')}>d</span>
                             </div>
                         )}
-                    </div>
-
-                    {/* Body */}
-                    <div className="flex-1 relative">
-                        <textarea
-                            placeholder={`Hi {{firstName}},\n\nWrite your message here...\n\nBest regards,\n[Your Name]`}
-                            value={step.body}
-                            onChange={(e) => updateStep(activeIdx, { body: e.target.value })}
-                            className={cn('w-full h-full p-4 bg-transparent resize-none focus:outline-none text-sm leading-relaxed', isDark ? 'text-white placeholder:text-neutral-600' : 'text-gray-900 placeholder:text-gray-400')}
-                        />
-
-                        {/* AI Button */}
-                        <div className="absolute bottom-4 right-4 flex items-center gap-2">
+                        {/* Mode Toggle - Inline */}
+                        <div className="flex items-center gap-1">
                             <button
-                                onClick={() => setShowAI(!showAI)}
-                                className={cn('flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors',
-                                    isDark ? 'bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 border border-purple-500/20' : 'bg-purple-50 text-purple-600 hover:bg-purple-100')}>
-                                <Sparkles className="w-3.5 h-3.5" />
-                                AI Assist
+                                onClick={() => updateStep(activeIdx, { isHtml: false })}
+                                className={cn(
+                                    'flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors',
+                                    !step.isHtml
+                                        ? 'bg-orange-500 text-white'
+                                        : isDark ? 'bg-neutral-800 text-neutral-400 hover:text-white' : 'bg-gray-100 text-gray-500 hover:text-gray-900'
+                                )}
+                            >
+                                <Type className="w-3 h-3" />
+                                Text
+                            </button>
+                            <button
+                                onClick={() => updateStep(activeIdx, { isHtml: true })}
+                                className={cn(
+                                    'flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors',
+                                    step.isHtml
+                                        ? 'bg-orange-500 text-white'
+                                        : isDark ? 'bg-neutral-800 text-neutral-400 hover:text-white' : 'bg-gray-100 text-gray-500 hover:text-gray-900'
+                                )}
+                            >
+                                <Code className="w-3 h-3" />
+                                HTML
                             </button>
                         </div>
+                    </div>
 
-                        {/* AI Modal */}
-                        {showAI && (
-                            <div className={cn('absolute bottom-16 right-4 w-80 p-3 rounded-lg border shadow-xl z-50', isDark ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-200')}>
-                                <p className={cn('text-xs font-medium mb-2', isDark ? 'text-neutral-300' : 'text-gray-600')}>Describe what you want:</p>
-                                <input
-                                    type="text"
-                                    value={aiPrompt}
-                                    onChange={(e) => setAiPrompt(e.target.value)}
-                                    placeholder="e.g. 'Make it more professional and concise'"
-                                    className={cn('w-full px-3 py-2 rounded-lg text-sm mb-2 focus:outline-none', isDark ? 'bg-neutral-900 border border-neutral-700 text-white' : 'bg-gray-50 border border-gray-200')}
-                                    onKeyDown={(e) => e.key === 'Enter' && handleAiGenerate()}
-                                    autoFocus
+                    {/* Body Editor */}
+                    <div className="flex-1 flex min-h-0">
+                        {/* Code/Text Editor */}
+                        <div className={cn('flex-1 relative', step.isHtml && 'border-r', isDark ? 'border-neutral-800' : 'border-gray-200')}>
+                            {step.isHtml ? (
+                                <>
+                                    <div className={cn('px-4 py-2 text-xs font-medium border-b', isDark ? 'text-neutral-400 border-neutral-800 bg-neutral-900' : 'text-gray-500 border-gray-100 bg-gray-50')}>
+                                        HTML Code
+                                    </div>
+                                    <textarea
+                                        placeholder={`<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #f8f9fa; padding: 20px; text-align: center; }
+        .content { padding: 20px; }
+        .button { display: inline-block; padding: 12px 24px; background: #007bff; color: white; text-decoration: none; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Hello {{firstName}}!</h1>
+        </div>
+        <div class="content">
+            <p>Write your HTML email content here...</p>
+            <a href="#" class="button">Call to Action</a>
+        </div>
+        <p>Best regards,<br>[Your Name]</p>
+    </div>
+</body>
+</html>`}
+                                        value={step.htmlBody || ''}
+                                        onChange={(e) => updateStep(activeIdx, { htmlBody: e.target.value })}
+                                        className={cn(
+                                            'w-full h-full p-4 bg-transparent resize-none focus:outline-none text-xs font-mono leading-relaxed',
+                                            isDark ? 'text-emerald-400 placeholder:text-neutral-600' : 'text-gray-800 placeholder:text-gray-400'
+                                        )}
+                                        spellCheck={false}
+                                    />
+                                </>
+                            ) : (
+                                <textarea
+                                    placeholder={`Hi {{firstName}},\n\nWrite your message here...\n\nBest regards,\n[Your Name]`}
+                                    value={step.body}
+                                    onChange={(e) => updateStep(activeIdx, { body: e.target.value })}
+                                    className={cn('w-full h-full p-4 bg-transparent resize-none focus:outline-none text-sm leading-relaxed', isDark ? 'text-white placeholder:text-neutral-600' : 'text-gray-900 placeholder:text-gray-400')}
                                 />
-                                <div className="flex gap-2">
-                                    <button onClick={() => setShowAI(false)} className={cn('flex-1 px-3 py-2 rounded-lg text-xs font-medium', isDark ? 'bg-neutral-700 text-neutral-300' : 'bg-gray-100 text-gray-600')}>
-                                        Cancel
-                                    </button>
-                                    <button onClick={handleAiGenerate} disabled={aiLoading}
-                                        className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-orange-500 text-white hover:bg-orange-600 flex items-center justify-center gap-1">
-                                        {aiLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                                        {aiLoading ? 'Generating...' : 'Generate'}
-                                    </button>
+                            )}
+
+                            {/* Action Buttons */}
+                            <div className="absolute bottom-4 right-4 flex items-center gap-2">
+                                {/* Preview Button */}
+                                <button
+                                    onClick={() => setShowPreview(true)}
+                                    disabled={leads.length === 0}
+                                    className={cn('flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors',
+                                        leads.length === 0
+                                            ? isDark ? 'bg-neutral-800 text-neutral-600 cursor-not-allowed' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                            : isDark ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100')}>
+                                    <Eye className="w-3.5 h-3.5" />
+                                    Preview
+                                </button>
+                                {/* AI Button */}
+                                <button
+                                    onClick={() => setShowAI(!showAI)}
+                                    className={cn('flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors',
+                                        isDark ? 'bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 border border-purple-500/20' : 'bg-purple-50 text-purple-600 hover:bg-purple-100')}>
+                                    <Sparkles className="w-3.5 h-3.5" />
+                                    AI Assist
+                                </button>
+                            </div>
+
+                            {/* AI Modal */}
+                            {showAI && (
+                                <div className={cn('absolute bottom-16 right-4 w-80 p-3 rounded-lg border shadow-xl z-50', isDark ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-200')}>
+                                    <p className={cn('text-xs font-medium mb-2', isDark ? 'text-neutral-300' : 'text-gray-600')}>Describe what you want:</p>
+                                    <input
+                                        type="text"
+                                        value={aiPrompt}
+                                        onChange={(e) => setAiPrompt(e.target.value)}
+                                        placeholder="e.g. 'Make it more professional and concise'"
+                                        className={cn('w-full px-3 py-2 rounded-lg text-sm mb-2 focus:outline-none', isDark ? 'bg-neutral-900 border border-neutral-700 text-white' : 'bg-gray-50 border border-gray-200')}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleAiGenerate()}
+                                        autoFocus
+                                    />
+                                    <div className="flex gap-2">
+                                        <button onClick={() => setShowAI(false)} className={cn('flex-1 px-3 py-2 rounded-lg text-xs font-medium', isDark ? 'bg-neutral-700 text-neutral-300' : 'bg-gray-100 text-gray-600')}>
+                                            Cancel
+                                        </button>
+                                        <button onClick={handleAiGenerate} disabled={aiLoading}
+                                            className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-orange-500 text-white hover:bg-orange-600 flex items-center justify-center gap-1">
+                                            {aiLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                                            {aiLoading ? 'Generating...' : 'Generate'}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Live HTML Preview */}
+                        {step.isHtml && (
+                            <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                                <div className={cn('px-4 py-2 text-xs font-medium border-b flex items-center justify-between', isDark ? 'text-neutral-400 border-neutral-800 bg-neutral-900' : 'text-gray-500 border-gray-100 bg-gray-50')}>
+                                    <span>Live Preview</span>
+                                    <span className={cn('text-xs px-2 py-0.5 rounded', isDark ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600')}>
+                                        {leads.length > 0 ? `Previewing for: ${leads[0]?.firstName || leads[0]?.email}` : 'Add leads to preview'}
+                                    </span>
+                                </div>
+                                <div className={cn('flex-1 overflow-auto p-4', isDark ? 'bg-white' : 'bg-white')}>
+                                    <iframe
+                                        srcDoc={(() => {
+                                            let html = step.htmlBody || '';
+                                            // Replace variables with first lead's data for preview
+                                            const lead = leads[0];
+                                            if (lead) {
+                                                html = html.replace(/\{\{firstName\}\}/gi, lead.firstName || '');
+                                                html = html.replace(/\{\{lastName\}\}/gi, lead.lastName || '');
+                                                html = html.replace(/\{\{email\}\}/gi, lead.email || '');
+                                                html = html.replace(/\{\{company\}\}/gi, lead.company || '');
+                                            }
+                                            // Replace sender variables
+                                            const account = accounts.find(a => selectedAccountIds.includes(a.id)) || accounts[0];
+                                            if (account) {
+                                                const senderName = account.senderFullName || account.fromName || account.name || '';
+                                                html = html.replace(/\[Your Name\]/gi, senderName);
+                                                html = html.replace(/\[Your Company\]/gi, account.senderCompany || '');
+                                                html = html.replace(/\[Your Position\]/gi, account.senderPosition || '');
+                                            }
+                                            return html;
+                                        })()}
+                                        className="w-full h-full border-0"
+                                        title="Email Preview"
+                                        sandbox="allow-same-origin"
+                                    />
                                 </div>
                             </div>
                         )}
                     </div>
-                </div>
-            </div>
-        </div>
+                </div >
+            </div >
+
+            {/* Preview Modal */}
+            {showPreview && <PreviewModal />}
+        </div >
     );
 }
 
@@ -1271,10 +1623,10 @@ function StepLaunch({ isDark, options, onUpdate, campaignName, leadsCount, selec
         <div className="space-y-6">
             <div>
                 <h2 className={cn('text-xl font-semibold mb-2', isDark ? 'text-white' : 'text-gray-900')}>
-                    Ready to launch
+                    Ready to save
                 </h2>
                 <p className={cn('text-sm', isDark ? 'text-neutral-400' : 'text-gray-500')}>
-                    Review your settings and launch "{campaignName}" to {leadsCount} leads
+                    Review your settings and save "{campaignName}" for {leadsCount} leads
                 </p>
             </div>
 

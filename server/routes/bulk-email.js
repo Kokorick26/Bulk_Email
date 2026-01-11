@@ -1581,6 +1581,14 @@ router.post('/campaigns/:id/start', auth, async (req, res) => {
             return res.status(404).json({ error: 'Campaign not found' });
         }
 
+        const currentStatus = campaign.Item.status || 'draft';
+        console.log(`[Campaign Start] Attempting to start campaign ${id}, current status: ${currentStatus}`);
+
+        // Check if campaign is already active
+        if (currentStatus === 'active') {
+            return res.status(400).json({ error: 'Campaign is already running.' });
+        }
+
         // Validate campaign has required data
         if (!campaign.Item.leads || campaign.Item.leads.length === 0) {
             return res.status(400).json({ error: 'Campaign has no leads. Please add leads first.' });
@@ -1590,7 +1598,7 @@ router.post('/campaigns/:id/start', auth, async (req, res) => {
             return res.status(400).json({ error: 'Campaign has no email sequence. Please create at least one step.' });
         }
 
-        //  FIX: Validate ALL steps have content, not just the first one
+        // FIX: Validate ALL steps have content, not just the first one
         const invalidSteps = campaign.Item.sequence.steps
             .map((step, idx) => ({ step, idx }))
             .filter(({ step }) => !step.subject || !step.body || !step.subject.trim() || !step.body.trim());
@@ -1603,21 +1611,33 @@ router.post('/campaigns/:id/start', auth, async (req, res) => {
         }
 
         // Update campaign status to active
-        //  FIX: Add condition to prevent race condition (multiple start clicks)
-        await dynamoDB.update({
-            TableName: CAMPAIGNS_TABLE,
-            Key: { id },
-            UpdateExpression: 'SET #status = :status, startedAt = :startedAt, updatedAt = :updatedAt',
-            ConditionExpression: '#status IN (:draft, :paused)',  //  Only start if draft or paused
-            ExpressionAttributeNames: { '#status': 'status' },
-            ExpressionAttributeValues: {
-                ':status': 'active',
-                ':draft': 'draft',
-                ':paused': 'paused',
-                ':startedAt': new Date().toISOString(),
-                ':updatedAt': new Date().toISOString()
-            }
-        }).promise();
+        // FIX: Allow starting from draft, paused, completed, or sent status
+        try {
+            await dynamoDB.update({
+                TableName: CAMPAIGNS_TABLE,
+                Key: { id },
+                UpdateExpression: 'SET #status = :status, startedAt = :startedAt, updatedAt = :updatedAt',
+                ConditionExpression: '#status IN (:draft, :paused, :completed, :sent, :stopped)',
+                ExpressionAttributeNames: { '#status': 'status' },
+                ExpressionAttributeValues: {
+                    ':status': 'active',
+                    ':draft': 'draft',
+                    ':paused': 'paused',
+                    ':completed': 'completed',
+                    ':sent': 'sent',
+                    ':stopped': 'stopped',
+                    ':startedAt': new Date().toISOString(),
+                    ':updatedAt': new Date().toISOString()
+                }
+            }).promise();
+        } catch (conditionError) {
+            // Condition failed - the status wasn't one of the expected values
+            console.error('[Campaign Start] Condition check failed:', conditionError.code);
+            return res.status(400).json({
+                error: `Cannot start campaign with status "${currentStatus}". Please stop it first if running.`,
+                currentStatus
+            });
+        }
 
         // Execute campaign immediately (in background)
         setImmediate(() => {
@@ -1629,13 +1649,14 @@ router.post('/campaigns/:id/start', auth, async (req, res) => {
         res.json({
             message: 'Campaign started successfully',
             status: 'active',
+            previousStatus: currentStatus,
             totalLeads: campaign.Item.leads.length,
             totalSteps: campaign.Item.sequence.steps.length
         });
 
     } catch (err) {
         console.error('Error starting campaign:', err);
-        res.status(500).json({ error: 'Could not start campaign' });
+        res.status(500).json({ error: 'Could not start campaign: ' + err.message });
     }
 });
 
@@ -1881,6 +1902,7 @@ router.get('/campaigns/:id/routing', auth, async (req, res) => {
 router.post('/campaigns/:id/execute', auth, async (req, res) => {
     try {
         const { id } = req.params;
+        const { force } = req.query; // Allow forcing execution even if not active
 
         // Check campaign exists and is active
         const campaign = await dynamoDB.get({
@@ -1892,16 +1914,23 @@ router.post('/campaigns/:id/execute', auth, async (req, res) => {
             return res.status(404).json({ error: 'Campaign not found' });
         }
 
-        if (campaign.Item.status !== 'active') {
-            return res.status(400).json({ error: 'Campaign is not active. Start the campaign first.' });
+        // Allow execution if campaign is active OR if force=true
+        if (campaign.Item.status !== 'active' && force !== 'true') {
+            return res.status(400).json({
+                error: 'Campaign is not active. Start the campaign first or use force=true to trigger sequence follow-ups manually.',
+                status: campaign.Item.status
+            });
         }
+
+        console.log(`[CampaignExecutor] Manual execution triggered for campaign ${id} (status: ${campaign.Item.status}, force: ${force})`);
 
         // Execute synchronously for this request
         const result = await executeCampaign(id);
 
         res.json({
             message: 'Campaign execution completed',
-            result
+            forced: force === 'true',
+            ...result
         });
 
     } catch (err) {

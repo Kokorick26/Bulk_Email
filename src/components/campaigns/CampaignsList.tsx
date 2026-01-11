@@ -260,6 +260,15 @@ export function CampaignsList({
                                         Resume
                                     </button>
                                 )}
+                                {selected.status === 'draft' && onResumeCampaign && (
+                                    <button
+                                        onClick={() => onResumeCampaign(selected.id)}
+                                        className="flex items-center gap-1 h-7 px-2.5 rounded text-[10px] font-medium bg-emerald-500 text-white hover:bg-emerald-600 transition-colors"
+                                    >
+                                        <Play className="w-3 h-3" />
+                                        Start
+                                    </button>
+                                )}
                                 {onViewInbox && (
                                     <button
                                         onClick={() => onViewInbox(selected.id, selected.options?.selectedAccountIds || [])}

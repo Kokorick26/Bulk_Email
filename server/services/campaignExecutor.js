@@ -51,19 +51,31 @@ async function updateLeadStatusInCampaign(campaignId, leadEmail, newStatus) {
 
         if (leadIndex === -1) return;
 
+        // Build update expression based on status
+        let updateExpression = `SET leads[${leadIndex}].#status = :status, updatedAt = :updatedAt`;
+        const expressionAttributeNames = { '#status': 'status' };
+        const expressionAttributeValues = {
+            ':status': newStatus,
+            ':updatedAt': new Date().toISOString()
+        };
+
+        // If marking as replied, also set hasReplied and replyReceivedAt
+        if (newStatus === 'replied') {
+            updateExpression += `, leads[${leadIndex}].hasReplied = :hasReplied, leads[${leadIndex}].replyReceivedAt = :replyReceivedAt`;
+            expressionAttributeValues[':hasReplied'] = true;
+            expressionAttributeValues[':replyReceivedAt'] = new Date().toISOString();
+        }
+
         // Update the lead status using DynamoDB set operation
         await dynamoDB.update({
             TableName: CAMPAIGNS_TABLE,
             Key: { id: campaignId },
-            UpdateExpression: `SET leads[${leadIndex}].#status = :status, updatedAt = :updatedAt`,
-            ExpressionAttributeNames: { '#status': 'status' },
-            ExpressionAttributeValues: {
-                ':status': newStatus,
-                ':updatedAt': new Date().toISOString()
-            }
+            UpdateExpression: updateExpression,
+            ExpressionAttributeNames: expressionAttributeNames,
+            ExpressionAttributeValues: expressionAttributeValues
         }).promise();
 
-        console.log(`[CampaignExecutor] Updated lead ${leadEmail} status to ${newStatus}`);
+        console.log(`[CampaignExecutor] Updated lead ${leadEmail} status to ${newStatus}${newStatus === 'replied' ? ' (hasReplied=true)' : ''}`);
     } catch (err) {
         console.error(`[CampaignExecutor] Failed to update lead status:`, err.message);
     }
@@ -267,9 +279,10 @@ function isLeadWithinWorkingHours(leadData, campaignSchedule) {
     // Get current time in lead's timezone
     const leadTime = getTimeInTimezone(timezone);
 
-    // Get working hours (from lead data or campaign defaults)
-    const workingStart = leadData.workingHoursStart || campaignSchedule?.startTime || '09:00';
-    const workingEnd = leadData.workingHoursEnd || campaignSchedule?.endTime || '18:00';
+    // FIX: Campaign schedule should take priority over lead working hours
+    // Only use lead's hours if campaign schedule doesn't have them set
+    const workingStart = campaignSchedule?.startTime || leadData.workingHoursStart || '09:00';
+    const workingEnd = campaignSchedule?.endTime || leadData.workingHoursEnd || '18:00';
 
     // FIX: Campaign schedule days should take precedence over lead's default working days
     // Only use lead's workingDays if it's explicitly different from the default (Mon-Fri)
@@ -293,9 +306,9 @@ function isLeadWithinWorkingHours(leadData, campaignSchedule) {
     const isWithin = currentTime >= workingStart && currentTime <= workingEnd;
 
     if (!isWithin) {
-        console.log(`[Timezone] Lead ${leadData.email}: ${currentTime} ${timezone} is outside working hours (${workingStart}-${workingEnd})`);
+        console.log(`[Timezone] Lead ${leadData.email}: ${currentTime} ${timezone} is outside working hours (${workingStart}-${workingEnd}) [from CAMPAIGN]`);
     } else {
-        console.log(`[Timezone] Lead ${leadData.email}: ${currentTime} ${timezone} is WITHIN working hours `);
+        console.log(`[Timezone] Lead ${leadData.email}: ${currentTime} ${timezone} is WITHIN working hours (${workingStart}-${workingEnd}) [from CAMPAIGN]`);
     }
 
     return isWithin;
@@ -402,73 +415,58 @@ async function checkForReplies(smtpAccount, leadEmail, sinceDate) {
         return new Promise((resolve, reject) => {
             imap.openBox('INBOX', true, (err, box) => {
                 if (err) {
+                    console.error('[ReplyCheck] Failed to open INBOX:', err.message);
                     imap.end();
                     return resolve({ hasReplied: false });
                 }
 
+                console.log(`[ReplyCheck] Opened INBOX with ${box.messages.total} messages, searching for emails from ${leadEmail}`);
+
+                // Format date for IMAP (needs to be a Date object or 'DD-Mon-YYYY' format)
+                // IMAP's SINCE uses just the date portion, ignoring time
+                let searchDate = sinceDate;
+                if (typeof sinceDate === 'string') {
+                    searchDate = new Date(sinceDate);
+                }
+
+                // IMAP expects Date object or formatted string
+                const formattedDate = searchDate instanceof Date ? searchDate : new Date();
+                console.log(`[ReplyCheck] Searching for emails from ${leadEmail} since ${formattedDate.toISOString()}`);
+
                 // Search for emails from the lead since our last email
                 const searchCriteria = [
                     ['FROM', leadEmail],
-                    ['SINCE', sinceDate]
+                    ['SINCE', formattedDate]
                 ];
 
                 imap.search(searchCriteria, (err, results) => {
                     if (err) {
-                        console.error('[ReplyCheck] Search error:', err);
-                        imap.end();
-                        return resolve({ hasReplied: false });
+                        console.error('[ReplyCheck] Search error:', err.message);
+
+                        // Try a simpler search without the date filter
+                        console.log('[ReplyCheck] Trying simpler search without date filter...');
+                        imap.search([['FROM', leadEmail]], (err2, results2) => {
+                            if (err2 || !results2 || results2.length === 0) {
+                                console.log(`[ReplyCheck] No emails found from ${leadEmail}`);
+                                imap.end();
+                                return resolve({ hasReplied: false });
+                            }
+
+                            // Filter manually by date
+                            console.log(`[ReplyCheck] Found ${results2.length} total emails from ${leadEmail}, filtering by date...`);
+                            processResults(imap, results2, leadEmail, formattedDate, resolve);
+                        });
+                        return;
                     }
+
+                    console.log(`[ReplyCheck] Found ${results.length} email(s) from ${leadEmail} since ${formattedDate.toDateString()}`);
 
                     if (results.length === 0) {
                         imap.end();
                         return resolve({ hasReplied: false });
                     }
 
-                    // Fetch the most recent reply
-                    const fetch = imap.fetch(results[results.length - 1], {
-                        bodies: ['HEADER', 'TEXT'],
-                        struct: true
-                    });
-
-                    let replyData = {
-                        hasReplied: true,
-                        from: leadEmail,
-                        subject: '',
-                        body: '',
-                        receivedAt: new Date().toISOString()
-                    };
-
-                    fetch.on('message', (msg) => {
-                        msg.on('body', (stream, info) => {
-                            let buffer = '';
-                            stream.on('data', (chunk) => {
-                                buffer += chunk.toString('utf8');
-                            });
-                            stream.once('end', () => {
-                                if (info.which === 'HEADER') {
-                                    const Imap = require('imap');
-                                    const header = Imap.parseHeader(buffer);
-                                    replyData.subject = header.subject ? header.subject[0] : '';
-                                    replyData.receivedAt = header.date ? new Date(header.date[0]).toISOString() : new Date().toISOString();
-                                } else if (info.which === 'TEXT') {
-                                    // Clean up the body text
-                                    replyData.body = buffer.substring(0, 1000); // Limit to 1000 chars
-                                }
-                            });
-                        });
-                    });
-
-                    fetch.once('error', (err) => {
-                        console.error('[ReplyCheck] Fetch error:', err);
-                        imap.end();
-                        resolve({ hasReplied: false });
-                    });
-
-                    fetch.once('end', () => {
-                        imap.end();
-                        console.log(`[ReplyCheck] Found reply from ${leadEmail}: "${replyData.subject}"`);
-                        resolve(replyData);
-                    });
+                    processResults(imap, results, leadEmail, formattedDate, resolve);
                 });
             });
         });
@@ -476,6 +474,64 @@ async function checkForReplies(smtpAccount, leadEmail, sinceDate) {
         console.error('[ReplyCheck] Connection error:', error.message);
         return { hasReplied: false };
     }
+}
+
+// Helper function to process IMAP search results
+function processResults(imap, results, leadEmail, sinceDate, resolve) {
+    // Fetch the most recent reply
+    const fetch = imap.fetch(results[results.length - 1], {
+        bodies: ['HEADER', 'TEXT'],
+        struct: true
+    });
+
+    let replyData = {
+        hasReplied: true,
+        from: leadEmail,
+        subject: '',
+        body: '',
+        receivedAt: new Date().toISOString()
+    };
+
+    fetch.on('message', (msg) => {
+        msg.on('body', (stream, info) => {
+            let buffer = '';
+            stream.on('data', (chunk) => {
+                buffer += chunk.toString('utf8');
+            });
+            stream.once('end', () => {
+                if (info.which === 'HEADER') {
+                    const Imap = require('imap');
+                    const header = Imap.parseHeader(buffer);
+                    replyData.subject = header.subject ? header.subject[0] : '';
+                    replyData.receivedAt = header.date ? new Date(header.date[0]).toISOString() : new Date().toISOString();
+
+                    // Check if the email date is after our sinceDate
+                    const emailDate = header.date ? new Date(header.date[0]) : new Date();
+                    if (emailDate < sinceDate) {
+                        console.log(`[ReplyCheck] Email from ${leadEmail} is older than our sent date, ignoring`);
+                        replyData.hasReplied = false;
+                    }
+                } else if (info.which === 'TEXT') {
+                    // Clean up the body text
+                    replyData.body = buffer.substring(0, 1000); // Limit to 1000 chars
+                }
+            });
+        });
+    });
+
+    fetch.once('error', (err) => {
+        console.error('[ReplyCheck] Fetch error:', err);
+        imap.end();
+        resolve({ hasReplied: false });
+    });
+
+    fetch.once('end', () => {
+        imap.end();
+        if (replyData.hasReplied) {
+            console.log(`[ReplyCheck] ✓ Found reply from ${leadEmail}: "${replyData.subject}"`);
+        }
+        resolve(replyData);
+    });
 }
 
 // Check for bounces via IMAP
@@ -1294,145 +1350,216 @@ export async function executeCampaign(campaignId) {
         let failedCount = 0;
         let skippedCount = 0;
         let routingExhausted = 0; // Leads skipped because all accounts reached limits
-        // Time between emails: options.timeBetweenEmails is in MINUTES, convert to seconds
-        const delayBetweenEmailsMinutes = options.timeBetweenEmails || schedule?.delayBetweenEmails || 10;
-        const delayBetweenEmails = delayBetweenEmailsMinutes * 60; // Convert to seconds
+        // Time between BATCHES: options.timeBetweenEmails is in MINUTES
+        const delayBetweenBatchesMinutes = options.timeBetweenEmails || schedule?.delayBetweenEmails || 10;
         const dailyLimit = options.dailyLimit || 15;
 
         // Track which account sent to which lead (for logging)
         const accountUsageMap = new Map();
 
-        console.log(`[CampaignExecutor] Starting sending (intelligentRouting: ${useIntelligentRouting}, timezoneAware: ${useLeadTimezones})`);
+        console.log(`[CampaignExecutor] Starting BATCH sending (intelligentRouting: ${useIntelligentRouting}, timezoneAware: ${useLeadTimezones})`);
+        console.log(`[CampaignExecutor] Delay between batches: ${delayBetweenBatchesMinutes} minutes`);
+        console.log(`[CampaignExecutor] Available accounts: ${allSmtpAccounts.length}`);
 
-        for (let i = 0; i < leadsToProcess.length; i++) {
-            const lead = leadsToProcess[i];
+        // ======= BATCH SENDING IMPLEMENTATION =======
+        // Group leads by their assigned SMTP account
+        const leadsByAccount = new Map();
+        const leadsWithoutAccount = [];
+
+        for (const lead of leadsToProcess) {
+            const leadData = lead.progress?.leadData || {};
+
+            // Check timezone before adding to batch
+            if (useLeadTimezones && !isLeadWithinWorkingHours(leadData, schedule)) {
+                console.log(`[CampaignExecutor] Skipping ${leadData.email} - outside their working hours`);
+                skippedCount++;
+                continue;
+            }
+
+            // Get assigned account ID
+            const accountId = lead.progress?.sendingAccountId || lead.sendingAccountId || leadData.sendingAccountId;
+
+            if (accountId) {
+                if (!leadsByAccount.has(accountId)) {
+                    leadsByAccount.set(accountId, []);
+                }
+                leadsByAccount.get(accountId).push(lead);
+            } else if (useIntelligentRouting) {
+                // Will be assigned later via round-robin
+                leadsWithoutAccount.push(lead);
+            } else if (options.smtpAccountId) {
+                // Use default account
+                if (!leadsByAccount.has(options.smtpAccountId)) {
+                    leadsByAccount.set(options.smtpAccountId, []);
+                }
+                leadsByAccount.get(options.smtpAccountId).push(lead);
+            } else {
+                leadsWithoutAccount.push(lead);
+            }
+        }
+
+        // Distribute unassigned leads across accounts using round-robin
+        if (leadsWithoutAccount.length > 0 && allSmtpAccounts.length > 0) {
+            console.log(`[CampaignExecutor] Distributing ${leadsWithoutAccount.length} unassigned leads across ${allSmtpAccounts.length} accounts`);
+            for (let i = 0; i < leadsWithoutAccount.length; i++) {
+                const accountId = allSmtpAccounts[i % allSmtpAccounts.length].id;
+                if (!leadsByAccount.has(accountId)) {
+                    leadsByAccount.set(accountId, []);
+                }
+                leadsByAccount.get(accountId).push(leadsWithoutAccount[i]);
+            }
+        }
+
+        // Log distribution
+        console.log(`[CampaignExecutor] Lead distribution by account:`);
+        for (const [accountId, leads] of leadsByAccount.entries()) {
+            const account = allSmtpAccounts.find(a => a.id === accountId);
+            console.log(`  - ${account?.fromEmail || accountId}: ${leads.length} leads`);
+        }
+
+        // Create queues for each account (FIFO)
+        const accountQueues = new Map();
+        for (const [accountId, leads] of leadsByAccount.entries()) {
+            accountQueues.set(accountId, [...leads]); // Clone array
+        }
+
+        // Send in batches - one email per account per batch
+        let batchNumber = 0;
+        let hasMoreToSend = true;
+
+        while (hasMoreToSend && sentCount < dailyLimit) {
+            batchNumber++;
+            hasMoreToSend = false;
+            const batchResults = [];
 
             // ======= REAL-TIME STATUS CHECK =======
             // Check if campaign was paused/stopped DURING execution
-            if (i % 3 === 0 || i === 0) { // Check every 3 emails to reduce DB calls
-                try {
-                    const statusCheck = await dynamoDB.get({
+            try {
+                const statusCheck = await dynamoDB.get({
+                    TableName: CAMPAIGNS_TABLE,
+                    Key: { id: campaignId },
+                    ProjectionExpression: '#status',
+                    ExpressionAttributeNames: { '#status': 'status' }
+                }).promise();
+
+                const currentStatus = statusCheck.Item?.status;
+                if (currentStatus !== 'active') {
+                    console.log(`[CampaignExecutor]  Campaign ${currentStatus} - STOPPING IMMEDIATELY`);
+                    console.log(`[CampaignExecutor] Progress saved: ${sentCount} sent, ${failedCount} failed`);
+
+                    // Save current progress before stopping
+                    await dynamoDB.update({
                         TableName: CAMPAIGNS_TABLE,
                         Key: { id: campaignId },
-                        ProjectionExpression: '#status',
-                        ExpressionAttributeNames: { '#status': 'status' }
+                        UpdateExpression: 'SET sentCount = if_not_exists(sentCount, :zero) + :sent, failedCount = if_not_exists(failedCount, :zero) + :failed, updatedAt = :updatedAt',
+                        ExpressionAttributeValues: {
+                            ':zero': 0,
+                            ':sent': sentCount,
+                            ':failed': failedCount,
+                            ':updatedAt': new Date().toISOString()
+                        }
                     }).promise();
 
-                    const currentStatus = statusCheck.Item?.status;
-                    if (currentStatus !== 'active') {
-                        console.log(`[CampaignExecutor]  Campaign ${currentStatus} - STOPPING IMMEDIATELY`);
-                        console.log(`[CampaignExecutor] Progress saved: ${sentCount} sent, ${failedCount} failed`);
-
-                        // Save current progress before stopping
-                        await dynamoDB.update({
-                            TableName: CAMPAIGNS_TABLE,
-                            Key: { id: campaignId },
-                            UpdateExpression: 'SET sentCount = if_not_exists(sentCount, :zero) + :sent, failedCount = if_not_exists(failedCount, :zero) + :failed, updatedAt = :updatedAt',
-                            ExpressionAttributeValues: {
-                                ':zero': 0,
-                                ':sent': sentCount,
-                                ':failed': failedCount,
-                                ':updatedAt': new Date().toISOString()
-                            }
-                        }).promise();
-
-                        return {
-                            success: true,
-                            sent: sentCount,
-                            failed: failedCount,
-                            stopped: true,
-                            reason: `Campaign ${currentStatus}`,
-                            accountsUsed: accountUsageMap.size
-                        };
-                    }
-                } catch (statusErr) {
-                    console.log('[CampaignExecutor] Could not check status, continuing...');
+                    return {
+                        success: true,
+                        sent: sentCount,
+                        failed: failedCount,
+                        stopped: true,
+                        reason: `Campaign ${currentStatus}`,
+                        accountsUsed: accountUsageMap.size
+                    };
                 }
+            } catch (statusErr) {
+                console.log('[CampaignExecutor] Could not check status, continuing...');
             }
             // ======= END STATUS CHECK =======
 
-            if (sentCount >= dailyLimit) {
-                console.log('[CampaignExecutor] Daily limit reached');
-                break;
+            console.log(`\n[CampaignExecutor] ========== BATCH ${batchNumber} ==========`);
+            const batchStartTime = new Date();
+
+            // Send one email from each account in PARALLEL
+            const sendPromises = [];
+
+            for (const [accountId, queue] of accountQueues.entries()) {
+                if (queue.length === 0) continue;
+                if (sentCount >= dailyLimit) break;
+
+                hasMoreToSend = true;
+                const lead = queue.shift(); // Get next lead from queue
+                const leadData = lead.progress?.leadData || {};
+
+                console.log(`[CampaignExecutor] Batch ${batchNumber}: ${leadData.email} via ${accountId.substring(0, 8)}...`);
+
+                // Create send promise
+                const sendPromise = (async () => {
+                    try {
+                        const success = await sendStepEmail(
+                            campaign,
+                            lead,
+                            lead.step,
+                            lead.stepIndex,
+                            accountId
+                        );
+
+                        if (success) {
+                            // Track account usage for intelligent routing
+                            if (useIntelligentRouting) {
+                                await markEmailSent(accountId, campaignId);
+                            }
+
+                            // Update usage map for logging
+                            const currentCount = accountUsageMap.get(accountId) || 0;
+                            accountUsageMap.set(accountId, currentCount + 1);
+
+                            return { success: true, email: leadData.email, accountId };
+                        } else {
+                            return { success: false, email: leadData.email, accountId };
+                        }
+                    } catch (error) {
+                        console.error(`[CampaignExecutor] Error sending to ${leadData.email}:`, error.message);
+                        return { success: false, email: leadData.email, accountId, error: error.message };
+                    }
+                })();
+
+                sendPromises.push(sendPromise);
             }
 
-            const leadData = lead.progress.leadData || {};
+            // Wait for all emails in this batch to complete
+            if (sendPromises.length > 0) {
+                console.log(`[CampaignExecutor] Sending ${sendPromises.length} emails in parallel...`);
+                const results = await Promise.all(sendPromises);
 
-            // Calculate when this email is scheduled to be sent
-            const scheduledTime = new Date(Date.now() + (sentCount * delayBetweenEmails * 1000));
-            console.log(`[CampaignExecutor] Email #${sentCount + 1}: ${leadData.email} scheduled for ${scheduledTime.toISOString()}`);
+                for (const result of results) {
+                    batchResults.push(result);
+                    if (result.success) {
+                        sentCount++;
+                        console.log(`[CampaignExecutor]  Batch ${batchNumber}: ${result.email} SENT via ${result.accountId.substring(0, 8)}...`);
+                    } else {
+                        failedCount++;
+                        console.log(`[CampaignExecutor]  Batch ${batchNumber}: ${result.email} FAILED`);
+                    }
+                }
 
-            // ======= TIMEZONE CHECK =======
-            if (useLeadTimezones) {
-                const tzInfo = getLeadTimezoneInfo(leadData, schedule);
-                console.log(`[CampaignExecutor] Lead ${leadData.email}: TZ=${tzInfo.timezone} (${tzInfo.source}), Local Time=${tzInfo.localTime} ${tzInfo.weekday}`);
+                const batchDuration = (new Date() - batchStartTime) / 1000;
+                console.log(`[CampaignExecutor] Batch ${batchNumber} completed in ${batchDuration.toFixed(1)}s: ${results.filter(r => r.success).length} sent, ${results.filter(r => !r.success).length} failed`);
+            }
 
-                if (!isLeadWithinWorkingHours(leadData, schedule)) {
-                    console.log(`[CampaignExecutor] Skipping ${leadData.email} - outside their working hours`);
-                    skippedCount++;
-                    continue;
+            // Check if any accounts still have leads to send
+            hasMoreToSend = false;
+            for (const queue of accountQueues.values()) {
+                if (queue.length > 0) {
+                    hasMoreToSend = true;
+                    break;
                 }
             }
-            // ======= END TIMEZONE CHECK =======
 
-            // ======= INTELLIGENT ROUTING - SELECT ACCOUNT =======
-            // Priority: 1. Progress's assigned account (from round-robin), 2. Lead's manual assignment, 3. Intelligent routing, 4. Campaign default
-            let selectedAccountId = lead.progress?.sendingAccountId || lead.sendingAccountId || leadData.sendingAccountId || options.smtpAccountId;
-
-            // Log lead's account assignment
-            if (selectedAccountId) {
-                console.log(`[CampaignExecutor] Lead ${leadData.email} using account: ${selectedAccountId}`);
-            }
-
-            if (!selectedAccountId && useIntelligentRouting) {
-                // Get next available account using intelligent routing
-                const nextAccount = await getNextAccount(allSmtpAccounts, campaignId, routingConfig);
-
-                if (!nextAccount) {
-                    console.log(`[CampaignExecutor]  All accounts reached their limits for this campaign`);
-                    routingExhausted++;
-
-                    // If all accounts exhausted, we'll continue with remaining leads in next run
-                    continue;
-                }
-
-                selectedAccountId = nextAccount.id;
-                console.log(`[CampaignExecutor]  Routing to: ${nextAccount.fromEmail}`);
-            }
-            // ======= END ROUTING =======
-
-            // First email sends immediately, subsequent emails wait for delay
-            if (sentCount > 0 && delayBetweenEmails > 0) {
-                console.log(`[CampaignExecutor] Waiting ${delayBetweenEmailsMinutes} minutes before sending to ${leadData.email}...`);
-                //  FIX: Convert minutes to milliseconds (was treating as seconds!)
-                await new Promise(resolve => setTimeout(resolve, delayBetweenEmails * 60 * 1000));
-            }
-
-            const success = await sendStepEmail(
-                campaign,
-                lead,
-                lead.step,
-                lead.stepIndex,
-                selectedAccountId
-            );
-
-            if (success) {
-                sentCount++;
-                console.log(`[CampaignExecutor]  Email ${sentCount} sent to ${leadData.email}`);
-
-                // Track account usage for intelligent routing
-                if (useIntelligentRouting && selectedAccountId) {
-                    await markEmailSent(selectedAccountId, campaignId);
-
-                    // Update usage map for logging
-                    const currentCount = accountUsageMap.get(selectedAccountId) || 0;
-                    accountUsageMap.set(selectedAccountId, currentCount + 1);
-                }
-            } else {
-                failedCount++;
-                console.log(`[CampaignExecutor]  Failed to send to ${leadData.email}`);
+            // Wait before next batch (only if there are more emails to send)
+            if (hasMoreToSend && sentCount < dailyLimit) {
+                console.log(`[CampaignExecutor] Waiting ${delayBetweenBatchesMinutes} minutes before next batch...`);
+                await new Promise(resolve => setTimeout(resolve, delayBetweenBatchesMinutes * 60 * 1000));
             }
         }
+        // ======= END BATCH SENDING =======
 
         // Log routing summary
         if (useIntelligentRouting && accountUsageMap.size > 0) {
@@ -1481,12 +1608,34 @@ export async function executeCampaign(campaignId) {
 
         console.log(`[CampaignExecutor] Completed: ${sentCount} sent, ${failedCount} failed, ${skippedCount} skipped (timezone), ${routingExhausted} exhausted (routing limits)`);
 
-        //  FIX: Check if campaign is complete (all leads processed)
-        const allLeadsComplete = leadsToProcess.length === 0 ||
-            (sentCount === 0 && skippedCount === 0 && routingExhausted === 0);
+        // FIX: Check if campaign is TRULY complete (all leads have finished ALL sequence steps)
+        // A campaign is only complete when:
+        // 1. All leads have currentStep >= totalSteps (all steps completed)
+        // 2. OR all leads have replied/bounced (stopped)
 
-        if (allLeadsComplete && leadsToProcess.length === 0) {
-            console.log(`[CampaignExecutor]  Campaign completed - all leads processed!`);
+        const totalSequenceSteps = campaign.sequence?.steps?.length || 1;
+
+        // Check lead progress to see if any leads still have pending steps
+        const allProgressData = await dynamoDB.scan({
+            TableName: LEAD_PROGRESS_TABLE,
+            FilterExpression: 'campaignId = :campaignId',
+            ExpressionAttributeValues: { ':campaignId': campaignId }
+        }).promise();
+
+        const allProgress = allProgressData.Items || [];
+        const leadsWithPendingSteps = allProgress.filter(p => {
+            const currentStep = p.currentStep || 0;
+            const hasCompletedAllSteps = currentStep >= totalSequenceSteps;
+            const isTerminated = p.status === 'replied' || p.status === 'bounced' || p.status === 'unsubscribed';
+            return !hasCompletedAllSteps && !isTerminated;
+        });
+
+        const isReallyComplete = leadsWithPendingSteps.length === 0 && allProgress.length > 0;
+
+        console.log(`[CampaignExecutor] Sequence progress: ${allProgress.length} total leads, ${leadsWithPendingSteps.length} have pending steps, sequence has ${totalSequenceSteps} steps`);
+
+        if (isReallyComplete) {
+            console.log(`[CampaignExecutor] ✓ Campaign completed - all leads have finished all ${totalSequenceSteps} steps!`);
 
             await dynamoDB.update({
                 TableName: CAMPAIGNS_TABLE,
@@ -1498,6 +1647,8 @@ export async function executeCampaign(campaignId) {
                     ':now': new Date().toISOString()
                 }
             }).promise();
+        } else if (leadsWithPendingSteps.length > 0) {
+            console.log(`[CampaignExecutor] Campaign still in progress - ${leadsWithPendingSteps.length} leads waiting for next sequence step`);
         }
 
         return {
@@ -1507,7 +1658,8 @@ export async function executeCampaign(campaignId) {
             skipped: skippedCount,
             routingExhausted,
             accountsUsed: accountUsageMap.size,
-            completed: allLeadsComplete && leadsToProcess.length === 0  //  Signal completion
+            leadsWithPendingSteps: leadsWithPendingSteps.length,
+            completed: isReallyComplete
         };
 
     } catch (error) {

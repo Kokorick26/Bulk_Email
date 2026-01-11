@@ -416,7 +416,7 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
                                 <Pause className="w-3.5 h-3.5" />
                                 Pause
                             </Button>
-                        ) : (
+                        ) : campaign?.status === 'paused' ? (
                             <Button
                                 onClick={handleResumeCampaign}
                                 size="sm"
@@ -424,6 +424,15 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
                             >
                                 <Play className="w-3.5 h-3.5" />
                                 Resume
+                            </Button>
+                        ) : (
+                            <Button
+                                onClick={handleResumeCampaign}
+                                size="sm"
+                                className="h-8 text-xs gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white"
+                            >
+                                <Play className="w-3.5 h-3.5" />
+                                Start
                             </Button>
                         )}
 
