@@ -185,7 +185,11 @@ export default function InboxView({ smtpAccounts, campaigns = [], onRefreshAccou
             try {
                 const cachedMessages = await cache.getCachedMessages(selectedAccount.id, activeFolder);
                 if (cachedMessages && cachedMessages.length > 0) {
-                    setMessages(cachedMessages);
+                    // Ensure sorted
+                    const sorted = cachedMessages.sort((a, b) =>
+                        new Date(b.date).getTime() - new Date(a.date).getTime()
+                    );
+                    setMessages(sorted);
                     setLoading(false);
                     return; // Use cache, don't fetch
                 }
@@ -215,7 +219,13 @@ export default function InboxView({ smtpAccounts, campaigns = [], onRefreshAccou
                 }
 
                 const data = await res.json();
-                const fetchedMessages = data.messages || [];
+                let fetchedMessages = data.messages || [];
+
+                // Ensure sorted
+                fetchedMessages = fetchedMessages.sort((a: Message, b: Message) =>
+                    new Date(b.date).getTime() - new Date(a.date).getTime()
+                );
+
                 setMessages(fetchedMessages);
                 await cache.cacheMessages(selectedAccount.id, activeFolder, fetchedMessages);
                 toast.success(`Fetched ${data.count} emails`);
@@ -224,8 +234,14 @@ export default function InboxView({ smtpAccounts, campaigns = [], onRefreshAccou
                 const res = await fetch(`${API_BASE}/messages/${selectedAccount.id}?folder=${activeFolder}`, { headers });
                 if (res.ok) {
                     const data = await res.json();
-                    setMessages(data);
-                    await cache.cacheMessages(selectedAccount.id, activeFolder, data);
+
+                    // Ensure sorted
+                    const sorted = (data || []).sort((a: Message, b: Message) =>
+                        new Date(b.date).getTime() - new Date(a.date).getTime()
+                    );
+
+                    setMessages(sorted);
+                    await cache.cacheMessages(selectedAccount.id, activeFolder, sorted);
                 }
             }
         } catch (err: any) {

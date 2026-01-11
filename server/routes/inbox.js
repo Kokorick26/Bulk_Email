@@ -384,7 +384,16 @@ function fetchImapMessages(imapConfig, folder, limit, accountId, userId) {
                 fetch.once('end', () => {
                     imap.end();
                     // Sort by date descending (newest first)
-                    messages.sort((a, b) => new Date(b.date) - new Date(a.date));
+                    messages.sort((a, b) => {
+                        const dateA = new Date(a.date);
+                        const dateB = new Date(b.date);
+                        return dateB - dateA;
+                    });
+
+                    // Log the first and last dates to verify sort order
+                    if (messages.length > 0) {
+                        console.log(`[IMAP Fetch] Cached ${messages.length} messages. Newest: ${messages[0].date}, Oldest: ${messages[messages.length - 1].date}`);
+                    }
                     resolve(messages);
                 });
             });
@@ -416,6 +425,10 @@ router.get('/messages/:accountId', auth, async (req, res) => {
         const messages = (data.Items || [])
             .sort((a, b) => new Date(b.date) - new Date(a.date))
             .slice(0, Number(limit));
+
+        if (messages.length > 0) {
+            console.log(`[DynamoDB Fetch] Returning ${messages.length} messages. Top: ${messages[0].date}`);
+        }
 
         res.json(messages);
     } catch (err) {

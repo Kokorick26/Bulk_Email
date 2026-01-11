@@ -270,10 +270,19 @@ function isLeadWithinWorkingHours(leadData, campaignSchedule) {
     // Get working hours (from lead data or campaign defaults)
     const workingStart = leadData.workingHoursStart || campaignSchedule?.startTime || '09:00';
     const workingEnd = leadData.workingHoursEnd || campaignSchedule?.endTime || '18:00';
-    const workingDays = leadData.workingDays || campaignSchedule?.days ||
-        ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+
+    // FIX: Campaign schedule days should take precedence over lead's default working days
+    // Only use lead's workingDays if it's explicitly different from the default (Mon-Fri)
+    const defaultDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+    const leadHasCustomDays = leadData.workingDays &&
+        JSON.stringify(leadData.workingDays.sort()) !== JSON.stringify(defaultDays.sort());
+
+    const workingDays = leadHasCustomDays
+        ? leadData.workingDays
+        : (campaignSchedule?.days || defaultDays);
 
     // Check if it's a working day
+    console.log(`[Timezone] Lead ${leadData.email}: Using days from ${leadHasCustomDays ? 'LEAD' : 'CAMPAIGN'}: [${workingDays.join(', ')}]`);
     if (!workingDays.includes(leadTime.weekday)) {
         console.log(`[Timezone] Lead ${leadData.email}: ${leadTime.weekday} is not a working day in ${timezone}`);
         return false;
@@ -1272,6 +1281,10 @@ export async function executeCampaign(campaignId) {
         console.log(`[CampaignExecutor] Found ${leadsToProcess.length} leads needing emails`);
 
         const schedule = campaign.schedule;
+
+        // DEBUG: Log the campaign schedule
+        console.log(`[CampaignExecutor] Campaign schedule:`, JSON.stringify(schedule, null, 2));
+        console.log(`[CampaignExecutor] Schedule.days:`, schedule?.days);
 
         // Check if we should respect individual lead timezones
         const useLeadTimezones = options.useLeadTimezones !== false; // Default: true

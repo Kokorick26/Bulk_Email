@@ -1,7 +1,7 @@
 {
-    "name": "bulk-email-manager",
+    "name": "warmo",
     "version": "1.0.0",
-    "description": "A powerful bulk email management system with SMTP support, campaign tracking, and template management",
+    "description": "Warmo - AI-powered email outreach platform with SMTP support, campaign tracking, and smart personalization",
     "type": "module",
     "scripts": {
         "dev": "concurrently \"npm run server\" \"npm run client\"",

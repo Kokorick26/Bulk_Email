@@ -1576,6 +1576,11 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                                                 {leadLogs.length > 0 ? (
                                                     <button
                                                         onClick={() => {
+                                                            console.log('[EmailPreview] Opening preview for log:', latestLog);
+                                                            console.log('[EmailPreview] htmlContent:', latestLog?.htmlContent);
+                                                            console.log('[EmailPreview] textContent:', latestLog?.textContent);
+                                                            console.log('[EmailPreview] stepIndex:', latestLog?.stepIndex);
+                                                            console.log('[EmailPreview] campaignSequence:', campaignSequence);
                                                             setSelectedEmailLog(latestLog);
                                                             setShowEmailPreview(true);
                                                         }}

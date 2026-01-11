@@ -344,13 +344,13 @@ router.post('/smtp-accounts/:id/test', auth, async (req, res) => {
         await transporter.sendMail({
             from: `"${account.Item.fromName}" <${account.Item.fromEmail}>`,
             to: testEmail,
-            subject: 'SMTP Test - Kokorick Bulk Email',
+            subject: 'SMTP Test - Warmo',
             text: 'This is a test email to verify your SMTP configuration is working correctly.',
             html: `
                 <div style="font-family: Arial, sans-serif; padding: 20px;">
-                    <h2>SMTP Test Successful!</h2>
+                    <h2>✅ SMTP Test Successful!</h2>
                     <p>Your SMTP configuration for <strong>${account.Item.name}</strong> is working correctly.</p>
-                    <p style="color: #666;">Sent from Kokorick Bulk Email System</p>
+                    <p style="color: #666;">Sent from Warmo</p>
                 </div>
             `,
         });

@@ -387,7 +387,7 @@ export function SmtpAccounts({ accounts, onRefresh, className }: SmtpAccountsPro
                                 <Badge variant="secondary" className="text-xs">Optional</Badge>
                             </div>
                             <p className="text-sm text-white/40 mb-4">
-                                Configure IMAP to receive emails and view your inbox within BulkMail.
+                                Configure IMAP to receive emails and view your inbox within Warmo.
                             </p>
 
                             <div className="grid grid-cols-4 gap-4 mb-4">

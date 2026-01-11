@@ -34,7 +34,7 @@ initSocket(server);
 // Start server
 // Start server
 server.listen(PORT, '0.0.0.0', () => { // Use server.listen instead of app.listen
-    console.log(`🚀 Bulk Email Server running on port ${PORT}`);
+    console.log(`🚀 Warmo Server running on port ${PORT}`);
 
     //  Start campaign scheduler (checks every 5 minutes)
     startCampaignScheduler(5);
@@ -87,7 +87,7 @@ for (const envVar of requiredEnvVars) {
 // FIX: Configure CORS properly (not allowing all origins)
 const allowedOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',')
-    : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5000', 'http://18.130.191.222:5000'];
+    : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5000', 'http://18.130.191.222:5000', 'https://warmo.ai', 'https://www.warmo.ai'];
 
 app.use(cors({
     origin: (origin, callback) => {
