@@ -889,21 +889,24 @@ async function getLeadsNeedingEmails(campaignId, sequence, options) {
             const currentStepConfig = sequence.steps[currentStep];
             const delayDays = currentStepConfig.delayDays || 0;
             const delayHours = currentStepConfig.delayHours || 0;
-            const delayMs = ((delayDays * 24 * 60) + (delayHours * 60)) * 60 * 1000;
+            const delayMinutes = currentStepConfig.delayMinutes || 0;
+            const delayMs = ((delayDays * 24 * 60) + (delayHours * 60) + delayMinutes) * 60 * 1000;
             const nextSendTime = new Date(lastSentAt.getTime() + delayMs);
 
             const timeRemaining = nextSendTime.getTime() - now.getTime();
             const hoursRemaining = Math.round(timeRemaining / (1000 * 60 * 60) * 10) / 10;
+            const minutesRemaining = Math.round(timeRemaining / (1000 * 60));
 
             if (now >= nextSendTime) {
-                console.log(`[SequenceCheck] ✓ ${leadEmail}: Ready for step ${currentStep + 1} (delay of ${delayDays}d ${delayHours}h has passed)`);
+                console.log(`[SequenceCheck] ✓ ${leadEmail}: Ready for step ${currentStep + 1} (delay of ${delayDays}d ${delayHours}h ${delayMinutes}m has passed)`);
                 leadsToProcess.push({
                     progress,
                     stepIndex: currentStep,
                     step: currentStepConfig
                 });
             } else {
-                console.log(`[SequenceCheck] Waiting ${leadEmail}: step ${currentStep + 1} in ${hoursRemaining}h (delay: ${delayDays}d ${delayHours}h)`);
+                const waitDisplay = minutesRemaining < 60 ? `${minutesRemaining}m` : `${hoursRemaining}h`;
+                console.log(`[SequenceCheck] Waiting ${leadEmail}: step ${currentStep + 1} in ${waitDisplay} (delay: ${delayDays}d ${delayHours}h ${delayMinutes}m)`);
             }
         }
 
@@ -929,11 +932,15 @@ async function sendStepEmail(campaign, lead, step, stepIndex, smtpAccountId) {
         // Extract lead data from progress
         const leadEmail = lead.progress?.leadEmail || lead.leadEmail;
         const leadData = lead.progress?.leadData || lead.leadData || {};
+        const stepHistory = lead.progress?.stepHistory || [];
+        const options = campaign.options || {};
 
         //  ENHANCED DEBUG LOGGING
         console.log(`\n[CampaignExecutor] ========== EMAIL PREPARATION ==========`);
         console.log(`[CampaignExecutor] Lead: ${leadEmail}`);
+        console.log(`[CampaignExecutor] Step: ${stepIndex + 1} of ${campaign.sequence.steps.length}`);
         console.log(`[CampaignExecutor] SMTP Account: ${smtpAccountId} (${fromEmail})`);
+        console.log(`[CampaignExecutor] Threading: ${options.threadSequence !== false ? 'ENABLED' : 'DISABLED'}`);
         console.log(`[CampaignExecutor] Lead Data:`, {
             firstName: leadData.firstName,
             lastName: leadData.lastName,
@@ -966,11 +973,55 @@ async function sendStepEmail(campaign, lead, step, stepIndex, smtpAccountId) {
         const domain = (fromEmail && fromEmail.includes('@')) ? fromEmail.split('@')[1] : 'kokorick.uk';
         const messageId = `<${Date.now()}.${Math.random().toString(36).substr(2, 9)}@${domain}>`;
 
+        // ========== EMAIL THREADING SUPPORT ==========
+        // If threadSequence is enabled (default: true) and this is NOT the first email,
+        // add In-Reply-To and References headers to make it appear in the same thread
+        const threadingEnabled = options.threadSequence !== false; // Default to true
+        const isFollowUp = stepIndex > 0 && stepHistory.length > 0;
+
+        let emailHeaders = {
+            'X-Campaign-Id': campaign.id,
+            'X-Step-Index': stepIndex.toString()
+        };
+
+        let finalSubject = subject;
+        let originalMessageId = null;
+
+        if (threadingEnabled && isFollowUp) {
+            // Get the first email's messageId from stepHistory
+            originalMessageId = stepHistory[0]?.messageId;
+
+            if (originalMessageId) {
+                // Add threading headers
+                emailHeaders['In-Reply-To'] = originalMessageId;
+                emailHeaders['References'] = originalMessageId;
+
+                // Add "Re:" prefix if not already present and subject matches original
+                const originalSubject = stepHistory[0]?.subject;
+                if (originalSubject) {
+                    // Clean subject (remove any existing Re:, Fwd:, etc.)
+                    const cleanSubject = subject.replace(/^(Re:|Fwd:|Fw:)\s*/i, '').trim();
+                    const cleanOriginal = originalSubject.replace(/^(Re:|Fwd:|Fw:)\s*/i, '').trim();
+
+                    // If subjects are similar enough, use "Re:" prefix
+                    if (cleanSubject.toLowerCase() === cleanOriginal.toLowerCase() ||
+                        !subject.toLowerCase().startsWith('re:')) {
+                        finalSubject = `Re: ${cleanOriginal}`;
+                    }
+                }
+
+                console.log(`[CampaignExecutor] 🧵 Threading enabled - replying to: ${originalMessageId}`);
+                console.log(`[CampaignExecutor] 🧵 Original subject: "${stepHistory[0]?.subject}" -> Final: "${finalSubject}"`);
+            }
+        }
+        // ========== END THREADING SUPPORT ==========
+
         //  FINAL EMAIL PREVIEW
         console.log(`\n[CampaignExecutor]  FINAL EMAIL PREVIEW:`);
         console.log(`  To: ${leadEmail}`);
         console.log(`  From: "${fromName}" <${fromEmail}>`);
-        console.log(`  Subject: ${subject}`);
+        console.log(`  Subject: ${finalSubject}`);
+        console.log(`  Threading: ${threadingEnabled && isFollowUp ? 'Yes (In-Reply-To: ' + originalMessageId + ')' : 'No (new thread)'}`);
         console.log(`  Body Preview: ${body.substring(0, 300).replace(/\n/g, ' ')}...`);
         console.log(`[CampaignExecutor] ==========================================\n`);
 
@@ -979,14 +1030,15 @@ async function sendStepEmail(campaign, lead, step, stepIndex, smtpAccountId) {
             from: `"${fromName}" <${fromEmail}>`,
             to: leadEmail,
             replyTo: fromEmail,
-            subject: subject,
+            subject: finalSubject,
             text: body,
             html: html,
             messageId,
-            headers: {
-                'X-Campaign-Id': campaign.id,
-                'X-Step-Index': stepIndex.toString()
-            }
+            headers: emailHeaders,
+            ...(threadingEnabled && isFollowUp && originalMessageId ? {
+                inReplyTo: originalMessageId,
+                references: originalMessageId
+            } : {})
         });
 
         transporter.close();
@@ -1031,6 +1083,7 @@ async function sendStepEmail(campaign, lead, step, stepIndex, smtpAccountId) {
                     stepIndex,
                     sentAt: new Date().toISOString(),
                     messageId: info.messageId,
+                    subject: finalSubject,  // Store subject for threading
                     smtpAccountId: smtpAccountId,  //  Track in history
                     fromEmail: fromEmail
                 }],

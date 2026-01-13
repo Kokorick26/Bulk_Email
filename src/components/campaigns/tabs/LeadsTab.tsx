@@ -34,6 +34,7 @@ interface LeadsTabProps {
     campaignId: string;
     leads: Lead[];
     onLeadsUpdate: (leads: Lead[]) => void;
+    isLocked?: boolean;
     className?: string;
 }
 
@@ -77,7 +78,7 @@ const convertTo24Hour = (time: string): string | null => {
     return null;
 };
 
-export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsTabProps) {
+export function LeadsTab({ campaignId, leads, onLeadsUpdate, isLocked, className }: LeadsTabProps) {
     const { theme } = useTheme();
     const [isDragging, setIsDragging] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -1339,6 +1340,15 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
     return (
         <>
             <div className={cn('h-full flex flex-col', className)}>
+                {/* Lock Banner */}
+                {isLocked && (
+                    <div className={cn('flex items-center gap-2 px-4 py-2 text-xs font-medium border-b',
+                        theme === 'dark' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-amber-50 text-amber-700 border-amber-200'
+                    )}>
+                        <AlertCircle className="w-3.5 h-3.5" />
+                        Campaign is running. Pause to make changes.
+                    </div>
+                )}
                 {/* Lead Builder Modal */}
                 <AnimatePresence>
                     {showLeadBuilder && (
@@ -1488,14 +1498,14 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                                     <TableHead className={cn('w-[50px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>#</TableHead>
                                     <TableHead className={cn('w-[200px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Email</TableHead>
                                     <TableHead className={cn('w-[100px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Name</TableHead>
-                                    <TableHead className={cn('w-[80px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Company</TableHead>
+
                                     <TableHead className={cn('w-[50px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Step</TableHead>
                                     <TableHead className={cn('w-[100px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Sent / Scheduled</TableHead>
                                     <TableHead className={cn('w-[150px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Sending Account</TableHead>
-                                    <TableHead className={cn('w-[90px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Timezone</TableHead>
+
                                     <TableHead className={cn('w-[70px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Status</TableHead>
-                                    <TableHead className={cn('w-[60px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Reply</TableHead>
-                                    <TableHead className={cn('w-[80px]', theme === 'dark' ? 'text-gray-500 bg-[#0d0d0d]' : 'text-gray-500 bg-gray-50')}>Actions</TableHead>
+
+
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -1552,12 +1562,7 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                                                 )}>
                                                     {[lead.firstName, lead.lastName].filter(Boolean).join(' ') || '-'}
                                                 </TableCell>
-                                                <TableCell className={cn(
-                                                    'truncate',
-                                                    theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                                                )}>
-                                                    {lead.company || '-'}
-                                                </TableCell>
+
                                                 {/* Step Column */}
                                                 <TableCell>
                                                     {(() => {
@@ -1700,45 +1705,7 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                                                         </span>
                                                     )}
                                                 </TableCell>
-                                                <TableCell>
-                                                    {(() => {
-                                                        const tz = getLeadTimezone(lead);
-                                                        const localTime = getLeadLocalTime(lead);
-                                                        const tzName = tz.split('/').pop()?.replace('_', ' ') || tz;
-                                                        const withinHours = isWithinWorkingHours(lead);
 
-                                                        return (
-                                                            <div className="flex flex-col gap-0.5">
-                                                                <div className="flex items-center gap-1.5">
-                                                                    <span className={cn(
-                                                                        'text-xs font-medium',
-                                                                        theme === 'dark' ? 'text-white' : 'text-gray-900'
-                                                                    )}>
-                                                                        {localTime}
-                                                                    </span>
-                                                                    <span className={cn(
-                                                                        'w-1.5 h-1.5 rounded-full',
-                                                                        withinHours ? 'bg-emerald-500' : 'bg-amber-500'
-                                                                    )} title={withinHours ? 'Within working hours' : 'Outside working hours'} />
-                                                                </div>
-                                                                <span className={cn(
-                                                                    'text-[10px]',
-                                                                    theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                                                                )}>
-                                                                    {tzName}
-                                                                </span>
-                                                                {(lead.workingHoursStart && lead.workingHoursEnd) && (
-                                                                    <span className={cn(
-                                                                        'text-[10px]',
-                                                                        theme === 'dark' ? 'text-gray-600' : 'text-gray-400'
-                                                                    )}>
-                                                                        Hours: {lead.workingHoursStart}-{lead.workingHoursEnd}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        );
-                                                    })()}
-                                                </TableCell>
                                                 <TableCell>
                                                     {(() => {
                                                         const withinHours = isWithinWorkingHours(lead);
@@ -1770,62 +1737,8 @@ export function LeadsTab({ campaignId, leads, onLeadsUpdate, className }: LeadsT
                                                         );
                                                     })()}
                                                 </TableCell>
-                                                <TableCell>
-                                                    {lead.hasReplied || lead.status === 'replied' ? (
-                                                        <div className="flex items-center gap-1.5">
-                                                            <Check className={cn(
-                                                                'w-3.5 h-3.5',
-                                                                theme === 'dark' ? 'text-green-400' : 'text-green-600'
-                                                            )} />
-                                                            <span className={cn(
-                                                                'text-xs font-medium',
-                                                                theme === 'dark' ? 'text-green-400' : 'text-green-600'
-                                                            )}>
-                                                                Yes
-                                                            </span>
-                                                        </div>
-                                                    ) : lead.status === 'sent' ? (
-                                                        <span className={cn(
-                                                            'text-xs',
-                                                            theme === 'dark' ? 'text-amber-500' : 'text-amber-600'
-                                                        )}>
-                                                            No reply
-                                                        </span>
-                                                    ) : (
-                                                        <span className={cn(
-                                                            'text-xs',
-                                                            theme === 'dark' ? 'text-gray-600' : 'text-gray-400'
-                                                        )}>
-                                                            -
-                                                        </span>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {leadLogs.length > 0 ? (
-                                                        <button
-                                                            onClick={() => {
-                                                                console.log('[EmailPreview] Opening preview for log:', latestLog);
-                                                                console.log('[EmailPreview] htmlContent:', latestLog?.htmlContent);
-                                                                console.log('[EmailPreview] textContent:', latestLog?.textContent);
-                                                                console.log('[EmailPreview] stepIndex:', latestLog?.stepIndex);
-                                                                console.log('[EmailPreview] campaignSequence:', campaignSequence);
-                                                                setSelectedEmailLog(latestLog);
-                                                                setShowEmailPreview(true);
-                                                            }}
-                                                            className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium bg-orange-500/20 text-orange-400 hover:bg-orange-500/30"
-                                                        >
-                                                            <Eye className="w-3 h-3" />
-                                                            Preview
-                                                        </button>
-                                                    ) : (
-                                                        <span className={cn(
-                                                            'text-xs',
-                                                            theme === 'dark' ? 'text-gray-600' : 'text-gray-400'
-                                                        )}>
-                                                            -
-                                                        </span>
-                                                    )}
-                                                </TableCell>
+
+
                                             </TableRow>
 
                                         );

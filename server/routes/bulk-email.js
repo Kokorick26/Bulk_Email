@@ -1797,6 +1797,64 @@ router.post('/campaigns/:id/reset-stats', auth, async (req, res) => {
     }
 });
 
+// Duplicate a campaign
+router.post('/campaigns/:id/duplicate', auth, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Get the original campaign
+        const original = await dynamoDB.get({
+            TableName: CAMPAIGNS_TABLE,
+            Key: { id }
+        }).promise();
+
+        if (!original.Item) {
+            return res.status(404).json({ error: 'Campaign not found' });
+        }
+
+        // Create a new campaign based on the original
+        const newCampaign = {
+            ...original.Item,
+            id: uuidv4(),
+            name: `${original.Item.name} (Copy)`,
+            status: 'draft',
+            // Reset all stats
+            sentCount: 0,
+            failedCount: 0,
+            openCount: 0,
+            clickCount: 0,
+            replyCount: 0,
+            bounceCount: 0,
+            progress: 0,
+            // Reset timing
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            startedAt: null,
+            pausedAt: null,
+            completedAt: null,
+            createdBy: req.user.userId,
+            // Reset lead statuses to pending
+            leads: (original.Item.leads || []).map(lead => ({
+                ...lead,
+                id: `lead-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                status: 'pending',
+                sentAt: null,
+                hasReplied: false,
+                customSubject: null,
+                customBody: null
+            }))
+        };
+
+        await dynamoDB.put({ TableName: CAMPAIGNS_TABLE, Item: newCampaign }).promise();
+
+        res.status(201).json(newCampaign);
+
+    } catch (err) {
+        console.error('Error duplicating campaign:', err);
+        res.status(500).json({ error: 'Could not duplicate campaign' });
+    }
+});
+
 // Get campaign lead progress
 router.get('/campaigns/:id/progress', auth, async (req, res) => {
     try {

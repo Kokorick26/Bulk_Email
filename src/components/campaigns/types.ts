@@ -3,7 +3,7 @@
 export interface Campaign {
     id: string;
     name: string;
-    status: 'draft' | 'active' | 'paused' | 'completed' | 'failed' | 'scheduled';
+    status: 'draft' | 'active' | 'paused' | 'completed' | 'sent' | 'failed' | 'scheduled';
     createdAt: string;
     updatedAt?: string;
     completedAt?: string;
@@ -91,6 +91,7 @@ export interface SequenceStep {
     isHtml?: boolean;   // Whether to send as HTML
     delayDays: number;
     delayHours: number;
+    delayMinutes?: number;  // For testing and quick follow-ups
     variants: EmailVariant[];
 }
 
@@ -120,9 +121,11 @@ export interface CampaignOptions {
     timeBetweenEmails: number;
     // Email Account Selection
     selectedAccountIds?: string[];
+    // Sequence threading - if true, follow-up emails appear in same thread
+    threadSequence?: boolean;
 }
 
-export type CampaignTab = 'analytics' | 'leads' | 'sequences' | 'schedule' | 'options' | 'accounts' | 'history';
+export type CampaignTab = 'analytics' | 'leads' | 'sequences' | 'schedule' | 'options';
 
 export interface CampaignFilter {
     status: 'all' | Campaign['status'];

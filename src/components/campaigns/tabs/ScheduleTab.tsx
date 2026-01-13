@@ -13,6 +13,7 @@ interface ScheduleTabProps {
     campaignId: string;
     schedule: Campaign['schedule'];
     onScheduleUpdate: (schedule: Campaign['schedule']) => void;
+    isLocked?: boolean;
     className?: string;
 }
 
@@ -26,7 +27,7 @@ const DAYS = [
     { id: 'sunday', label: 'Sun' }
 ];
 
-export function ScheduleTab({ campaignId, schedule, onScheduleUpdate, className }: ScheduleTabProps) {
+export function ScheduleTab({ campaignId, schedule, onScheduleUpdate, isLocked, className }: ScheduleTabProps) {
     const { theme } = useTheme();
     const [localSchedule, setLocalSchedule] = useState(schedule || {
         timezone: 'UTC',
@@ -75,6 +76,15 @@ export function ScheduleTab({ campaignId, schedule, onScheduleUpdate, className 
 
     return (
         <div className={cn('space-y-6', className)}>
+            {/* Lock Banner */}
+            {isLocked && (
+                <div className={cn('flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-lg',
+                    theme === 'dark' ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-700'
+                )}>
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    Campaign is running. Pause to make changes.
+                </div>
+            )}
             {/* Compact Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">

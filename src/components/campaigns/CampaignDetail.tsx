@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
     ChevronLeft, Play, Pause, MoreHorizontal, Loader2,
-    BarChart2, Users, List, Calendar, Settings, History, Server, RotateCw
+    BarChart2, Users, List, Calendar, Settings, RotateCw, Send, CheckCircle, RefreshCw
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useTheme } from '../../lib/ThemeContext';
@@ -14,7 +14,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '../ui/DropdownMenu';
-import { LeadsTab, SequencesTab, ScheduleTab, OptionsTab, AnalyticsTab, AccountsTab, HistoryTab } from './tabs';
+import { LeadsTab, SequencesTab, ScheduleTab, OptionsTab, AnalyticsTab } from './tabs';
 import type { Campaign, CampaignTab, Lead, Sequence, CampaignSchedule, CampaignOptions } from './types';
 import { cache } from '../../lib/cache';
 
@@ -35,12 +35,10 @@ interface CampaignDetailProps {
 
 const tabs: { id: CampaignTab; label: string; icon: any }[] = [
     { id: 'analytics', label: 'Analytics', icon: BarChart2 },
-    { id: 'leads', label: 'Leads', icon: Users },
+    { id: 'leads', label: 'Outbox', icon: Send },
     { id: 'sequences', label: 'Sequences', icon: List },
     { id: 'schedule', label: 'Schedule', icon: Calendar },
     { id: 'options', label: 'Options', icon: Settings },
-    { id: 'accounts', label: 'Accounts', icon: Server },
-    { id: 'history', label: 'Email History', icon: History },
 ];
 
 export function CampaignDetail({ campaignId, onBack, onContextChange, className }: CampaignDetailProps) {
@@ -425,6 +423,20 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
                                 <Play className="w-3.5 h-3.5" />
                                 Resume
                             </Button>
+                        ) : campaign?.status === 'completed' || campaign?.status === 'sent' ? (
+                            <Button
+                                onClick={handleResumeCampaign}
+                                size="sm"
+                                className={cn(
+                                    'h-8 text-xs gap-1.5',
+                                    theme === 'dark'
+                                        ? 'bg-blue-600 hover:bg-blue-500 text-white'
+                                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                                )}
+                            >
+                                <RefreshCw className="w-3.5 h-3.5" />
+                                Restart
+                            </Button>
                         ) : (
                             <Button
                                 onClick={handleResumeCampaign}
@@ -457,9 +469,85 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
                                     });
                                     window.location.reload();
                                 }}>Reset Stats</DropdownMenuItem>
-                                <DropdownMenuItem>Duplicate Campaign</DropdownMenuItem>
-                                <DropdownMenuItem>Export Data</DropdownMenuItem>
-                                <DropdownMenuItem className="text-red-500">Delete Campaign</DropdownMenuItem>
+                                <DropdownMenuItem onClick={async () => {
+                                    if (!confirm(`Duplicate campaign "${campaign?.name}"?`)) return;
+                                    try {
+                                        const token = localStorage.getItem('bulkEmailToken');
+                                        const response = await fetch(`/api/bulk-email/campaigns/${campaignId}/duplicate`, {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                Authorization: `Bearer ${token}`
+                                            }
+                                        });
+                                        if (response.ok) {
+                                            const data = await response.json();
+                                            alert(`Campaign duplicated! New campaign: "${data.name}"`);
+                                            onBack(); // Go back to campaigns list to see the new one
+                                        } else {
+                                            const error = await response.json();
+                                            alert(error.error || 'Failed to duplicate campaign');
+                                        }
+                                    } catch (err) {
+                                        console.error('Error duplicating campaign:', err);
+                                        alert('Failed to duplicate campaign');
+                                    }
+                                }}>Duplicate Campaign</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => {
+                                    if (leads.length === 0) {
+                                        alert('No leads to export');
+                                        return;
+                                    }
+                                    // Create CSV content
+                                    const headers = ['Email', 'First Name', 'Last Name', 'Company', 'Status', 'Added At'];
+                                    const csvRows = [headers.join(',')];
+
+                                    leads.forEach(lead => {
+                                        const row = [
+                                            lead.email || '',
+                                            lead.firstName || '',
+                                            lead.lastName || '',
+                                            lead.company || '',
+                                            lead.status || '',
+                                            lead.addedAt || ''
+                                        ].map(field => `"${String(field).replace(/"/g, '""')}"`);
+                                        csvRows.push(row.join(','));
+                                    });
+
+                                    const csvContent = csvRows.join('\n');
+                                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                                    const url = URL.createObjectURL(blob);
+                                    const link = document.createElement('a');
+                                    link.href = url;
+                                    link.download = `${campaign?.name || 'campaign'}_leads_${new Date().toISOString().split('T')[0]}.csv`;
+                                    document.body.appendChild(link);
+                                    link.click();
+                                    document.body.removeChild(link);
+                                    URL.revokeObjectURL(url);
+                                }}>Export Data</DropdownMenuItem>
+                                <DropdownMenuItem
+                                    className="text-red-500"
+                                    onClick={async () => {
+                                        if (!confirm(`Are you sure you want to delete "${campaign?.name}"? This action cannot be undone.`)) return;
+                                        try {
+                                            const token = localStorage.getItem('bulkEmailToken');
+                                            const response = await fetch(`/api/bulk-email/campaigns/${campaignId}`, {
+                                                method: 'DELETE',
+                                                headers: { Authorization: `Bearer ${token}` }
+                                            });
+                                            if (response.ok) {
+                                                alert('Campaign deleted successfully');
+                                                onBack(); // Go back to campaigns list
+                                            } else {
+                                                const error = await response.json();
+                                                alert(error.error || 'Failed to delete campaign');
+                                            }
+                                        } catch (err) {
+                                            console.error('Error deleting campaign:', err);
+                                            alert('Failed to delete campaign');
+                                        }
+                                    }}
+                                >Delete Campaign</DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
@@ -472,11 +560,8 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
                             campaignId={campaignId}
                             leads={leads}
                             onLeadsUpdate={handleLeadsUpdate}
+                            isLocked={campaign?.status === 'active'}
                         />
-                    </div>
-                ) : activeTab === 'history' ? (
-                    <div className="flex-1 overflow-hidden">
-                        <HistoryTab campaignId={campaignId} sequence={sequence} />
                     </div>
                 ) : activeTab === 'sequences' ? (
                     <div className="flex-1 overflow-hidden">
@@ -485,6 +570,7 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
                             sequence={sequence}
                             onSequenceUpdate={setSequence}
                             leads={leads}
+                            isLocked={campaign?.status === 'active'}
                         />
                     </div>
                 ) : (
@@ -501,6 +587,7 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
                                     campaignId={campaignId}
                                     schedule={schedule}
                                     onScheduleUpdate={setSchedule}
+                                    isLocked={campaign?.status === 'active'}
                                 />
                             )}
                             {activeTab === 'options' && (
@@ -508,16 +595,10 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
                                     campaignId={campaignId}
                                     options={options}
                                     onOptionsUpdate={setOptions}
+                                    isLocked={campaign?.status === 'active'}
                                 />
                             )}
-                            {activeTab === 'accounts' && (
-                                <AccountsTab
-                                    campaignId={campaignId}
-                                    leads={leads}
-                                    sequence={sequence}
-                                    onLeadsUpdate={handleLeadsUpdate}
-                                />
-                            )}
+
                         </div>
                     </ScrollArea>
                 )}

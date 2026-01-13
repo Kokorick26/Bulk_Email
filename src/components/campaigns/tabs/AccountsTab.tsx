@@ -25,10 +25,11 @@ interface AccountsTabProps {
     leads: Lead[];
     sequence?: { steps: SequenceStep[] } | null;
     onLeadsUpdate?: (leads: Lead[]) => void;
+    isLocked?: boolean;
     className?: string;
 }
 
-export function AccountsTab({ campaignId, leads, sequence, onLeadsUpdate, className }: AccountsTabProps) {
+export function AccountsTab({ campaignId, leads, sequence, onLeadsUpdate, isLocked, className }: AccountsTabProps) {
     const { theme } = useTheme();
     const isDark = theme === 'dark';
     const [accounts, setAccounts] = useState<SmtpAccount[]>([]);
@@ -173,6 +174,15 @@ export function AccountsTab({ campaignId, leads, sequence, onLeadsUpdate, classN
             'flex flex-col h-full overflow-hidden',
             className
         )}>
+            {/* Lock Banner */}
+            {isLocked && (
+                <div className={cn('flex items-center gap-2 px-4 py-2 text-xs font-medium border-b shrink-0',
+                    isDark ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-amber-50 text-amber-700 border-amber-200'
+                )}>
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    Campaign is running. Pause to make changes.
+                </div>
+            )}
             {/* Account Tabs */}
             <div className={cn(
                 'flex items-center gap-1 px-1 border-b overflow-x-auto shrink-0',

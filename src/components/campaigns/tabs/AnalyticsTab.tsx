@@ -266,14 +266,7 @@ export function AnalyticsTab({ campaign, leads, className }: AnalyticsTabProps) 
                             color="blue"
                             theme={theme}
                         />
-                        <StatBlock
-                            label="Click Rate"
-                            value={`${clickRate}%`}
-                            subValue={`${clickCount} unique clicks`}
-                            icon={MousePointer}
-                            color="purple"
-                            theme={theme}
-                        />
+
                         <StatBlock
                             label="Reply Rate"
                             value={`${replyRate}%`}
@@ -379,15 +372,7 @@ export function AnalyticsTab({ campaign, leads, className }: AnalyticsTabProps) 
                                     </div>
                                 </div>
 
-                                <div className="relative z-10 flex items-center gap-3">
-                                    <div className={cn('w-7 h-7 rounded-full flex items-center justify-center bg-indigo-500 text-white')}>
-                                        <MousePointer className="w-3 h-3" />
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] font-semibold uppercase tracking-wider opacity-60">Clicked</p>
-                                        <p className="text-base font-bold">{clickCount}</p>
-                                    </div>
-                                </div>
+
 
                                 <div className="relative z-10 flex items-center gap-3">
                                     <div className={cn('w-7 h-7 rounded-full flex items-center justify-center bg-emerald-500 text-white')}>

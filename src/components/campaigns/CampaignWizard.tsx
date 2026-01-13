@@ -23,8 +23,9 @@ const STEPS = [
     { id: 3, title: 'Leads', icon: Users },
     { id: 4, title: 'Strategy', icon: Target },
     { id: 5, title: 'Emails', icon: Mail },
-    { id: 6, title: 'Schedule', icon: Calendar },
-    { id: 7, title: 'Review', icon: Send },
+    { id: 6, title: 'Preview', icon: Eye },
+    { id: 7, title: 'Schedule', icon: Calendar },
+    { id: 8, title: 'Review', icon: Send },
 ];
 
 export function CampaignWizard({ onBack, onComplete, className }: CampaignWizardProps) {
@@ -67,14 +68,15 @@ export function CampaignWizard({ onBack, onComplete, className }: CampaignWizard
             case 4: return true;
             // Step 5: Check for subject AND (body OR htmlBody depending on mode)
             case 5: return sequences.some(s => s.subject && (s.body || (s.isHtml && s.htmlBody)));
-            case 6: return schedule.days.length > 0;
-            case 7: return true;
+            case 6: return true; // Preview step - always can proceed
+            case 7: return schedule.days.length > 0;
+            case 8: return true;
             default: return false;
         }
     }, [currentStep, campaignName, selectedAccountIds, leads, sequences, schedule]);
 
     const handleNext = () => {
-        if (currentStep < 7 && canProceed()) {
+        if (currentStep < 8 && canProceed()) {
             setCurrentStep(prev => prev + 1);
         }
     };
@@ -198,9 +200,9 @@ export function CampaignWizard({ onBack, onComplete, className }: CampaignWizard
                 {/* Right side: Step Counter + Continue Button */}
                 <div className="flex items-center gap-4">
                     <span className={cn('text-sm', isDark ? 'text-neutral-500' : 'text-gray-400')}>
-                        Step {currentStep} of 7
+                        Step {currentStep} of 8
                     </span>
-                    {currentStep < 7 ? (
+                    {currentStep < 8 ? (
                         <button
                             onClick={handleNext}
                             disabled={!canProceed()}
@@ -252,15 +254,16 @@ export function CampaignWizard({ onBack, onComplete, className }: CampaignWizard
             <main className="flex-1 overflow-y-auto">
                 <div className={cn(
                     'mx-auto px-6',
-                    currentStep === 5 ? 'max-w-7xl h-full py-4' : 'max-w-2xl py-8'
+                    currentStep === 5 || currentStep === 6 ? 'max-w-7xl h-full py-4' : 'max-w-2xl py-8'
                 )}>
                     {currentStep === 1 && <StepName isDark={isDark} value={campaignName} onChange={setCampaignName} />}
                     {currentStep === 2 && <StepAccounts isDark={isDark} selectedIds={selectedAccountIds} onUpdate={setSelectedAccountIds} />}
                     {currentStep === 3 && <StepLeads isDark={isDark} leads={leads} onUpdate={setLeads} />}
                     {currentStep === 4 && <StepStrategy isDark={isDark} value={sequenceType} onChange={setSequenceType} />}
                     {currentStep === 5 && <StepEmails isDark={isDark} sequences={sequences} onUpdate={setSequences} sequenceType={sequenceType} leads={leads} individualSequences={individualSequences} onIndividualUpdate={setIndividualSequences} selectedAccountIds={selectedAccountIds} />}
-                    {currentStep === 6 && <StepSchedule isDark={isDark} schedule={schedule} onUpdate={setSchedule} />}
-                    {currentStep === 7 && <StepLaunch isDark={isDark} options={options} onUpdate={setOptions} campaignName={campaignName} leadsCount={leads.length} selectedAccountIds={selectedAccountIds} />}
+                    {currentStep === 6 && <StepPreview isDark={isDark} sequences={sequences} leads={leads} selectedAccountIds={selectedAccountIds} />}
+                    {currentStep === 7 && <StepSchedule isDark={isDark} schedule={schedule} onUpdate={setSchedule} />}
+                    {currentStep === 8 && <StepLaunch isDark={isDark} options={options} onUpdate={setOptions} campaignName={campaignName} leadsCount={leads.length} selectedAccountIds={selectedAccountIds} />}
                 </div>
             </main>
 
@@ -1293,17 +1296,6 @@ function StepEmails({ isDark, sequences, onUpdate, sequenceType, leads, individu
 
                             {/* Action Buttons */}
                             <div className="absolute bottom-4 right-4 flex items-center gap-2">
-                                {/* Preview Button */}
-                                <button
-                                    onClick={() => setShowPreview(true)}
-                                    disabled={leads.length === 0}
-                                    className={cn('flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors',
-                                        leads.length === 0
-                                            ? isDark ? 'bg-neutral-800 text-neutral-600 cursor-not-allowed' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                            : isDark ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100')}>
-                                    <Eye className="w-3.5 h-3.5" />
-                                    Preview
-                                </button>
                                 {/* AI Button */}
                                 <button
                                     onClick={() => setShowAI(!showAI)}
@@ -1389,7 +1381,302 @@ function StepEmails({ isDark, sequences, onUpdate, sequenceType, leads, individu
     );
 }
 
-// Step 5: Schedule
+// Step 6: Preview
+function StepPreview({ isDark, sequences, leads, selectedAccountIds }: {
+    isDark: boolean;
+    sequences: SequenceStep[];
+    leads: Lead[];
+    selectedAccountIds: string[];
+}) {
+    const [previewLeadIdx, setPreviewLeadIdx] = useState(0);
+    const [activeStepIdx, setActiveStepIdx] = useState(0);
+    const [viewMode, setViewMode] = useState<'preview' | 'source'>('preview');
+    const [accounts, setAccounts] = useState<Array<{
+        id: string;
+        email?: string;
+        name?: string;
+        fromName?: string;
+        fromEmail?: string;
+        senderFullName?: string;
+        senderCompany?: string;
+        senderPosition?: string;
+        senderPhone?: string;
+        senderWebsite?: string;
+        senderLinkedIn?: string
+    }>>([]);
+
+    // Fetch accounts for preview
+    useEffect(() => {
+        const fetchAccounts = async () => {
+            try {
+                const token = localStorage.getItem('bulkEmailToken');
+                const response = await fetch('/api/bulk-email/smtp-accounts', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    setAccounts(Array.isArray(data) ? data : []);
+                }
+            } catch (error) {
+                console.error('Failed to fetch accounts:', error);
+            }
+        };
+        fetchAccounts();
+    }, []);
+
+    const step = sequences[activeStepIdx] || sequences[0];
+    const lead = leads[previewLeadIdx] || leads[0];
+    const account = accounts.find(a => selectedAccountIds.includes(a.id)) || accounts[0];
+
+    // Replace variables with actual data
+    const replaceVariables = (text: string) => {
+        if (!text) return text;
+        let result = text;
+
+        // Lead variables
+        if (lead) {
+            result = result.replace(/\{\{firstName\}\}/gi, lead.firstName || '');
+            result = result.replace(/\{\{lastName\}\}/gi, lead.lastName || '');
+            result = result.replace(/\{\{email\}\}/gi, lead.email || '');
+            result = result.replace(/\{\{company\}\}/gi, lead.company || '');
+        }
+
+        // Account/Sender variables
+        if (account) {
+            const senderName = account.senderFullName || account.fromName || account.name || account.fromEmail?.split('@')[0] || '';
+            result = result.replace(/\[Your Name\]/gi, senderName);
+            result = result.replace(/\[Your Company\]/gi, account.senderCompany || '');
+            result = result.replace(/\[Your Position\]/gi, account.senderPosition || '');
+            result = result.replace(/\[Your Phone\]/gi, account.senderPhone || '');
+            result = result.replace(/\[Your Website\]/gi, account.senderWebsite || '');
+            result = result.replace(/\[LinkedIn\]/gi, account.senderLinkedIn || '');
+        }
+
+        return result;
+    };
+
+    const previewSubject = replaceVariables(step?.subject || '');
+    const previewBody = step?.isHtml ? replaceVariables(step?.htmlBody || '') : replaceVariables(step?.body || '');
+
+    return (
+        <div className="h-full flex flex-col">
+            {/* Header */}
+            <div className="mb-4">
+                <h2 className={cn('text-xl font-semibold mb-2', isDark ? 'text-white' : 'text-gray-900')}>
+                    Preview your emails
+                </h2>
+                <p className={cn('text-sm', isDark ? 'text-neutral-400' : 'text-gray-500')}>
+                    See exactly how your emails will appear to recipients with personalization applied
+                </p>
+            </div>
+
+            <div className="flex-1 flex gap-6 min-h-0">
+                {/* Left Sidebar - Controls */}
+                <div className="w-72 flex-shrink-0 flex flex-col gap-4">
+                    {/* Lead Selector */}
+                    <div className={cn('p-4 rounded-lg', isDark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white border border-gray-200')}>
+                        <label className={cn('text-xs font-medium uppercase tracking-wider mb-2 block', isDark ? 'text-neutral-500' : 'text-gray-400')}>
+                            Preview for Lead
+                        </label>
+                        <select
+                            value={previewLeadIdx}
+                            onChange={(e) => setPreviewLeadIdx(Number(e.target.value))}
+                            className={cn(
+                                'w-full px-3 py-2.5 rounded-lg text-sm cursor-pointer',
+                                isDark ? 'bg-neutral-800 border border-neutral-700 text-white' : 'bg-gray-50 border border-gray-200 text-gray-900'
+                            )}
+                            style={{ outline: 'none' }}
+                        >
+                            {leads.length === 0 ? (
+                                <option>No leads added</option>
+                            ) : (
+                                leads.map((l, idx) => (
+                                    <option key={l.id} value={idx}>
+                                        {l.firstName ? `${l.firstName} ${l.lastName || ''}`.trim() : l.email}
+                                        {l.company ? ` - ${l.company}` : ''}
+                                    </option>
+                                ))
+                            )}
+                        </select>
+                        {lead && (
+                            <div className={cn('mt-3 pt-3 border-t text-xs space-y-1', isDark ? 'border-neutral-800 text-neutral-400' : 'border-gray-100 text-gray-500')}>
+                                <p><span className="font-medium">Email:</span> {lead.email}</p>
+                                {lead.company && <p><span className="font-medium">Company:</span> {lead.company}</p>}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Step Selector */}
+                    <div className={cn('p-4 rounded-lg', isDark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white border border-gray-200')}>
+                        <label className={cn('text-xs font-medium uppercase tracking-wider mb-2 block', isDark ? 'text-neutral-500' : 'text-gray-400')}>
+                            Sequence Step
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                            {sequences.map((s, idx) => (
+                                <button
+                                    key={s.id}
+                                    onClick={() => setActiveStepIdx(idx)}
+                                    className={cn(
+                                        'px-3 py-2 rounded-lg text-xs font-medium transition-colors',
+                                        activeStepIdx === idx
+                                            ? 'bg-orange-500 text-white'
+                                            : isDark ? 'bg-neutral-800 text-neutral-400 hover:text-white' : 'bg-gray-100 text-gray-500 hover:text-gray-900'
+                                    )}
+                                >
+                                    Step {idx + 1}
+                                    {idx > 0 && <span className="ml-1 opacity-60">+{s.delayDays}d</span>}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* View Mode */}
+                    <div className={cn('p-4 rounded-lg', isDark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white border border-gray-200')}>
+                        <label className={cn('text-xs font-medium uppercase tracking-wider mb-2 block', isDark ? 'text-neutral-500' : 'text-gray-400')}>
+                            View Mode
+                        </label>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setViewMode('preview')}
+                                className={cn(
+                                    'flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors',
+                                    viewMode === 'preview'
+                                        ? 'bg-orange-500 text-white'
+                                        : isDark ? 'bg-neutral-800 text-neutral-400 hover:text-white' : 'bg-gray-100 text-gray-500 hover:text-gray-900'
+                                )}
+                            >
+                                <Eye className="w-3.5 h-3.5" />
+                                Rendered
+                            </button>
+                            <button
+                                onClick={() => setViewMode('source')}
+                                className={cn(
+                                    'flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors',
+                                    viewMode === 'source'
+                                        ? 'bg-orange-500 text-white'
+                                        : isDark ? 'bg-neutral-800 text-neutral-400 hover:text-white' : 'bg-gray-100 text-gray-500 hover:text-gray-900'
+                                )}
+                            >
+                                <Code className="w-3.5 h-3.5" />
+                                Source
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Variable Status */}
+                    <div className={cn('p-4 rounded-lg flex-1 overflow-y-auto', isDark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white border border-gray-200')}>
+                        <label className={cn('text-xs font-medium uppercase tracking-wider mb-3 block', isDark ? 'text-neutral-500' : 'text-gray-400')}>
+                            Variables Status
+                        </label>
+                        <div className="space-y-2">
+                            {[
+                                { var: '{{firstName}}', val: lead?.firstName },
+                                { var: '{{lastName}}', val: lead?.lastName },
+                                { var: '{{email}}', val: lead?.email },
+                                { var: '{{company}}', val: lead?.company },
+                                { var: '[Your Name]', val: account?.senderFullName || account?.fromName || account?.name },
+                                { var: '[Your Company]', val: account?.senderCompany },
+                            ].map(v => (
+                                <div key={v.var} className={cn(
+                                    'px-2.5 py-2 rounded-lg text-xs flex items-center justify-between',
+                                    v.val
+                                        ? isDark ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600'
+                                        : isDark ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-600'
+                                )}>
+                                    <code className="font-mono">{v.var}</code>
+                                    <span className="truncate max-w-[100px] ml-2">{v.val || '(empty)'}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Main Preview Area */}
+                <div className={cn('flex-1 flex flex-col rounded-xl overflow-hidden', isDark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white border border-gray-200')}>
+                    {/* Email Header */}
+                    <div className={cn('px-6 py-4 border-b', isDark ? 'border-neutral-800' : 'border-gray-100')}>
+                        <div className="flex items-center gap-3 mb-3">
+                            <span className={cn('text-xs font-medium w-14', isDark ? 'text-neutral-500' : 'text-gray-400')}>From:</span>
+                            <span className={cn('text-sm', isDark ? 'text-neutral-300' : 'text-gray-700')}>
+                                {account?.senderFullName || account?.fromName || account?.name || 'Your Email Account'}
+                                {' '}
+                                <span className={cn('text-xs', isDark ? 'text-neutral-500' : 'text-gray-400')}>
+                                    &lt;{account?.fromEmail || 'you@example.com'}&gt;
+                                </span>
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-3 mb-3">
+                            <span className={cn('text-xs font-medium w-14', isDark ? 'text-neutral-500' : 'text-gray-400')}>To:</span>
+                            <span className={cn('text-sm', isDark ? 'text-neutral-300' : 'text-gray-700')}>
+                                {lead?.firstName ? `${lead.firstName} ${lead.lastName || ''}`.trim() : 'Recipient'}
+                                {' '}
+                                <span className={cn('text-xs', isDark ? 'text-neutral-500' : 'text-gray-400')}>
+                                    &lt;{lead?.email || 'recipient@example.com'}&gt;
+                                </span>
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <span className={cn('text-xs font-medium w-14', isDark ? 'text-neutral-500' : 'text-gray-400')}>Subject:</span>
+                            <span className={cn('text-base font-semibold', isDark ? 'text-white' : 'text-gray-900')}>
+                                {previewSubject || '(No subject)'}
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Email Body */}
+                    <div className="flex-1 overflow-auto">
+                        {viewMode === 'preview' ? (
+                            step?.isHtml ? (
+                                <div className="h-full bg-white">
+                                    <iframe
+                                        srcDoc={previewBody}
+                                        className="w-full h-full border-0"
+                                        title="Email Preview"
+                                        sandbox="allow-same-origin"
+                                        style={{ minHeight: '400px' }}
+                                    />
+                                </div>
+                            ) : (
+                                <div className={cn(
+                                    'p-6 whitespace-pre-wrap text-sm leading-relaxed',
+                                    isDark ? 'text-neutral-200' : 'text-gray-700'
+                                )}>
+                                    {previewBody || '(No content)'}
+                                </div>
+                            )
+                        ) : (
+                            <div className={cn('p-6 font-mono text-xs leading-relaxed overflow-auto', isDark ? 'bg-neutral-950 text-emerald-400' : 'bg-gray-50 text-gray-800')}>
+                                <pre className="whitespace-pre-wrap">{step?.isHtml ? step?.htmlBody : step?.body || '(No content)'}</pre>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Footer */}
+                    <div className={cn('px-6 py-3 border-t flex items-center justify-between', isDark ? 'border-neutral-800 bg-neutral-900/50' : 'border-gray-100 bg-gray-50')}>
+                        <div className={cn('text-xs', isDark ? 'text-neutral-500' : 'text-gray-400')}>
+                            {step?.isHtml ? (
+                                <span className="flex items-center gap-1.5">
+                                    <Code className="w-3.5 h-3.5" />
+                                    HTML Email
+                                </span>
+                            ) : (
+                                <span className="flex items-center gap-1.5">
+                                    <Type className="w-3.5 h-3.5" />
+                                    Plain Text Email
+                                </span>
+                            )}
+                        </div>
+                        <div className={cn('text-xs', isDark ? 'text-neutral-500' : 'text-gray-400')}>
+                            Previewing Step {activeStepIdx + 1} of {sequences.length}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// Step 7: Schedule
 function StepSchedule({ isDark, schedule, onUpdate }: { isDark: boolean; schedule: CampaignSchedule; onUpdate: (s: CampaignSchedule) => void }) {
     const DAYS = [{ id: 'monday', label: 'M' }, { id: 'tuesday', label: 'T' }, { id: 'wednesday', label: 'W' }, { id: 'thursday', label: 'T' }, { id: 'friday', label: 'F' }, { id: 'saturday', label: 'S' }, { id: 'sunday', label: 'S' }];
 
@@ -1605,7 +1892,7 @@ function StepAccounts({ isDark, selectedIds, onUpdate }: { isDark: boolean; sele
     );
 }
 
-// Step 7: Review & Launch
+// Step 8: Review & Launch
 function StepLaunch({ isDark, options, onUpdate, campaignName, leadsCount, selectedAccountIds }: { isDark: boolean; options: CampaignOptions; onUpdate: (o: CampaignOptions) => void; campaignName: string; leadsCount: number; selectedAccountIds: string[] }) {
     const EMAILS_PER_ACCOUNT = 15;
 

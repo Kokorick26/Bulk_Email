@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
     Plus, Trash2, Copy, Eye, Clock, Sparkles,
     MoreVertical, ArrowLeft, ArrowRight, MessageSquare,
-    Check, X, ChevronDown, ChevronRight, Hash, Send, Code, Type
+    Check, X, ChevronDown, ChevronRight, Hash, Send, Code, Type, AlertCircle
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { useTheme } from '../../../lib/ThemeContext';
@@ -14,6 +14,7 @@ interface SequencesTabProps {
     sequence: Sequence | null;
     onSequenceUpdate: (sequence: Sequence) => void;
     leads?: Lead[];
+    isLocked?: boolean;
     className?: string;
 }
 
@@ -56,7 +57,7 @@ const getAvailableMergeFields = (leads: Lead[]) => {
     return Array.from(allFields);
 };
 
-export function SequencesTab({ campaignId, sequence, onSequenceUpdate, leads = [], className }: SequencesTabProps) {
+export function SequencesTab({ campaignId, sequence, onSequenceUpdate, leads = [], isLocked, className }: SequencesTabProps) {
     const { theme } = useTheme();
     const [steps, setSteps] = useState<SequenceStep[]>([
         { ...defaultStep, id: 'step-1' }
@@ -72,6 +73,52 @@ export function SequencesTab({ campaignId, sequence, onSequenceUpdate, leads = [
     // Saving State
     const [isSaving, setIsSaving] = useState(false);
     const bodyRef = useRef<HTMLTextAreaElement>(null);
+
+    // Threading State - follow-up emails appear in same thread
+    const [threadSequence, setThreadSequence] = useState(true);
+
+    // Load threading preference from campaign options
+    useEffect(() => {
+        const loadThreadingPreference = async () => {
+            try {
+                const token = localStorage.getItem('bulkEmailToken');
+                const response = await fetch(`/api/bulk-email/campaigns/${campaignId}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.options?.threadSequence !== undefined) {
+                        setThreadSequence(data.options.threadSequence);
+                    }
+                }
+            } catch (err) {
+                console.error('Error loading threading preference:', err);
+            }
+        };
+        loadThreadingPreference();
+    }, [campaignId]);
+
+    const handleThreadingToggle = async () => {
+        const newValue = !threadSequence;
+        setThreadSequence(newValue);
+
+        // Save to campaign options
+        try {
+            const token = localStorage.getItem('bulkEmailToken');
+            await fetch(`/api/bulk-email/campaigns/${campaignId}/options`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    options: { threadSequence: newValue }
+                })
+            });
+        } catch (err) {
+            console.error('Error saving threading preference:', err);
+        }
+    };
 
     useEffect(() => {
         if (sequence?.steps && sequence.steps.length > 0) {
@@ -207,6 +254,15 @@ export function SequencesTab({ campaignId, sequence, onSequenceUpdate, leads = [
 
     return (
         <div className={cn('flex flex-col h-full', className)}>
+            {/* Lock Banner */}
+            {isLocked && (
+                <div className={cn('flex items-center gap-2 px-4 py-2 text-xs font-medium border-b',
+                    theme === 'dark' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-amber-50 text-amber-700 border-amber-200'
+                )}>
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    Campaign is running. Pause to make changes.
+                </div>
+            )}
             {/* Compact Toolbar */}
             <div className={cn(
                 'flex items-center justify-between px-4 py-3 border-b flex-shrink-0',
@@ -272,6 +328,57 @@ export function SequencesTab({ campaignId, sequence, onSequenceUpdate, leads = [
                         </span>
                     </div>
 
+                    {/* Threading Option */}
+                    {steps.length > 1 && (
+                        <div
+                            onClick={() => handleThreadingToggle()}
+                            className={cn(
+                                'flex items-center justify-between p-2.5 rounded border cursor-pointer transition-all',
+                                threadSequence
+                                    ? theme === 'dark'
+                                        ? 'bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20'
+                                        : 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100'
+                                    : theme === 'dark'
+                                        ? 'bg-neutral-800 border-neutral-700 hover:bg-neutral-700'
+                                        : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                            )}
+                        >
+                            <div className="flex items-center gap-2">
+                                <MessageSquare className={cn(
+                                    'w-3.5 h-3.5',
+                                    threadSequence
+                                        ? 'text-emerald-500'
+                                        : theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                )} />
+                                <div>
+                                    <p className={cn(
+                                        'text-[10px] font-semibold',
+                                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                                    )}>
+                                        Thread Follow-ups
+                                    </p>
+                                    <p className={cn(
+                                        'text-[9px]',
+                                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                                    )}>
+                                        {threadSequence ? 'Emails appear as replies' : 'Separate new emails'}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className={cn(
+                                'w-8 h-4.5 rounded-full p-0.5 transition-colors',
+                                threadSequence
+                                    ? 'bg-emerald-500'
+                                    : theme === 'dark' ? 'bg-neutral-600' : 'bg-gray-300'
+                            )}>
+                                <div className={cn(
+                                    'w-3.5 h-3.5 rounded-full bg-white shadow transition-transform',
+                                    threadSequence ? 'translate-x-3.5' : 'translate-x-0'
+                                )} />
+                            </div>
+                        </div>
+                    )}
+
                     <div className="flex-1 space-y-2 overflow-y-auto custom-scrollbar">
                         {steps.map((step, index) => (
                             <button
@@ -314,7 +421,13 @@ export function SequencesTab({ campaignId, sequence, onSequenceUpdate, leads = [
                                             ? 'text-orange-500'
                                             : theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
                                     )}>
-                                        {index === 0 ? '✓ Immediate' : `${step.delayDays}d delay`}
+                                        {index === 0 ? '✓ Immediate' : (() => {
+                                            const parts = [];
+                                            if (step.delayDays) parts.push(`${step.delayDays}d`);
+                                            if (step.delayHours) parts.push(`${step.delayHours}h`);
+                                            if (step.delayMinutes) parts.push(`${step.delayMinutes}m`);
+                                            return parts.length > 0 ? parts.join(' ') + ' delay' : 'No delay';
+                                        })()}
                                     </span>
                                 </div>
 
@@ -387,12 +500,14 @@ export function SequencesTab({ campaignId, sequence, onSequenceUpdate, leads = [
                             {/* Delay Settings for non-first steps */}
                             {activeStep.order > 1 && (
                                 <div className={cn(
-                                    'flex items-center gap-2 px-3 py-1.5 rounded border',
+                                    'flex items-center gap-3 px-3 py-2 rounded border',
                                     theme === 'dark' ? 'bg-neutral-800 border-neutral-700' : 'bg-gray-50 border-gray-200'
                                 )}>
                                     <Clock className={cn('w-3.5 h-3.5', theme === 'dark' ? 'text-gray-400' : 'text-gray-500')} />
-                                    <div className="flex items-center gap-1.5">
-                                        <span className={cn('text-[10px] font-medium uppercase', theme === 'dark' ? 'text-gray-500' : 'text-gray-500')}>Wait</span>
+                                    <span className={cn('text-[10px] font-medium uppercase', theme === 'dark' ? 'text-gray-500' : 'text-gray-500')}>Wait</span>
+
+                                    {/* Days */}
+                                    <div className="flex items-center gap-1">
                                         <input
                                             type="number"
                                             min="0"
@@ -403,7 +518,39 @@ export function SequencesTab({ campaignId, sequence, onSequenceUpdate, leads = [
                                                 theme === 'dark' ? 'text-white border-neutral-600 focus:border-orange-500' : 'text-gray-900 border-gray-300'
                                             )}
                                         />
-                                        <span className={cn('text-[10px]', theme === 'dark' ? 'text-gray-500' : 'text-gray-500')}>days</span>
+                                        <span className={cn('text-[10px]', theme === 'dark' ? 'text-gray-500' : 'text-gray-500')}>d</span>
+                                    </div>
+
+                                    {/* Hours */}
+                                    <div className="flex items-center gap-1">
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="23"
+                                            value={activeStep.delayHours || 0}
+                                            onChange={(e) => handleUpdateStep(activeStepId, { delayHours: parseInt(e.target.value) || 0 })}
+                                            className={cn(
+                                                'w-8 text-center bg-transparent font-mono text-xs font-bold focus:outline-none border-b',
+                                                theme === 'dark' ? 'text-white border-neutral-600 focus:border-orange-500' : 'text-gray-900 border-gray-300'
+                                            )}
+                                        />
+                                        <span className={cn('text-[10px]', theme === 'dark' ? 'text-gray-500' : 'text-gray-500')}>h</span>
+                                    </div>
+
+                                    {/* Minutes */}
+                                    <div className="flex items-center gap-1">
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="59"
+                                            value={activeStep.delayMinutes || 0}
+                                            onChange={(e) => handleUpdateStep(activeStepId, { delayMinutes: parseInt(e.target.value) || 0 })}
+                                            className={cn(
+                                                'w-8 text-center bg-transparent font-mono text-xs font-bold focus:outline-none border-b',
+                                                theme === 'dark' ? 'text-white border-neutral-600 focus:border-orange-500' : 'text-gray-900 border-gray-300'
+                                            )}
+                                        />
+                                        <span className={cn('text-[10px]', theme === 'dark' ? 'text-gray-500' : 'text-gray-500')}>m</span>
                                     </div>
                                 </div>
                             )}

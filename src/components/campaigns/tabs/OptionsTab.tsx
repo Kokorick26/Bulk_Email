@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, Zap, Shield, Flame, Clock } from 'lucide-react';
+import { Save, Zap, Shield, Flame, Clock, AlertCircle } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { useTheme } from '../../../lib/ThemeContext';
 import { Button } from '../../ui/Button';
@@ -9,10 +9,11 @@ interface OptionsTabProps {
     campaignId: string;
     options: Campaign['options'];
     onOptionsUpdate: (options: Campaign['options']) => void;
+    isLocked?: boolean;
     className?: string;
 }
 
-export function OptionsTab({ campaignId, options, onOptionsUpdate, className }: OptionsTabProps) {
+export function OptionsTab({ campaignId, options, onOptionsUpdate, isLocked, className }: OptionsTabProps) {
     const { theme } = useTheme();
     const [isSaving, setIsSaving] = useState(false);
 
@@ -152,6 +153,15 @@ export function OptionsTab({ campaignId, options, onOptionsUpdate, className }: 
 
     return (
         <div className={cn('space-y-6 max-w-2xl', className)}>
+            {/* Lock Banner */}
+            {isLocked && (
+                <div className={cn('flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-lg',
+                    theme === 'dark' ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-700'
+                )}>
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    Campaign is running. Pause to make changes.
+                </div>
+            )}
             {/* Compact Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
