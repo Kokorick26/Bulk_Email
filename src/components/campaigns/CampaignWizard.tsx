@@ -1201,7 +1201,7 @@ function StepEmails({ isDark, sequences, onUpdate, sequenceType, leads, individu
                 {/* Editor */}
                 <div className={cn('flex-1 flex flex-col rounded-lg overflow-hidden', isDark ? 'bg-neutral-900 border border-neutral-800' : 'bg-white border border-gray-200')}>
                     {/* Subject and Delay - Compact */}
-                    <div className={cn('px-3 py-2 border-b flex items-center gap-3', isDark ? 'border-neutral-800' : 'border-gray-100')}>
+                    <div className={cn('px-3 py-2 border-b flex items-center gap-3 flex-shrink-0', isDark ? 'border-neutral-800' : 'border-gray-100')}>
                         <input type="text" placeholder="Subject line..." value={step.subject} onChange={(e) => updateStep(activeIdx, { subject: e.target.value })}
                             className={cn('flex-1 bg-transparent text-sm font-medium focus:outline-none', isDark ? 'text-white placeholder:text-neutral-500' : 'text-gray-900 placeholder:text-gray-400')} />
                         {activeIdx > 0 && (
@@ -1209,8 +1209,14 @@ function StepEmails({ isDark, sequences, onUpdate, sequenceType, leads, individu
                                 <Clock className="w-3 h-3 text-neutral-500" />
                                 <span className={cn(isDark ? 'text-neutral-400' : 'text-gray-500')}>Wait</span>
                                 <input type="number" min="0" value={step.delayDays} onChange={(e) => updateStep(activeIdx, { delayDays: parseInt(e.target.value) || 0 })}
-                                    className={cn('w-8 text-center bg-transparent font-medium focus:outline-none', isDark ? 'text-white' : 'text-gray-900')} />
-                                <span className={cn(isDark ? 'text-neutral-400' : 'text-gray-500')}>d</span>
+                                    className={cn('w-6 text-center bg-transparent font-medium focus:outline-none', isDark ? 'text-white' : 'text-gray-900')} />
+                                <span className={cn(isDark ? 'text-neutral-500' : 'text-gray-400')}>d</span>
+                                <input type="number" min="0" max="23" value={step.delayHours || 0} onChange={(e) => updateStep(activeIdx, { delayHours: parseInt(e.target.value) || 0 })}
+                                    className={cn('w-6 text-center bg-transparent font-medium focus:outline-none', isDark ? 'text-white' : 'text-gray-900')} />
+                                <span className={cn(isDark ? 'text-neutral-500' : 'text-gray-400')}>h</span>
+                                <input type="number" min="0" max="59" value={step.delayMinutes || 0} onChange={(e) => updateStep(activeIdx, { delayMinutes: parseInt(e.target.value) || 0 })}
+                                    className={cn('w-6 text-center bg-transparent font-medium focus:outline-none', isDark ? 'text-white' : 'text-gray-900')} />
+                                <span className={cn(isDark ? 'text-neutral-500' : 'text-gray-400')}>m</span>
                             </div>
                         )}
                         {/* Mode Toggle - Inline */}
@@ -1245,10 +1251,10 @@ function StepEmails({ isDark, sequences, onUpdate, sequenceType, leads, individu
                     {/* Body Editor */}
                     <div className="flex-1 flex min-h-0">
                         {/* Code/Text Editor */}
-                        <div className={cn('flex-1 relative', step.isHtml && 'border-r', isDark ? 'border-neutral-800' : 'border-gray-200')}>
+                        <div className={cn('flex-1 relative overflow-hidden', step.isHtml && 'border-r', isDark ? 'border-neutral-800' : 'border-gray-200')}>
                             {step.isHtml ? (
-                                <>
-                                    <div className={cn('px-4 py-2 text-xs font-medium border-b', isDark ? 'text-neutral-400 border-neutral-800 bg-neutral-900' : 'text-gray-500 border-gray-100 bg-gray-50')}>
+                                <div className="flex flex-col h-full overflow-hidden">
+                                    <div className={cn('px-4 py-2 text-xs font-medium border-b flex-shrink-0', isDark ? 'text-neutral-400 border-neutral-800 bg-neutral-900' : 'text-gray-500 border-gray-100 bg-gray-50')}>
                                         HTML Code
                                     </div>
                                     <textarea
@@ -1279,12 +1285,12 @@ function StepEmails({ isDark, sequences, onUpdate, sequenceType, leads, individu
                                         value={step.htmlBody || ''}
                                         onChange={(e) => updateStep(activeIdx, { htmlBody: e.target.value })}
                                         className={cn(
-                                            'w-full h-full p-4 bg-transparent resize-none focus:outline-none text-xs font-mono leading-relaxed',
+                                            'flex-1 w-full p-4 bg-transparent resize-none focus:outline-none text-xs font-mono leading-relaxed overflow-auto',
                                             isDark ? 'text-emerald-400 placeholder:text-neutral-600' : 'text-gray-800 placeholder:text-gray-400'
                                         )}
                                         spellCheck={false}
                                     />
-                                </>
+                                </div>
                             ) : (
                                 <textarea
                                     placeholder={`Hi {{firstName}},\n\nWrite your message here...\n\nBest regards,\n[Your Name]`}

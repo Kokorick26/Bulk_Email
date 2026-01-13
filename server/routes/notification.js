@@ -12,8 +12,13 @@ const NOTIFICATIONS_TABLE = 'Notifications';
 // Get all notifications for user
 router.get('/', auth, async (req, res) => {
     try {
-        const userId = req.user.id;
+        const userId = req.user?.id;
         const limit = parseInt(req.query.limit) || 50;
+
+        // Validate userId exists
+        if (!userId) {
+            return res.json({ notifications: [], unreadCount: 0 });
+        }
 
         // Use scan with filter since we don't have a proper GSI set up
         const data = await dynamoDB.scan({

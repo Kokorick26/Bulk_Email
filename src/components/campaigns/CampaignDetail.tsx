@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
     ChevronLeft, Play, Pause, MoreHorizontal, Loader2,
-    BarChart2, Users, List, Calendar, Settings, RotateCw, Send, CheckCircle, RefreshCw
+    BarChart2, Users, List, Calendar, Settings, RotateCw, Send, CheckCircle, RefreshCw, Pencil, X, Activity
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useTheme } from '../../lib/ThemeContext';
@@ -14,7 +14,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '../ui/DropdownMenu';
-import { LeadsTab, SequencesTab, ScheduleTab, OptionsTab, AnalyticsTab } from './tabs';
+import { LeadsTab, SequencesTab, ScheduleTab, OptionsTab, AnalyticsTab, StatusTab } from './tabs';
 import type { Campaign, CampaignTab, Lead, Sequence, CampaignSchedule, CampaignOptions } from './types';
 import { cache } from '../../lib/cache';
 
@@ -33,9 +33,15 @@ interface CampaignDetailProps {
     className?: string;
 }
 
-const tabs: { id: CampaignTab; label: string; icon: any }[] = [
+// Main visible tabs
+const mainTabs: { id: CampaignTab; label: string; icon: any }[] = [
     { id: 'analytics', label: 'Analytics', icon: BarChart2 },
     { id: 'leads', label: 'Outbox', icon: Send },
+    { id: 'status', label: 'Status', icon: Activity },
+];
+
+// Edit tabs (shown in edit mode)
+const editTabs: { id: CampaignTab; label: string; icon: any }[] = [
     { id: 'sequences', label: 'Sequences', icon: List },
     { id: 'schedule', label: 'Schedule', icon: Calendar },
     { id: 'options', label: 'Options', icon: Settings },
@@ -45,6 +51,7 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
     const { theme } = useTheme();
     const [activeTab, setActiveTab] = useState<CampaignTab>('leads');
     const [loading, setLoading] = useState(true);
+    const [editMode, setEditMode] = useState(false);
 
     // Campaign data
     const [campaign, setCampaign] = useState<Campaign | null>(null);
@@ -207,9 +214,11 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
         }
 
         const firstStep = sequence.steps[0];
-        if (!firstStep.subject || !firstStep.body) {
+        const hasBody = firstStep.body || firstStep.htmlBody;
+        if (!firstStep.subject || !hasBody) {
             alert('Please add a subject and body to the first email step.');
             setActiveTab('sequences');
+            setEditMode(true);
             return;
         }
 
@@ -339,13 +348,14 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
 
                 {/* Navigation Items */}
                 <div className="flex-1 py-2 px-2 space-y-0.5 overflow-y-auto">
-                    {tabs.map((tab) => (
+                    {/* Main Tabs */}
+                    {mainTabs.map((tab) => (
                         <button
                             key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
+                            onClick={() => { setActiveTab(tab.id); setEditMode(false); }}
                             className={cn(
                                 'w-full flex items-center gap-2.5 px-2.5 py-2 rounded text-xs font-medium transition-colors text-left',
-                                activeTab === tab.id
+                                activeTab === tab.id && !editMode
                                     ? theme === 'dark'
                                         ? 'bg-neutral-800 text-white'
                                         : 'bg-gray-200 text-gray-900'
@@ -358,6 +368,70 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
                             {tab.label}
                         </button>
                     ))}
+
+                    {/* Divider */}
+                    <div className={cn(
+                        'my-2 border-t',
+                        theme === 'dark' ? 'border-neutral-800' : 'border-gray-200'
+                    )} />
+
+                    {/* Edit Campaign Section */}
+                    {campaign?.status !== 'active' ? (
+                        <>
+                            <button
+                                onClick={() => {
+                                    setEditMode(!editMode);
+                                    if (!editMode) setActiveTab('sequences');
+                                }}
+                                className={cn(
+                                    'w-full flex items-center gap-2.5 px-2.5 py-2 rounded text-xs font-medium transition-colors text-left',
+                                    editMode
+                                        ? theme === 'dark'
+                                            ? 'bg-orange-500/20 text-orange-400'
+                                            : 'bg-orange-100 text-orange-600'
+                                        : theme === 'dark'
+                                            ? 'text-neutral-400 hover:bg-neutral-800/50 hover:text-neutral-200'
+                                            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                                )}
+                            >
+                                <Pencil className="w-3.5 h-3.5 opacity-70" />
+                                Edit Campaign
+                            </button>
+
+                            {/* Edit Tabs (shown when edit mode is active) */}
+                            {editMode && (
+                                <div className="pl-3 space-y-0.5 mt-1">
+                                    {editTabs.map((tab) => (
+                                        <button
+                                            key={tab.id}
+                                            onClick={() => setActiveTab(tab.id)}
+                                            className={cn(
+                                                'w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded text-xs font-medium transition-colors text-left',
+                                                activeTab === tab.id
+                                                    ? theme === 'dark'
+                                                        ? 'bg-neutral-800 text-white'
+                                                        : 'bg-gray-200 text-gray-900'
+                                                    : theme === 'dark'
+                                                        ? 'text-neutral-500 hover:bg-neutral-800/50 hover:text-neutral-300'
+                                                        : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+                                            )}
+                                        >
+                                            <tab.icon className="w-3 h-3 opacity-70" />
+                                            {tab.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        <div className={cn(
+                            'flex items-center gap-2 px-2.5 py-2 rounded text-xs',
+                            theme === 'dark' ? 'text-neutral-600' : 'text-gray-400'
+                        )}>
+                            <Pencil className="w-3.5 h-3.5" />
+                            <span>Pause to edit</span>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -547,7 +621,7 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
                                             alert('Failed to delete campaign');
                                         }
                                     }}
-                                >Delete Campaign</DropdownMenuItem>
+                                >Clean Campaign</DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>
@@ -571,6 +645,12 @@ export function CampaignDetail({ campaignId, onBack, onContextChange, className 
                             onSequenceUpdate={setSequence}
                             leads={leads}
                             isLocked={campaign?.status === 'active'}
+                        />
+                    </div>
+                ) : activeTab === 'status' ? (
+                    <div className="flex-1 overflow-hidden">
+                        <StatusTab
+                            campaignId={campaignId}
                         />
                     </div>
                 ) : (

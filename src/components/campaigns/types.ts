@@ -125,7 +125,7 @@ export interface CampaignOptions {
     threadSequence?: boolean;
 }
 
-export type CampaignTab = 'analytics' | 'leads' | 'sequences' | 'schedule' | 'options';
+export type CampaignTab = 'analytics' | 'status' | 'leads' | 'sequences' | 'schedule' | 'options';
 
 export interface CampaignFilter {
     status: 'all' | Campaign['status'];

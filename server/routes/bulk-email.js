@@ -1599,9 +1599,14 @@ router.post('/campaigns/:id/start', auth, async (req, res) => {
         }
 
         // FIX: Validate ALL steps have content, not just the first one
+        // Support both plain text (body) and HTML (htmlBody) emails
         const invalidSteps = campaign.Item.sequence.steps
             .map((step, idx) => ({ step, idx }))
-            .filter(({ step }) => !step.subject || !step.body || !step.subject.trim() || !step.body.trim());
+            .filter(({ step }) => {
+                const hasSubject = step.subject && step.subject.trim();
+                const hasBody = (step.body && step.body.trim()) || (step.htmlBody && step.htmlBody.trim());
+                return !hasSubject || !hasBody;
+            });
 
         if (invalidSteps.length > 0) {
             const stepNumbers = invalidSteps.map(({ idx }) => idx + 1).join(', ');

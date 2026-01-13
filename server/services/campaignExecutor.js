@@ -961,13 +961,32 @@ async function sendStepEmail(campaign, lead, step, stepIndex, smtpAccountId) {
         subject = replaceVariables(subject, leadData, senderProfile);
         console.log(`[CampaignExecutor] Subject AFTER replacement: "${subject}"`);
 
-        let body = processSpintax(step.body);
-        console.log(`[CampaignExecutor] Body BEFORE (first 200 chars): "${body.substring(0, 200)}"`);
-        body = replaceVariables(body, leadData, senderProfile);
-        console.log(`[CampaignExecutor] Body AFTER (first 200 chars): "${body.substring(0, 200)}"`);
+        // DEBUG: Log step content details
+        console.log(`[CampaignExecutor] Step content check:`);
+        console.log(`  - isHtml: ${step.isHtml}`);
+        console.log(`  - body length: ${step.body ? step.body.length : 0}`);
+        console.log(`  - htmlBody length: ${step.htmlBody ? step.htmlBody.length : 0}`);
 
-        // Convert to HTML
-        const html = `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6;color:#202124">${body.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</div>`;
+        // Handle both plain text and HTML emails
+        let body, html;
+
+        if (step.isHtml && step.htmlBody) {
+            // HTML email mode - use htmlBody
+            console.log(`[CampaignExecutor] Using HTML mode - htmlBody length: ${step.htmlBody.length}`);
+            html = processSpintax(step.htmlBody);
+            html = replaceVariables(html, leadData, senderProfile);
+            // Create plain text version by stripping HTML tags
+            body = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+            console.log(`[CampaignExecutor] HTML Body (first 300 chars): "${html.substring(0, 300)}"`);
+        } else {
+            // Plain text mode - use body
+            body = processSpintax(step.body || '');
+            console.log(`[CampaignExecutor] Body BEFORE (first 200 chars): "${body.substring(0, 200)}"`);
+            body = replaceVariables(body, leadData, senderProfile);
+            console.log(`[CampaignExecutor] Body AFTER (first 200 chars): "${body.substring(0, 200)}"`);
+            // Convert plain text to simple HTML
+            html = `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6;color:#202124">${body.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</div>`;
+        }
 
         // Generate unique message ID - safely handle undefined fromEmail
         const domain = (fromEmail && fromEmail.includes('@')) ? fromEmail.split('@')[1] : 'kokorick.uk';
